@@ -88,3 +88,13 @@ editor.js    Toda a lógica: Monaco, abas, arquivos, sessão, backup, Markdown e
 - [Monaco Editor](https://github.com/microsoft/monaco-editor) 0.52.2
 - [marked](https://github.com/markedjs/marked) 15.0.7
 - [DOMPurify](https://github.com/cure53/DOMPurify) 3.2.6
+
+## Licença
+
+Este projeto é distribuído sob a licença [Creative Commons Atribuição-NãoComercial 4.0 Internacional (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/deed.pt-br).
+
+- ✅ Você pode usar, copiar, modificar e redistribuir.
+- ❌ Não é permitido uso comercial.
+- 📌 Ao divulgar ou redistribuir, inclusive versões modificadas, dê crédito ao autor (**Felipe FM**), informe a fonte (<https://github.com/felipefm/EditorWebPortable>), indique a licença e diga se houve alterações.
+
+Veja o arquivo [LICENSE](LICENSE) para o texto completo.
