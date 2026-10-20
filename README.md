@@ -21,9 +21,14 @@ Editor de texto e código que roda direto no navegador, sem instalação e sem b
    ```bash
    git clone https://github.com/felipefm/EditorWebPortable.git
    ```
-2. Abra o `index.html` no navegador.
+2. Abra o `public/index.html` no navegador.
 
-Também dá para publicar no **GitHub Pages**: como o arquivo principal é o `index.html`, a página abre direto pela raiz do site.
+### Publicar no Cloudflare
+
+O projeto já vem configurado para o **Cloudflare Workers** (arquivos estáticos, sem build), pelo `wrangler.jsonc`. Só a pasta `public/` vai para o ar.
+
+- **Pelo painel (deploy automático a cada push):** em *Workers & Pages → Create → Import a repository*, escolha este repositório e mantenha o comando de deploy `npx wrangler deploy`.
+- **Pelo terminal:** `npx wrangler login` e depois `npx wrangler deploy`.
 
 > **Requer internet.** O Monaco Editor, o `marked` e o `DOMPurify` são carregados do CDN jsDelivr. Sem conexão, o editor mostra uma mensagem de erro.
 
@@ -78,9 +83,11 @@ Nenhum conteúdo é enviado para servidores. Tudo fica no seu navegador ou nos a
 ## Estrutura
 
 ```
-index.html   Estrutura da página: barra de ações, abas, editor, preview, formatador JSON e atalhos
-editor.css   Estilos (tema escuro inspirado no VS Code)
-editor.js    Toda a lógica: Monaco, abas, arquivos, sessão, backup, Markdown e JSON
+public/
+  index.html   Estrutura da página: barra de ações, abas, editor, preview, formatador JSON e atalhos
+  editor.css   Estilos (tema escuro inspirado no VS Code)
+  editor.js    Toda a lógica: Monaco, abas, arquivos, sessão, backup, Markdown e JSON
+wrangler.jsonc Configuração de deploy no Cloudflare
 ```
 
 ## Dependências (via CDN)
