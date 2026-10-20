@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Editor Web Portable</title>
+    <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/editor/editor.main.css">
+    <link rel="stylesheet" href="editor.css">
+</head>
+<body>
+    <header id="topo">
+        <div id="marca">
+            <strong>Meu Editor Web Portable</strong>
+            <span id="arquivo-atual" title="Nenhum arquivo aberto">Sem arquivo</span>
+            <span id="estado" role="status">Carregando editor...</span>
+        </div>
+        <div id="acoes">
+            <div id="acoes-arquivo">
+                <button id="abrir" type="button">Abrir</button>
+                <label for="linguagem">Linguagem</label>
+                <select id="linguagem" aria-label="Linguagem do editor">
+                    <option value="javascript">JavaScript</option>
+                    <option value="typescript">TypeScript</option>
+                    <option value="html">HTML</option>
+                    <option value="css">CSS</option>
+                    <option value="json">JSON</option>
+                    <option value="markdown">Markdown</option>
+                    <option value="plaintext">Texto puro</option>
+                </select>
+                <button id="novo" type="button">Novo</button>
+                <button id="salvar" class="destaque" type="button">Salvar</button>
+                <button id="salvar-como" type="button">Salvar como</button>
+            </div>
+            <button id="abrir-formatador-json" type="button" title="Abrir formatador JSON">Formatador JSON</button>
+            <details id="menu-opcoes">
+                <summary>Opções</summary>
+                <div id="painel-opcoes">
+                    <button id="abrir-atalhos-markdown" type="button">Atalhos de Markdown</button>
+                    <button id="exportar-sessao" type="button">Exportar sessão agora</button>
+                    <button id="importar-sessao" type="button">Importar sessão</button>
+                    <button id="configurar-backup" type="button">Configurar backup automático</button>
+                    <span id="status-backup" role="status">Backup automático no navegador ativo.</span>
+                </div>
+            </details>
+        </div>
+    </header>
+    <input id="seletor-arquivo" type="file">
+    <input id="seletor-sessao" type="file" accept="application/json,.json">
+    <nav id="abas" role="tablist" aria-label="Arquivos abertos"></nav>
+    <div id="editor-paineis">
+        <div id="container"></div>
+        <section id="preview-markdown" aria-label="Preview Markdown">
+            <div id="preview-cabecalho">
+                <strong>Preview Markdown</strong>
+                <span id="preview-status" role="status">Ao vivo</span>
+            </div>
+            <article id="preview-conteudo"></article>
+        </section>
+    </div>
+    <section id="formatador-json" aria-label="Formatador JSON">
+        <div id="formatador-cabecalho">
+            <strong>Formatador JSON</strong>
+            <div id="formatador-acoes">
+                <button id="usar-json-atual" type="button">Usar aba atual</button>
+                <label for="indentacao-json">Indentação</label>
+                <select id="indentacao-json" aria-label="Indentação do JSON">
+                    <option value="2">2 espaços</option>
+                    <option value="4">4 espaços</option>
+                    <option value="tab">Tabulação</option>
+                </select>
+                <button id="formatar-json" class="destaque" type="button">Formatar</button>
+                <button id="compactar-json" type="button">Compactar</button>
+                <button id="copiar-json" type="button">Copiar resultado</button>
+            </div>
+        </div>
+        <div id="json-paineis">
+            <div class="json-painel">
+                <label for="json-entrada">JSON de entrada</label>
+                <textarea id="json-entrada" spellcheck="false" placeholder="Cole aqui um JSON em uma ou várias linhas"></textarea>
+            </div>
+            <div class="json-painel">
+                <label for="json-saida">Visualização formatada</label>
+                <textarea id="json-saida" readonly spellcheck="false"></textarea>
+            </div>
+        </div>
+        <div id="json-mensagem" role="status"></div>
+    </section>
+    <section id="atalhos-markdown" aria-label="Atalhos de Markdown">
+        <div id="atalhos-markdown-cabecalho">
+            <div>
+                <strong>Atalhos de Markdown</strong>
+                <p>Comandos rápidos para escrever Markdown sem sair do teclado. As combinações usam Ctrl no Windows/Linux e Cmd no macOS.</p>
+            </div>
+            <button id="voltar-editor-markdown" type="button">Voltar ao editor</button>
+        </div>
+        <div id="atalhos-markdown-nota" role="note">Os atalhos de formatação abaixo ficam ativos quando a aba atual está configurada como Markdown. Eles também funcionam com múltiplas seleções; sem seleção, os comandos de texto inserem os marcadores e posicionam o cursor entre eles.</div>
+        <div id="lista-atalhos-markdown">
+            <section class="atalhos-grupo" aria-labelledby="atalhos-texto-titulo">
+                <h2 id="atalhos-texto-titulo">Texto e links</h2>
+                <table>
+                    <thead><tr><th scope="col">Atalho</th><th scope="col">Ação</th></tr></thead>
+                    <tbody>
+                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>B</kbd></td><td>Aplicar ou remover <strong>negrito</strong> com <code>**texto**</code>.</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>I</kbd></td><td>Aplicar ou remover <em>itálico</em> com <code>*texto*</code>.</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd><br><span class="atalho-observacao">ou Alt/Option + Shift + 5</span></td><td>Aplicar ou remover ~~tachado~~.</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>`</kbd></td><td>Aplicar ou remover código inline com <code>`codigo`</code>.</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>K</kbd></td><td>Transformar a seleção em link e selecionar a URL para preenchimento.</td></tr>
+                    </tbody>
+                </table>
+            </section>
+            <section class="atalhos-grupo" aria-labelledby="atalhos-estrutura-titulo">
+                <h2 id="atalhos-estrutura-titulo">Estrutura do documento</h2>
+                <table>
+                    <thead><tr><th scope="col">Atalho</th><th scope="col">Ação</th></tr></thead>
+                    <tbody>
+                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>1</kbd> a <kbd>6</kbd></td><td>Aplicar ou alternar títulos de nível 1 a 6.</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>7</kbd></td><td>Alternar lista numerada.</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>8</kbd></td><td>Alternar lista com marcadores.</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>9</kbd></td><td>Alternar lista de tarefas com <code>- [ ]</code>.</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd></td><td>Alternar citação com <code>&gt; </code>.</td></tr>
+                    </tbody>
+                </table>
+            </section>
+            <section class="atalhos-grupo" aria-labelledby="atalhos-editor-titulo">
+                <h2 id="atalhos-editor-titulo">Editor e arquivos</h2>
+                <table>
+                    <thead><tr><th scope="col">Atalho</th><th scope="col">Ação</th></tr></thead>
+                    <tbody>
+                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>S</kbd></td><td>Salvar a aba atual.</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></td><td>Salvar como.</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>O</kbd></td><td>Abrir arquivo.</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>N</kbd></td><td>Criar uma nova aba.</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>J</kbd></td><td>Abrir o formatador JSON.</td></tr>
+                    </tbody>
+                </table>
+            </section>
+        </div>
+    </section>
+    <div id="falha" role="alert"></div>
+    <footer id="rodape">Pronto</footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
+    <script src="editor.js"></script>
+</body>
+</html>
