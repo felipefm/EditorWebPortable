@@ -2,6 +2,8 @@
 
 Editor de texto e código que roda direto no navegador, sem instalação e sem build. Ele usa o [Monaco Editor](https://microsoft.github.io/monaco-editor/), o mesmo do VS Code, e o projeto inteiro são três arquivos: `index.html`, `editor.css` e `editor.js`.
 
+**🌐 Acesse online:** <https://editorportable.felipefm-suporte.workers.dev>
+
 ## Funcionalidades
 
 - **Editor Monaco** com tema escuro, quebra de linha automática e realce de sintaxe para JavaScript, TypeScript, HTML, CSS, JSON, Markdown e texto puro.
