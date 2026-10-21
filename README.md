@@ -12,7 +12,7 @@ Editor de texto e código que roda direto no navegador, sem instalação e sem b
 - **Abrir e salvar arquivos locais**: com a [File System Access API](https://developer.mozilla.org/docs/Web/API/File_System_API) (Chrome, Edge), o editor grava direto no arquivo original. Nos navegadores que não têm essa API (Firefox e derivados, como Zen e LibreWolf, Safari e navegadores de celular), o botão vira **Baixar** e um aviso explica o motivo. Veja [Compatibilidade](#compatibilidade).
 - **Detecção de linguagem** pela extensão do arquivo (`.js`, `.mjs`, `.cjs`, `.ts`, `.html`, `.htm`, `.css`, `.json`, `.md`, `.markdown`, `.txt`).
 - **Preview de Markdown ao vivo**, com três modos: só editor, dividido ou só preview. O HTML gerado é sanitizado com DOMPurify.
-- **Barra e atalhos de Markdown** para negrito, itálico, tachado, código, links, títulos, listas e citações. Funcionam com múltiplas seleções.
+- **Barra e atalhos de Markdown** para negrito, itálico, tachado, código, links, títulos, listas, citações e linha horizontal. Funcionam com múltiplas seleções.
 - **Formatador JSON**: formata automaticamente enquanto você digita (2 espaços, 4 espaços ou tabulação), compacta, aponta a linha e a coluna do erro, copia o resultado ou abre em uma nova aba.
 - **Sessão persistente**: abas, conteúdo e estado da interface são salvos automaticamente no navegador (localStorage + IndexedDB) e restaurados ao reabrir a página.
 - **Backup automático em arquivo**: opcionalmente, a sessão é gravada a cada 30 segundos em um arquivo `.json` escolhido por você.
@@ -99,7 +99,7 @@ O navegador pode acrescentar um número ao nome (`notas (1).md`) quando o arquiv
 
 ## Testes automatizados
 
-O projeto tem **86 testes automatizados**, divididos em 7 áreas: geral, abas, arquivos, Markdown, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor no Microsoft Edge de verdade, clicando, digitando e conferindo o resultado.
+O projeto tem **90 testes automatizados**, divididos em 7 áreas: geral, abas, arquivos, Markdown, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor no Microsoft Edge de verdade, clicando, digitando e conferindo o resultado.
 
 📖 **Documentação completa: [docs/TESTES.md](docs/TESTES.md).** Explica como funcionam, a lista de todos os testes, como o projeto escolhe o que testar, como escrever testes novos e o que fazer quando algo falha.
 

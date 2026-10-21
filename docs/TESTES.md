@@ -21,14 +21,14 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **86 testes** em **7 áreas**, um arquivo por área. A suíte completa leva cerca de 40 segundos.
+São **90 testes** em **7 áreas**, um arquivo por área. A suíte completa leva cerca de 40 segundos.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
 | geral | `geral.spec.js` | 6 | Carregamento sem erros, barra lateral, paleta de comandos, rodapé |
 | abas | `abas.spec.js` | 10 | Criar, trocar e fechar abas, indicador de não salvo, diálogo de confirmação |
 | arquivos | `arquivos.spec.js` | 19 | Abrir, salvar, salvar como, detecção de linguagem, modo "Baixar" dos navegadores sem gravação direta |
-| markdown | `markdown.spec.js` | 25 | Barra e atalhos de formatação, preview, segurança do preview, modos de visualização |
+| markdown | `markdown.spec.js` | 29 | Barra e atalhos de formatação, linha horizontal, preview, segurança do preview, modos de visualização |
 | json | `json.spec.js` | 11 | Formatar, compactar, indentação, erros com linha e coluna, copiar, abrir em aba |
 | sessao | `sessao.spec.js` | 10 | Sessão restaurada, painel de backup, exportar e importar |
 | celular | `celular.spec.js` | 5 | Layout em tela de 390 × 844 |
@@ -122,7 +122,7 @@ O que mudou:
 | Se o nome tiver… | Área |
 | --- | --- |
 | `json` | json |
-| `markdown`, `preview`, `modo`, `marcacao`, `citacao`, `tarefas`, `numerada`, `negrito`, `italico`, `tachado` | markdown |
+| `markdown`, `preview`, `modo`, `marcacao`, `citacao`, `tarefas`, `numerada`, `negrito`, `italico`, `tachado`, `horizontal` | markdown |
 | `sessao`, `backup`, `persist`, `navegador`, `indexeddb`, `instantaneo`, `importar`, `exportar` | sessao |
 | `arquivo`, `salvar`, `salvo`, `baixar`, `download`, `gravacao`, `sugerido`, `carregar`, `manipulador` | arquivos |
 | `aba`, `documento`, `semtitulo`, `modificac`, `dialogo`, `confirmar`, `linguagem` | abas |
@@ -228,7 +228,7 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - Ctrl+S não baixa nada e confirma o salvamento no navegador
 - cancelar a pergunta do nome não baixa nada
 
-### markdown (25)
+### markdown (29)
 
 - barra de formatação só aparece em documentos Markdown
 - botão de negrito aplica e remove a marcação
@@ -236,6 +236,8 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - itálico, tachado e código inline: pelo botão e pelo atalho (6 testes)
 - link transforma a seleção e seleciona a URL
 - H1, H2, H3, lista, lista numerada, lista de tarefas e citação aplicam e removem o formato da linha (7 testes)
+- linha horizontal no meio do texto, numa linha vazia e no fim do documento insere `---` com as linhas em branco certas (3 testes)
+- `---` colado no texto vira título; com linha em branco vira linha
 - formatação funciona com várias linhas selecionadas
 - preview renderiza o Markdown ao vivo
 - preview remove scripts e eventos perigosos

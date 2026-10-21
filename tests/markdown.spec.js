@@ -84,6 +84,30 @@ test.describe('Markdown', () => {
         });
     }
 
+    const linhasHorizontais = [
+        ['no meio do texto', 'acima\nabaixo', 1, 'acima\n\n---\n\nabaixo'],
+        ['numa linha vazia entre textos', 'acima\n\nabaixo', 2, 'acima\n\n---\n\nabaixo'],
+        ['no fim do documento', 'texto', 1, 'texto\n\n---\n']
+    ];
+    for (const [onde, inicial, linha, esperado] of linhasHorizontais) {
+        test(`linha horizontal ${onde} insere --- com linhas em branco`, async ({ page }) => {
+            await abrirMarkdown(page, inicial);
+            await selecionar(page, linha, 1, linha, 1);
+            await page.locator('[data-md="linha"]').click();
+            // O Monaco usa a quebra de linha do sistema (CRLF no Windows).
+            expect((await obterConteudo(page)).replace(/\r\n/g, '\n')).toBe(esperado);
+            await expect(page.locator('#preview-conteudo hr')).toHaveCount(1);
+            await expect(page.locator('#preview-conteudo h2')).toHaveCount(0);
+        });
+    }
+
+    test('--- colado no texto vira título; com linha em branco vira linha', async ({ page }) => {
+        await abrirMarkdown(page, 'Texto\n---');
+        await expect(page.locator('#preview-conteudo h2')).toHaveText('Texto');
+        await definirConteudo(page, 'Texto\n\n---');
+        await expect(page.locator('#preview-conteudo hr')).toBeVisible();
+    });
+
     test('formatação funciona com várias linhas selecionadas', async ({ page }) => {
         await abrirMarkdown(page, 'um\ndois\ntres');
         await selecionar(page, 1, 1, 3, 5);

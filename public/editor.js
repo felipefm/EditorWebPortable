@@ -1439,6 +1439,31 @@
                 return `${indentacao}> ${linha.slice(indentacao.length)}`;
             }
 
+            // Insere "---" separado por linhas em branco. Sem a linha em branco acima,
+            // o Markdown transformaria o texto anterior num título em vez de criar a linha.
+            function inserirLinhaHorizontalMarkdown() {
+                if (!estaEmMarkdown()) {
+                    avisarAtalhoMarkdownIndisponivel();
+                    return;
+                }
+                const modelo = editor.getModel();
+                const linha = editor.getPosition().lineNumber;
+                const atual = modelo.getLineContent(linha);
+                const anterior = linha > 1 ? modelo.getLineContent(linha - 1) : '';
+                const proxima = linha < modelo.getLineCount() ? modelo.getLineContent(linha + 1) : '';
+                const fimLinha = modelo.getLineMaxColumn(linha);
+                const quebra = modelo.getEOL();
+                const ultimaLinha = linha === modelo.getLineCount();
+                const espacoDepois = ultimaLinha || proxima.trim() ? quebra : '';
+                const edicao = atual.trim()
+                    ? { range: new monaco.Range(linha, fimLinha, linha, fimLinha), text: `${quebra}${quebra}---${espacoDepois}` }
+                    : { range: new monaco.Range(linha, 1, linha, fimLinha), text: `${anterior.trim() ? quebra : ''}---${espacoDepois}` };
+                editor.pushUndoStop();
+                editor.executeEdits('atalho-markdown', [{ ...edicao, forceMoveMarkers: true }]);
+                editor.pushUndoStop();
+                atualizarEstado('Linha horizontal inserida');
+            }
+
             function aplicarCabecalhoMarkdown(nivel) {
                 editarLinhasMarkdown(function (linha) {
                     return transformarCabecalhoMarkdown(linha, nivel);
@@ -1730,7 +1755,8 @@
                     lista: function () { editarLinhasMarkdown(transformarListaMarcadoresMarkdown, 'Lista com marcadores alternada'); },
                     numerada: function () { editarLinhasMarkdown(transformarListaNumeradaMarkdown, 'Lista numerada alternada'); },
                     tarefas: function () { editarLinhasMarkdown(transformarListaTarefasMarkdown, 'Lista de tarefas alternada'); },
-                    citacao: function () { editarLinhasMarkdown(transformarCitacaoMarkdown, 'Citação alternada'); }
+                    citacao: function () { editarLinhasMarkdown(transformarCitacaoMarkdown, 'Citação alternada'); },
+                    linha: inserirLinhaHorizontalMarkdown
                 };
                 barraMarkdown.querySelectorAll('[data-md]').forEach(function (botao) {
                     botao.addEventListener('mousedown', function (evento) {
