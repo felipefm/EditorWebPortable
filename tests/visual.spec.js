@@ -32,6 +32,18 @@ async function abrirVisual(page, conteudo, opcoes) {
     return erros;
 }
 
+// Duplo clique na primeira palavra do primeiro parágrafo (o parágrafo ocupa a largura toda).
+// Com o computador ocupado, o navegador às vezes recebe os dois cliques como cliques separados e
+// não seleciona nada; nesse caso o duplo clique é repetido até a palavra ficar selecionada. A pausa
+// entre as tentativas evita que o navegador junte os cliques num clique triplo (parágrafo inteiro).
+async function selecionarPrimeiraPalavra(page) {
+    const caixa = await editorVisual(page).locator('p').first().boundingBox();
+    await expect(async () => {
+        await page.mouse.dblclick(caixa.x + 20, caixa.y + caixa.height / 2);
+        expect((await page.evaluate(() => window.getSelection().toString())).trim()).not.toBe('');
+    }).toPass({ timeout: 10000, intervals: [800] });
+}
+
 async function textoNormalizado(page) {
     return (await obterConteudo(page)).replace(/\r\n/g, '\n');
 }
@@ -71,9 +83,7 @@ test.describe('Modo Visual', () => {
 
     test('Ctrl+B no modo Visual vira **negrito** no Markdown', async ({ page }) => {
         await abrirVisual(page, 'palavra');
-        // Duplo clique em cima do texto (o parágrafo ocupa a largura toda).
-        const caixa = await editorVisual(page).locator('p').first().boundingBox();
-        await page.mouse.dblclick(caixa.x + 20, caixa.y + caixa.height / 2);
+        await selecionarPrimeiraPalavra(page);
         await page.keyboard.press('Control+B');
         await expect.poll(() => textoNormalizado(page)).toBe('**palavra**');
     });
@@ -163,11 +173,11 @@ test.describe('Modo Visual', () => {
     ];
 
     async function posicionarNaPalavra(page, selecionarPalavra) {
-        const caixa = await editorVisual(page).locator('p').first().boundingBox();
         if (selecionarPalavra) {
-            // Duplo clique em cima da palavra (no Windows, seleciona também o espaço seguinte).
-            await page.mouse.dblclick(caixa.x + 20, caixa.y + caixa.height / 2);
+            // No Windows, o duplo clique seleciona também o espaço seguinte.
+            await selecionarPrimeiraPalavra(page);
         } else {
+            const caixa = await editorVisual(page).locator('p').first().boundingBox();
             await page.mouse.click(caixa.x + 20, caixa.y + caixa.height / 2);
         }
     }

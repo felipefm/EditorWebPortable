@@ -497,6 +497,15 @@ Para investigar:
 
 As pastas `tests/relatorio/` e `tests/resultados/` são geradas a cada execução e ficam fora do git.
 
+### Testes instáveis (flaky)
+
+Um teste que falha é **repetido uma vez** automaticamente (`retries: 1` no `playwright.config.js`). Se passar na segunda tentativa, o resultado mostra, por exemplo, `1 flaky`, e o push segue. Isso acontece por motivos que não são defeitos do editor:
+
+- o Milkdown (modo Visual) vem da internet (esm.sh) e às vezes demora ou falha;
+- com vários testes em paralelo, o computador fica ocupado e o navegador perde o tempo de um duplo clique ou de uma digitação.
+
+Um defeito de verdade falha nas duas tentativas e continua bloqueando o push. Se o mesmo teste aparecer como instável com frequência, vale investigar: rode `npx playwright test <área> --repeat-each=5` para tentar reproduzir.
+
 ## Solução de problemas
 
 | Problema | Causa provável | Solução |
