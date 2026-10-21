@@ -11,6 +11,7 @@
     "test:arquivos": "playwright test arquivos",
     "test:markdown": "playwright test markdown",
     "test:visual": "playwright test visual",
+    "test:imagens": "playwright test imagens",
     "test:json": "playwright test json",
     "test:sessao": "playwright test sessao",
     "test:celular": "playwright test celular",

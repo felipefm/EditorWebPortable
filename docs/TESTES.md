@@ -21,15 +21,16 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **102 testes** em **8 áreas**, um arquivo por área. A suíte completa leva cerca de 40 segundos.
+São **155 testes** em **9 áreas**, um arquivo por área. A suíte completa leva cerca de 1 minuto.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
 | geral | `geral.spec.js` | 6 | Carregamento sem erros, barra lateral, paleta de comandos, rodapé |
 | abas | `abas.spec.js` | 10 | Criar, trocar e fechar abas, indicador de não salvo, diálogo de confirmação |
 | arquivos | `arquivos.spec.js` | 19 | Abrir, salvar, salvar como, detecção de linguagem, modo "Baixar" dos navegadores sem gravação direta |
-| markdown | `markdown.spec.js` | 29 | Barra e atalhos de formatação, linha horizontal, preview, segurança do preview, modos de visualização |
-| visual | `visual.spec.js` | 12 | Modo Visual (Milkdown): edição formatada, sincronia com o Markdown, preservação do estilo, salvar, abas, falta de internet |
+| markdown | `markdown.spec.js` | 44 | Barra e **todos os atalhos** de formatação, linha horizontal, preview, segurança do preview, modos de visualização |
+| visual | `visual.spec.js` | 34 | Modo Visual (Milkdown): edição formatada, **todos os atalhos**, sincronia com o Markdown, preservação do estilo, salvar, abas, falta de internet |
+| imagens | `imagens.spec.js` | 16 | Imagens preservadas no modo Visual, diálogo "Inserir imagem" (link e arquivo), redução de tamanho |
 | json | `json.spec.js` | 11 | Formatar, compactar, indentação, erros com linha e coluna, copiar, abrir em aba |
 | sessao | `sessao.spec.js` | 10 | Sessão restaurada, painel de backup, exportar e importar |
 | celular | `celular.spec.js` | 5 | Layout em tela de 390 × 844 |
@@ -43,6 +44,7 @@ tests/
   arquivos.spec.js     │  um arquivo de teste por área
   markdown.spec.js     │
   visual.spec.js       │
+  imagens.spec.js      │
   json.spec.js         │
   sessao.spec.js       │
   celular.spec.js      ┘
@@ -83,6 +85,7 @@ Todos são executados dentro da pasta `tests/`.
 | `npm run test:arquivos` | Só arquivos |
 | `npm run test:markdown` | Só Markdown |
 | `npm run test:visual` | Só o modo Visual |
+| `npm run test:imagens` | Só imagens |
 | `npm run test:json` | Só o formatador JSON |
 | `npm run test:sessao` | Só sessão e backup |
 | `npm run test:celular` | Só o layout de celular |
@@ -126,6 +129,7 @@ O que mudou:
 | --- | --- |
 | `json` | json |
 | `visual`, `milkdown`, `crepe`, `atualizarPreviewMarkdown`, `aplicarModoPreview` | visual |
+| `imagem`, `image`, `img` | imagens |
 | `markdown`, `preview`, `modo`, `marcacao`, `citacao`, `tarefas`, `numerada`, `negrito`, `italico`, `tachado`, `horizontal` | markdown |
 | `sessao`, `backup`, `persist`, `navegador`, `indexeddb`, `instantaneo`, `importar`, `exportar` | sessao |
 | `arquivo`, `salvar`, `salvo`, `baixar`, `download`, `gravacao`, `sugerido`, `carregar`, `manipulador` | arquivos |
@@ -232,7 +236,7 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - Ctrl+S não baixa nada e confirma o salvamento no navegador
 - cancelar a pergunta do nome não baixa nada
 
-### markdown (29)
+### markdown (44)
 
 - barra de formatação só aparece em documentos Markdown
 - botão de negrito aplica e remove a marcação
@@ -242,6 +246,8 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - H1, H2, H3, lista, lista numerada, lista de tarefas e citação aplicam e removem o formato da linha (7 testes)
 - linha horizontal no meio do texto, numa linha vazia e no fim do documento insere `---` com as linhas em branco certas (3 testes)
 - `---` colado no texto vira título; com linha em branco vira linha
+- **cada atalho de linha** (`Ctrl+1` a `6`, `Ctrl+Shift+1`, `2` e `6`, `Ctrl+Shift+7`, `8`, `9` e `Q`) aplica e remove o formato (13 testes)
+- `Alt+Shift+5` aplica tachado; `Ctrl+K` cria link
 - formatação funciona com várias linhas selecionadas
 - preview renderiza o Markdown ao vivo
 - preview remove scripts e eventos perigosos
@@ -251,7 +257,7 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - documento que não é Markdown não mostra preview
 - modo de visualização é lembrado depois de recarregar
 
-### visual (12)
+### visual (34)
 
 - mostra o Markdown formatado e esconde a barra do editor de texto
 - entrar e sair do modo Visual sem editar não altera o texto
@@ -263,8 +269,26 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - trocar de aba mostra o conteúdo da outra e preserva o da primeira
 - modo Visual é lembrado depois de recarregar
 - menu "/" aparece em português
+- **cada atalho documentado funciona no modo Visual**: negrito, itálico, tachado (os dois atalhos), código inline, títulos 1 a 6, título com `Ctrl+Shift`, listas numerada, com marcadores e de tarefas, e citação (16 testes)
+- `Ctrl+K` pede o endereço e cria o link
+- apertar o atalho duas vezes desfaz título, listas e citação (5 testes)
 - sem internet para o editor visual, volta ao modo Dividido e avisa
 - documento que não é Markdown não usa o modo Visual
+
+### imagens (16)
+
+- imagem sozinha sem título (link e embutida), com título, no meio da frase e sem descrição continua no texto depois de editar outro trecho no modo Visual (5 testes)
+- a descrição da imagem é preservada (não vira "1.00")
+- botão "Imagem" aparece só em documentos Markdown
+- sem link e sem arquivo, o diálogo avisa e não insere nada
+- cancelar fecha o diálogo sem inserir
+- no modo Editor, insere `![descrição](link)` na posição do cursor
+- no modo Visual, insere a imagem por link e ela aparece
+- arquivo grande é reduzido para no máximo 1600 px e embutido no documento
+- arquivo pequeno mantém o tamanho original
+- no modo Visual, o arquivo enviado aparece como imagem
+- arquivo que não é imagem mostra erro e não insere nada
+- imagem embutida aparece no preview
 
 ### json (11)
 

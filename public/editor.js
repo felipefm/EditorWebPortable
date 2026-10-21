@@ -21,6 +21,14 @@
             const editorVisual = document.getElementById('editor-visual');
             const carregandoVisual = document.getElementById('visual-carregando');
             const versaoMilkdown = '7.22.2';
+            const botaoInserirImagem = document.getElementById('inserir-imagem');
+            const dialogoImagem = document.getElementById('dialogo-imagem');
+            const formularioImagem = document.getElementById('formulario-imagem');
+            const campoLinkImagem = document.getElementById('imagem-link');
+            const campoArquivoImagem = document.getElementById('imagem-arquivo');
+            const campoDescricaoImagem = document.getElementById('imagem-descricao');
+            const erroImagem = document.getElementById('imagem-erro');
+            const botaoConfirmarImagem = document.getElementById('imagem-confirmar');
             const botoesModoVisualizacao = Array.from(document.querySelectorAll('#modo-visualizacao button'));
             const abas = document.getElementById('abas');
             const linguagem = document.getElementById('linguagem');
@@ -605,15 +613,24 @@
                         link.href = `https://cdn.jsdelivr.net/npm/@milkdown/crepe@${versaoMilkdown}/${arquivo}`;
                         document.head.appendChild(link);
                     });
+                    const base = `https://esm.sh/@milkdown/kit@${versaoMilkdown}`;
                     carregamentoMilkdown = Promise.all([
                         import(`https://esm.sh/@milkdown/crepe@${versaoMilkdown}`),
-                        import(`https://esm.sh/@milkdown/kit@${versaoMilkdown}/core`),
-                        import(`https://esm.sh/@milkdown/kit@${versaoMilkdown}/preset/gfm`)
-                    ]).then(function ([moduloCrepe, moduloCore, moduloGfm]) {
+                        import(`${base}/core`),
+                        import(`${base}/preset/gfm`),
+                        import(`${base}/preset/commonmark`),
+                        import(`${base}/utils`),
+                        import(`${base}/component/link-tooltip`),
+                        import(`${base}/prose/transform`)
+                    ]).then(function ([moduloCrepe, moduloCore, moduloGfm, moduloCommonmark, moduloUtils, moduloLink, moduloTransform]) {
                         return {
                             Crepe: moduloCrepe.Crepe,
-                            remarkStringifyOptionsCtx: moduloCore.remarkStringifyOptionsCtx,
-                            remarkGFMPlugin: moduloGfm.remarkGFMPlugin
+                            core: moduloCore,
+                            gfm: moduloGfm,
+                            commonmark: moduloCommonmark,
+                            callCommand: moduloUtils.callCommand,
+                            linkTooltipAPI: moduloLink.linkTooltipAPI,
+                            transform: moduloTransform
                         };
                     }).catch(function (erro) {
                         carregamentoMilkdown = undefined;
@@ -685,6 +702,7 @@
                     }
                 }
                 visual.crepe = undefined;
+                visual.modulos = undefined;
                 visual.documento = undefined;
                 editorVisual.querySelectorAll('.visual-raiz').forEach(function (raiz) {
                     raiz.remove();
@@ -713,6 +731,8 @@
                     const crepe = new milkdown.Crepe({
                         root: raiz,
                         defaultValue: texto,
+                        // O bloco de imagem do Crepe guarda o tamanho no texto alternativo e perde a
+                        // descrição original; as imagens são inseridas pelo botão "Imagem" do editor.
                         features: {
                             [milkdown.Crepe.Feature.Latex]: false,
                             [milkdown.Crepe.Feature.ImageBlock]: false
@@ -756,10 +776,13 @@
                         }
                     });
                     crepe.editor.config(function (ctx) {
-                        ctx.update(milkdown.remarkStringifyOptionsCtx, function (anterior) {
+                        ctx.update(milkdown.core.remarkStringifyOptionsCtx, function (anterior) {
                             return { ...anterior, bullet: estilo.bullet, emphasis: estilo.emphasis, rule: estilo.rule, strong: '*' };
                         });
-                        ctx.set(milkdown.remarkGFMPlugin.options.key, { tablePipeAlign: false });
+                        ctx.set(milkdown.gfm.remarkGFMPlugin.options.key, { tablePipeAlign: false });
+                        ctx.update(milkdown.core.remarkPluginsCtx, function (plugins) {
+                            return [...plugins, { plugin: corrigirImagensSemTitulo, options: undefined }];
+                        });
                     });
                     crepe.on(function (ouvinte) {
                         ouvinte.markdownUpdated(function () {
@@ -775,6 +798,7 @@
                         return;
                     }
                     visual.crepe = crepe;
+                    visual.modulos = milkdown;
                     visual.terminaComQuebra = /\n$/.test(texto);
                     visual.ultimoMarkdown = normalizarMarkdownVisual(crepe.getMarkdown(), visual.terminaComQuebra);
                 } catch (erro) {
@@ -791,25 +815,292 @@
                 }
             }
 
+            function lerComoDataUrl(blob) {
+                return new Promise(function (resolver, rejeitar) {
+                    const leitor = new FileReader();
+                    leitor.onload = function () {
+                        resolver(leitor.result);
+                    };
+                    leitor.onerror = function () {
+                        rejeitar(leitor.error || new Error('Não foi possível ler a imagem.'));
+                    };
+                    leitor.readAsDataURL(blob);
+                });
+            }
+
+            function comprimirImagem(bitmap, largura, altura) {
+                const tela = document.createElement('canvas');
+                tela.width = largura;
+                tela.height = altura;
+                tela.getContext('2d').drawImage(bitmap, 0, 0, largura, altura);
+                return new Promise(function (resolver) {
+                    tela.toBlob(resolver, 'image/webp', 0.82);
+                });
+            }
+
+            // Sem servidor, a imagem enviada fica dentro do próprio Markdown (data URI).
+            // Antes, é reduzida para no máximo 1600 px e comprimida, para o arquivo não crescer demais.
+            async function embutirImagem(arquivo) {
+                const ladoMaximo = 1600;
+                const tamanhoMaximoOriginal = 15 * 1024 * 1024;
+                try {
+                    if (!arquivo || !/^image\//.test(arquivo.type)) {
+                        throw new Error('O arquivo escolhido não é uma imagem.');
+                    }
+                    if (arquivo.size > tamanhoMaximoOriginal) {
+                        throw new Error('A imagem tem mais de 15 MB.');
+                    }
+                    let resultado = arquivo;
+                    // SVG e GIF (que pode ser animado) entram sem conversão.
+                    if (!/^image\/(svg\+xml|gif)$/.test(arquivo.type)) {
+                        const bitmap = await createImageBitmap(arquivo);
+                        const escala = Math.min(1, ladoMaximo / Math.max(bitmap.width, bitmap.height));
+                        const largura = Math.max(1, Math.round(bitmap.width * escala));
+                        const altura = Math.max(1, Math.round(bitmap.height * escala));
+                        const comprimida = await comprimirImagem(bitmap, largura, altura);
+                        if (bitmap.close) {
+                            bitmap.close();
+                        }
+                        if (comprimida && (escala < 1 || comprimida.size < arquivo.size)) {
+                            resultado = comprimida;
+                        }
+                    }
+                    return await lerComoDataUrl(resultado);
+                } catch (erro) {
+                    atualizarEstado(`Não foi possível inserir a imagem: ${erro && erro.message ? erro.message : 'erro desconhecido'}`);
+                    return '';
+                }
+            }
+
+            // Defeito do Milkdown: imagem sem título (o caso mais comum, ![alt](url)) chega com
+            // title = null e é descartada em silêncio. Este plugin troca null por texto vazio.
+            function corrigirImagensSemTitulo() {
+                return function (arvore) {
+                    const visitar = function (no) {
+                        if (no.type === 'image' || no.type === 'imageReference') {
+                            no.title = no.title || '';
+                            no.alt = no.alt || '';
+                        }
+                        (no.children || []).forEach(visitar);
+                    };
+                    visitar(arvore);
+                };
+            }
+
+            // Executa uma função com o contexto do Milkdown e a visão do ProseMirror.
+            function noVisual(funcao) {
+                if (!visual.crepe || !visual.modulos) {
+                    return undefined;
+                }
+                let resultado;
+                visual.crepe.editor.action(function (ctx) {
+                    resultado = funcao(ctx, ctx.get(visual.modulos.core.editorViewCtx), visual.modulos);
+                });
+                return resultado;
+            }
+
+            function comandoVisual(comando, parametro) {
+                return noVisual(function (ctx, visao, m) {
+                    m.callCommand(comando.key, parametro)(ctx);
+                    visao.focus();
+                });
+            }
+
+            // O duplo clique no Windows seleciona a palavra com o espaço seguinte.
+            // Para marcações que preservam espaços (código, tachado), ignora os espaços das pontas.
+            function aparaSelecaoVisual() {
+                noVisual(function (ctx, visao, m) {
+                    const { from, to, empty } = visao.state.selection;
+                    if (empty) {
+                        return;
+                    }
+                    const texto = visao.state.doc.textBetween(from, to, '\n', '\n');
+                    const inicio = from + (texto.length - texto.trimStart().length);
+                    const fim = to - (texto.length - texto.trimEnd().length);
+                    if (fim > inicio && (inicio !== from || fim !== to)) {
+                        const Selecao = visao.state.selection.constructor;
+                        visao.dispatch(visao.state.tr.setSelection(Selecao.create(visao.state.doc, inicio, fim)));
+                    }
+                });
+            }
+
+            // Tipos dos blocos que envolvem o cursor (do mais externo para o mais interno).
+            function blocosNoCursor(visao) {
+                const posicao = visao.state.selection.$from;
+                const blocos = [];
+                for (let profundidade = 1; profundidade <= posicao.depth; profundidade += 1) {
+                    blocos.push(posicao.node(profundidade));
+                }
+                return blocos;
+            }
+
+            function alternarTituloVisual(nivel) {
+                noVisual(function (ctx, visao, m) {
+                    const bloco = visao.state.selection.$from.parent;
+                    const jaE = bloco.type.name === 'heading' && bloco.attrs.level === nivel;
+                    m.callCommand(jaE ? m.commonmark.turnIntoTextCommand.key : m.commonmark.wrapInHeadingCommand.key, jaE ? undefined : nivel)(ctx);
+                    visao.focus();
+                });
+            }
+
+            function alternarListaVisual(tipo) {
+                noVisual(function (ctx, visao, m) {
+                    const blocos = blocosNoCursor(visao);
+                    const item = blocos.filter(function (no) { return no.type.name === 'list_item'; }).pop();
+                    const lista = blocos.filter(function (no) { return /_list$/.test(no.type.name); }).pop();
+                    const ehTarefa = Boolean(item && item.attrs.checked !== null && item.attrs.checked !== undefined);
+                    const atual = !lista ? '' : (lista.type.name === 'ordered_list' ? 'numerada' : (ehTarefa ? 'tarefas' : 'marcadores'));
+                    if (atual === tipo) {
+                        m.callCommand(m.commonmark.liftListItemCommand.key)(ctx);
+                        visao.focus();
+                        return;
+                    }
+                    if (!lista) {
+                        m.callCommand(tipo === 'numerada' ? m.commonmark.wrapInOrderedListCommand.key : m.commonmark.wrapInBulletListCommand.key)(ctx);
+                    }
+                    if (tipo === 'tarefas' || atual === 'tarefas') {
+                        const estado = visao.state;
+                        const posicao = estado.selection.$from;
+                        for (let profundidade = posicao.depth; profundidade > 0; profundidade -= 1) {
+                            if (posicao.node(profundidade).type.name === 'list_item') {
+                                const no = posicao.node(profundidade);
+                                visao.dispatch(estado.tr.setNodeMarkup(posicao.before(profundidade), undefined, { ...no.attrs, checked: tipo === 'tarefas' ? false : null }));
+                                break;
+                            }
+                        }
+                    }
+                    visao.focus();
+                });
+            }
+
+            function alternarCitacaoVisual() {
+                noVisual(function (ctx, visao, m) {
+                    const dentro = blocosNoCursor(visao).some(function (no) { return no.type.name === 'blockquote'; });
+                    if (!dentro) {
+                        m.callCommand(m.commonmark.wrapInBlockquoteCommand.key)(ctx);
+                    } else {
+                        const intervalo = visao.state.selection.$from.blockRange();
+                        const destino = intervalo && m.transform.liftTarget(intervalo);
+                        if (destino !== null && destino !== undefined) {
+                            visao.dispatch(visao.state.tr.lift(intervalo, destino));
+                        }
+                    }
+                    visao.focus();
+                });
+            }
+
+            function criarLinkVisual() {
+                noVisual(function (ctx, visao, m) {
+                    const { from, to } = visao.state.selection;
+                    if (from === to) {
+                        atualizarEstado('Selecione o texto que vai virar link.');
+                        return;
+                    }
+                    ctx.get(m.linkTooltipAPI.key).addLink(from, to);
+                });
+            }
+
+            // Os mesmos atalhos do editor de texto, traduzidos para comandos do Milkdown.
             function tratarAtalhosDoVisual(evento) {
                 const comando = evento.ctrlKey || evento.metaKey;
-                if (!comando) {
+                if (!comando && !(evento.altKey && evento.shiftKey && evento.code === 'Digit5')) {
                     return;
                 }
                 const tecla = evento.key.toLowerCase();
+                const digito = /^Digit([1-9])$/.test(evento.code) ? Number(evento.code.slice(5)) : 0;
+                const m = visual.modulos;
                 let acao;
-                if (tecla === 's') {
+                if (tecla === 's' && comando) {
                     acao = evento.shiftKey ? salvarComoArquivo : atalhoSalvar;
                 } else if (tecla === 'o' && !evento.shiftKey && !evento.altKey) {
                     acao = abrirArquivo;
                 } else if (tecla === 'n' && evento.altKey) {
                     acao = criarNovoConteudo;
+                } else if (!m) {
+                    return;
+                } else if ((tecla === 'x' && evento.shiftKey) || (digito === 5 && evento.altKey && evento.shiftKey && !comando)) {
+                    acao = function () { aparaSelecaoVisual(); comandoVisual(m.gfm.toggleStrikethroughCommand); };
+                } else if (evento.code === 'Backquote' && !evento.shiftKey) {
+                    acao = function () { aparaSelecaoVisual(); comandoVisual(m.commonmark.toggleInlineCodeCommand); };
+                } else if (tecla === 'k' && !evento.shiftKey && !evento.altKey) {
+                    acao = function () { aparaSelecaoVisual(); criarLinkVisual(); };
+                } else if (digito >= 1 && digito <= 6 && !evento.altKey && (!evento.shiftKey || digito <= 6)) {
+                    // Ctrl+1 a 6 (ou Ctrl+Shift+1 a 6, que os navegadores não reservam).
+                    acao = function () { alternarTituloVisual(digito); };
+                } else if (evento.shiftKey && digito === 7) {
+                    acao = function () { alternarListaVisual('numerada'); };
+                } else if (evento.shiftKey && digito === 8) {
+                    acao = function () { alternarListaVisual('marcadores'); };
+                } else if (evento.shiftKey && digito === 9) {
+                    acao = function () { alternarListaVisual('tarefas'); };
+                } else if (tecla === 'q' && evento.shiftKey) {
+                    acao = alternarCitacaoVisual;
                 }
                 if (acao) {
                     evento.preventDefault();
                     evento.stopPropagation();
                     acao();
                 }
+            }
+
+            // Diálogo "Inserir imagem": por link ou por arquivo, nos modos Editor e Visual.
+            function abrirDialogoImagem() {
+                formularioImagem.reset();
+                erroImagem.hidden = true;
+                dialogoImagem.showModal();
+                campoLinkImagem.focus();
+            }
+
+            function inserirImagem(src, descricao) {
+                const alt = descricao.replace(/[\[\]]/g, '').trim();
+                if (modoPreview === 'visual' && visual.crepe && visual.documento === documentoAtual) {
+                    comandoVisual(visual.modulos.commonmark.insertImageCommand, { src: src, alt: alt, title: '' });
+                    sincronizarEditorVisual();
+                } else {
+                    const selecao = editor.getSelection();
+                    editor.pushUndoStop();
+                    editor.executeEdits('inserir-imagem', [{ range: selecao, text: `![${alt}](${src})`, forceMoveMarkers: true }]);
+                    editor.pushUndoStop();
+                    editor.focus();
+                }
+                // A mensagem vem depois da inserção, para não ser trocada por "Editando".
+                const tamanho = Math.round(src.length / 1024);
+                if (!/^data:/.test(src)) {
+                    atualizarEstado('Imagem inserida');
+                } else if (tamanho > 700) {
+                    atualizarEstado(`Imagem inserida no documento (${tamanho} KB). Imagens grandes deixam o arquivo pesado.`);
+                } else {
+                    atualizarEstado(`Imagem inserida no documento (${tamanho} KB).`);
+                }
+            }
+
+            async function confirmarDialogoImagem(evento) {
+                if (evento.submitter && evento.submitter.value === 'cancelar') {
+                    return;
+                }
+                evento.preventDefault();
+                const link = campoLinkImagem.value.trim().replace(/\s/g, '%20');
+                const arquivo = campoArquivoImagem.files[0];
+                const mostrarErro = function (mensagem) {
+                    erroImagem.textContent = mensagem;
+                    erroImagem.hidden = false;
+                };
+                if (!link && !arquivo) {
+                    mostrarErro('Cole o link de uma imagem ou escolha um arquivo.');
+                    return;
+                }
+                let src = link;
+                if (arquivo) {
+                    botaoConfirmarImagem.disabled = true;
+                    src = await embutirImagem(arquivo);
+                    botaoConfirmarImagem.disabled = false;
+                    if (!src) {
+                        mostrarErro(estado.textContent);
+                        return;
+                    }
+                }
+                dialogoImagem.close('inserir');
+                inserirImagem(src, campoDescricaoImagem.value);
             }
 
             function atualizarPreviewMarkdown() {
@@ -1775,7 +2066,8 @@
                     editor.addAction({
                         id: `markdown-titulo-${nivel}`,
                         label: `Markdown: Título H${nivel}`,
-                        keybindings: [monaco.KeyMod.CtrlCmd | tecla],
+                        // Ctrl+Shift+número como alternativa: Firefox e Chrome usam Ctrl+número para trocar de aba.
+                        keybindings: [monaco.KeyMod.CtrlCmd | tecla, monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | tecla],
                         precondition: precondicaoMarkdown,
                         run: function () {
                             aplicarCabecalhoMarkdown(nivel);
@@ -2022,6 +2314,17 @@
                     });
                 });
                 editorVisual.addEventListener('keydown', tratarAtalhosDoVisual, true);
+                botaoInserirImagem.addEventListener('click', abrirDialogoImagem);
+                formularioImagem.addEventListener('submit', confirmarDialogoImagem);
+                dialogoImagem.addEventListener('close', function () {
+                    if (dialogoImagem.returnValue !== 'inserir') {
+                        if (modoPreview === 'visual' && visual.crepe) {
+                            noVisual(function (ctx, visao) { visao.focus(); });
+                        } else {
+                            editor.focus();
+                        }
+                    }
+                });
                 botoesModoVisualizacao.forEach(function (botao) {
                     botao.addEventListener('click', function () {
                         aplicarModoPreview(botao.dataset.modo);

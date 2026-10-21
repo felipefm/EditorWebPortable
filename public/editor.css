@@ -253,7 +253,22 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px soli
 #dialogo-confirmacao::backdrop { background: rgba(0, 0, 0, 0.5); }
 #dialogo-confirmacao form { margin: 0; }
 #dialogo-mensagem { margin: 0 0 18px; font-size: 14px; line-height: 1.5; }
-#dialogo-acoes { display: flex; justify-content: flex-end; gap: 8px; }
+#dialogo-acoes, .dialogo-acoes { display: flex; justify-content: flex-end; gap: 8px; }
+#dialogo-imagem { width: min(460px, calc(100vw - 32px)); padding: 20px; border: 1px solid #353b45; border-radius: 12px; background: #1f2329; color: var(--texto); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); }
+#dialogo-imagem::backdrop { background: rgba(0, 0, 0, 0.5); }
+#formulario-imagem { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+#formulario-imagem h2 { margin: 0 0 10px; font-size: 16px; font-weight: 600; }
+#formulario-imagem label { margin-top: 6px; color: var(--texto-medio); font-size: 12px; }
+#formulario-imagem input[type="url"], #formulario-imagem input[type="text"] { height: 34px; padding: 0 10px; border: 1px solid var(--borda); border-radius: 6px; background: var(--fundo); color: var(--texto); font: inherit; }
+#formulario-imagem input:focus-visible { outline: 2px solid var(--link); outline-offset: 1px; }
+#formulario-imagem input[type="file"] { color: var(--texto-medio); font: inherit; font-size: 12px; }
+#imagem-ou { margin: 6px 0 0; color: var(--texto-suave); font-size: 12px; text-align: center; }
+#imagem-aviso-arquivo { margin: 0; color: var(--texto-suave); font-size: 11px; line-height: 1.4; }
+#imagem-erro { margin: 6px 0 0; color: var(--erro); font-size: 12px; }
+#formulario-imagem .dialogo-acoes { margin-top: 14px; }
+.md-botao-texto { width: auto; gap: 6px; padding: 0 10px; font-size: 12px; }
+#editor-visual .milkdown .ProseMirror img { max-width: 100%; height: auto; }
+#preview-conteudo img { border-radius: 4px; }
 
 @media (max-width: 1100px) {
     #abrir-paleta { width: auto; }

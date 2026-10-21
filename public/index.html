@@ -136,6 +136,10 @@
                             <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18"/><path d="M8 6h8M8 18h8" stroke-opacity="0.45"/></svg>
                         </button>
                     </div>
+                    <button id="inserir-imagem" class="md-botao md-botao-texto" type="button" title="Inserir imagem (link ou arquivo)">
+                        <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg>
+                        <span>Imagem</span>
+                    </button>
                     <div id="modo-visualizacao" class="segmentado" role="group" aria-label="Modo de visualização">
                         <button type="button" data-modo="editor" aria-pressed="false">Editor</button>
                         <button type="button" data-modo="dividido" aria-pressed="true">Dividido</button>
@@ -206,7 +210,7 @@
                     </div>
                     <button id="voltar-editor-markdown" type="button">Voltar ao editor</button>
                 </div>
-                <div id="atalhos-markdown-nota" role="note">Os atalhos de formatação ficam ativos quando a aba atual está em Markdown. Eles funcionam com múltiplas seleções; sem seleção, os comandos de texto inserem os marcadores e posicionam o cursor entre eles. No modo <strong>Visual</strong>, use <kbd>Ctrl/Cmd</kbd> + <kbd>B</kbd> e <kbd>Ctrl/Cmd</kbd> + <kbd>I</kbd>, selecione um trecho para ver a barra de formatação ou digite <kbd>/</kbd> numa linha vazia para inserir títulos, listas, tabelas e outros blocos.</div>
+                <div id="atalhos-markdown-nota" role="note">Os atalhos de formatação ficam ativos quando a aba atual está em Markdown. Eles funcionam com múltiplas seleções; sem seleção, os comandos de texto inserem os marcadores e posicionam o cursor entre eles. Todos os atalhos funcionam também no modo <strong>Visual</strong>; lá, selecione um trecho para ver a barra de formatação ou digite <kbd>/</kbd> numa linha vazia para inserir títulos, listas, tabelas e outros blocos. Para imagens, use o botão <strong>Imagem</strong> da barra.</div>
                 <div id="lista-atalhos-markdown">
                     <section class="atalhos-grupo" aria-labelledby="atalhos-texto-titulo">
                         <h2 id="atalhos-texto-titulo">Texto e links</h2>
@@ -226,7 +230,7 @@
                         <table>
                             <thead><tr><th scope="col">Atalho</th><th scope="col">Ação</th></tr></thead>
                             <tbody>
-                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>1</kbd> a <kbd>6</kbd></td><td>Aplicar ou alternar títulos de nível 1 a 6.</td></tr>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>1</kbd> a <kbd>6</kbd><br><span class="atalho-observacao">ou Ctrl/Cmd + Shift + 1 a 6</span></td><td>Aplicar ou alternar títulos de nível 1 a 6. Se o navegador trocar de aba com Ctrl + número (Firefox, Zen), use a versão com Shift.</td></tr>
                                 <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>7</kbd></td><td>Alternar lista numerada.</td></tr>
                                 <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>8</kbd></td><td>Alternar lista com marcadores.</td></tr>
                                 <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>9</kbd></td><td>Alternar lista de tarefas com <code>- [ ]</code>.</td></tr>
@@ -277,6 +281,25 @@
             </footer>
         </main>
     </div>
+
+    <dialog id="dialogo-imagem" aria-labelledby="dialogo-imagem-titulo">
+        <form id="formulario-imagem" method="dialog">
+            <h2 id="dialogo-imagem-titulo">Inserir imagem</h2>
+            <label for="imagem-link">Link da imagem</label>
+            <input id="imagem-link" type="url" placeholder="https://..." autocomplete="off">
+            <div id="imagem-ou" aria-hidden="true">ou</div>
+            <label for="imagem-arquivo">Enviar um arquivo do computador</label>
+            <input id="imagem-arquivo" type="file" accept="image/*">
+            <p id="imagem-aviso-arquivo">A imagem é reduzida para no máximo 1600 px e guardada dentro do próprio documento.</p>
+            <label for="imagem-descricao">Descrição (texto alternativo)</label>
+            <input id="imagem-descricao" type="text" placeholder="Ex.: Logo da empresa" autocomplete="off">
+            <p id="imagem-erro" role="alert" hidden></p>
+            <div class="dialogo-acoes">
+                <button value="cancelar" type="submit" formnovalidate>Cancelar</button>
+                <button id="imagem-confirmar" value="inserir" class="destaque" type="submit">Inserir</button>
+            </div>
+        </form>
+    </dialog>
 
     <dialog id="dialogo-confirmacao" aria-labelledby="dialogo-mensagem">
         <form method="dialog">

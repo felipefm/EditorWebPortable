@@ -48,6 +48,47 @@ test.describe('Markdown', () => {
         });
     }
 
+    // Todos os atalhos de linha da página "Atalhos de teclado", no modo Editor.
+    const atalhosDeLinha = [
+        ['Control+1', '# item'],
+        ['Control+2', '## item'],
+        ['Control+3', '### item'],
+        ['Control+4', '#### item'],
+        ['Control+5', '##### item'],
+        ['Control+6', '###### item'],
+        ['Control+Shift+1', '# item'],
+        ['Control+Shift+2', '## item'],
+        ['Control+Shift+6', '###### item'],
+        ['Control+Shift+7', '1. item'],
+        ['Control+Shift+8', '- item'],
+        ['Control+Shift+9', '- [ ] item'],
+        ['Control+Shift+Q', '> item']
+    ];
+    for (const [atalho, esperado] of atalhosDeLinha) {
+        test(`atalho ${atalho} aplica e remove o formato da linha`, async ({ page }) => {
+            await abrirMarkdown(page, 'item');
+            await selecionar(page, 1, 1, 1, 1);
+            await page.keyboard.press(atalho);
+            expect(await obterConteudo(page)).toBe(esperado);
+            await page.keyboard.press(atalho);
+            expect(await obterConteudo(page)).toBe('item');
+        });
+    }
+
+    test('atalho Alt+Shift+5 aplica tachado', async ({ page }) => {
+        await abrirMarkdown(page, 'ola mundo');
+        await selecionar(page, 1, 1, 1, 4);
+        await page.keyboard.press('Alt+Shift+5');
+        expect(await obterConteudo(page)).toBe('~~ola~~ mundo');
+    });
+
+    test('atalho Control+K transforma a seleção em link', async ({ page }) => {
+        await abrirMarkdown(page, 'ola mundo');
+        await selecionar(page, 1, 5, 1, 10);
+        await page.keyboard.press('Control+K');
+        expect(await obterConteudo(page)).toBe('ola [mundo](url)');
+    });
+
     test('Ctrl+B aplica negrito', async ({ page }) => {
         await abrirMarkdown(page, 'ola mundo');
         await selecionar(page, 1, 1, 1, 4);

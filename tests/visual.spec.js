@@ -142,6 +142,72 @@ test.describe('Modo Visual', () => {
         await expect(page.getByText('Heading 1', { exact: true })).toHaveCount(0);
     });
 
+    // Todos os atalhos da página "Atalhos de teclado" precisam funcionar também no modo Visual.
+    const atalhos = [
+        ['negrito', 'Control+B', true, '**palavra** final'],
+        ['itálico', 'Control+I', true, '_palavra_ final'],
+        ['tachado', 'Control+Shift+X', true, '~~palavra~~ final'],
+        ['tachado (alternativo)', 'Alt+Shift+5', true, '~~palavra~~ final'],
+        ['código inline', 'Control+Backquote', true, '`palavra` final'],
+        ['título 1', 'Control+1', false, '# palavra final'],
+        ['título 2', 'Control+2', false, '## palavra final'],
+        ['título 3', 'Control+3', false, '### palavra final'],
+        ['título 4', 'Control+4', false, '#### palavra final'],
+        ['título 5', 'Control+5', false, '##### palavra final'],
+        ['título 6', 'Control+6', false, '###### palavra final'],
+        ['título 2 com Shift', 'Control+Shift+2', false, '## palavra final'],
+        ['lista numerada', 'Control+Shift+7', false, '1. palavra final'],
+        ['lista com marcadores', 'Control+Shift+8', false, '- palavra final'],
+        ['lista de tarefas', 'Control+Shift+9', false, '- [ ] palavra final'],
+        ['citação', 'Control+Shift+Q', false, '> palavra final']
+    ];
+
+    async function posicionarNaPalavra(page, selecionarPalavra) {
+        const caixa = await editorVisual(page).locator('p').first().boundingBox();
+        if (selecionarPalavra) {
+            // Duplo clique em cima da palavra (no Windows, seleciona também o espaço seguinte).
+            await page.mouse.dblclick(caixa.x + 20, caixa.y + caixa.height / 2);
+        } else {
+            await page.mouse.click(caixa.x + 20, caixa.y + caixa.height / 2);
+        }
+    }
+
+    for (const [nome, atalho, selecionarPalavra, esperado] of atalhos) {
+        test(`atalho ${atalho} (${nome}) funciona no modo Visual`, async ({ page }) => {
+            await abrirVisual(page, 'palavra final');
+            await posicionarNaPalavra(page, selecionarPalavra);
+            await page.keyboard.press(atalho);
+            await expect.poll(() => textoNormalizado(page)).toBe(esperado);
+        });
+    }
+
+    test('atalho Control+K (link) pede o endereço e cria o link', async ({ page }) => {
+        await abrirVisual(page, 'palavra final');
+        await posicionarNaPalavra(page, true);
+        await page.keyboard.press('Control+K');
+        await page.keyboard.type('https://exemplo.com');
+        await page.keyboard.press('Enter');
+        await expect.poll(() => textoNormalizado(page)).toBe('[palavra](https://exemplo.com) final');
+    });
+
+    const alternancias = [
+        ['título', 'Control+2'],
+        ['lista numerada', 'Control+Shift+7'],
+        ['lista com marcadores', 'Control+Shift+8'],
+        ['lista de tarefas', 'Control+Shift+9'],
+        ['citação', 'Control+Shift+Q']
+    ];
+    for (const [nome, atalho] of alternancias) {
+        test(`apertar ${atalho} duas vezes desfaz ${nome} no modo Visual`, async ({ page }) => {
+            await abrirVisual(page, 'palavra final');
+            await posicionarNaPalavra(page, false);
+            await page.keyboard.press(atalho);
+            await expect.poll(() => textoNormalizado(page)).not.toBe('palavra final');
+            await page.keyboard.press(atalho);
+            await expect.poll(() => textoNormalizado(page)).toBe('palavra final');
+        });
+    }
+
     test('documento que não é Markdown não usa o modo Visual', async ({ page }) => {
         await abrirVisual(page, '# Markdown');
         await novaAba(page, 'javascript', 'const a = 1;');
