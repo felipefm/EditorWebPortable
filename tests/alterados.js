@@ -144,8 +144,10 @@ function analisar(alteracoes, versao) {
             const area = nomeBase.replace('.spec.js', '');
             if (nomeBase.endsWith('.spec.js') && areasConhecidas.includes(area)) {
                 marcar([area], arquivo);
-            } else if (['utilidades.js', 'playwright.config.js', 'servidor.js'].includes(nomeBase)) {
+            } else if (['utilidades.js', 'playwright.config.js', 'servidor.js', 'package.json', 'package-lock.json'].includes(nomeBase)) {
                 marcar(['todas'], arquivo);
+            } else {
+                motivos.push(`${arquivo} → nenhuma área específica (roda só geral)`);
             }
             continue;
         }
