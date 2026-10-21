@@ -148,6 +148,12 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px soli
 #editor-visual { display: none; position: relative; min-width: 0; min-height: 0; overflow: auto; background: var(--fundo-alt); }
 #editor-paineis.modo-visual #container, #editor-paineis.modo-visual #preview-markdown { display: none; }
 #editor-paineis.modo-visual #editor-visual { display: block; }
+#editor-paineis.modo-visual.com-mapa { grid-template-columns: minmax(0, 1fr) 96px; }
+#mapa-visual { display: none; position: relative; min-height: 0; overflow: hidden; border-left: 1px solid var(--borda); background: var(--fundo-alt); touch-action: none; user-select: none; }
+#editor-paineis.modo-visual.com-mapa #mapa-visual { display: block; }
+#mapa-visual-tela { position: absolute; inset: 0; width: 100%; height: 100%; }
+#mapa-visual-janela { position: absolute; left: 0; right: 0; top: 0; background: rgba(121, 121, 121, 0.2); pointer-events: none; }
+#mapa-visual:hover #mapa-visual-janela { background: rgba(100, 100, 100, 0.35); }
 #visual-carregando { margin: 0; padding: 28px 36px; color: var(--texto-suave); font-style: italic; }
 #editor-visual .milkdown {
     --crepe-color-background: var(--fundo-alt);
@@ -246,6 +252,9 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px soli
 #rodape-info { display: flex; align-items: center; gap: 14px; white-space: nowrap; }
 #linguagem { height: 22px; padding: 0 4px; border-color: transparent; background: transparent; color: var(--texto-medio); font-size: 12px; cursor: pointer; }
 #linguagem:hover { background: var(--hover); }
+.rodape-botao { height: 22px; gap: 5px; padding: 0 6px; border: 0; border-radius: 4px; background: transparent; color: var(--texto-apagado); font-size: 12px; }
+.rodape-botao .icone { width: 14px; height: 14px; }
+.rodape-botao[aria-pressed="true"] { color: var(--ativo-texto); }
 #linguagem option { background: var(--barra); }
 #falha { display: none; padding: 24px; color: var(--erro); white-space: pre-wrap; }
 #seletor-arquivo, #seletor-sessao { display: none; }
@@ -289,6 +298,7 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px soli
     #topo { gap: 6px; padding: 0 6px; }
     #marca strong, #topo > .divisor, #abrir-paleta, .rotulo { display: none; }
     #editor-visual .milkdown .ProseMirror { padding: 20px 18px 96px; }
+    #alternar-mapa { display: none; }
     .segmentado button { padding: 0 9px; }
     #acoes-arquivo { flex: 1; }
     #acoes-arquivo button, #botao-sessao { min-width: 44px; height: 44px; padding: 0 10px; }

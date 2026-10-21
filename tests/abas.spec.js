@@ -85,4 +85,24 @@ test.describe('Abas', () => {
         await page.locator('#linguagem').selectOption('json');
         await expect(page.locator('.aba.ativa .aba-linguagem')).toHaveText('{ }');
     });
+
+    test('trocar de JavaScript para Markdown não deixa o texto marcado como erro', async ({ page }) => {
+        // Logo depois de abrir, o verificador de JavaScript ainda está carregando; a análise que ele
+        // termina depois da troca não pode marcar o texto Markdown.
+        await abrirEditor(page);
+        const errosNoDocumento = () => page.evaluate(() => window.monaco.editor.getModelMarkers({ resource: window.editor.getModel().uri }).length);
+        await page.locator('#linguagem').selectOption('markdown');
+        await definirConteudo(page, '# Título\n\nTexto comum, que não é JavaScript.\n');
+        await page.waitForTimeout(1500);
+        expect(await errosNoDocumento()).toBe(0);
+        await expect(page.locator('#container .squiggly-error')).toHaveCount(0);
+    });
+
+    test('voltar para JavaScript volta a mostrar os erros', async ({ page }) => {
+        await abrirEditor(page);
+        await page.locator('#linguagem').selectOption('markdown');
+        await definirConteudo(page, 'const a = ;');
+        await page.locator('#linguagem').selectOption('javascript');
+        await expect.poll(() => page.evaluate(() => window.monaco.editor.getModelMarkers({ resource: window.editor.getModel().uri }).length)).toBeGreaterThan(0);
+    });
 });

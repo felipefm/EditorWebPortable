@@ -38,6 +38,18 @@ test.describe('Celular', () => {
         expect(Math.round(preview.width)).toBe(Math.round(editor.width));
     });
 
+    test('minimapa fica desligado e o botão Mapa não aparece', async ({ page }) => {
+        await abrirEditor(page);
+        await page.locator('#linguagem').selectOption('markdown');
+        await definirConteudo(page, 'linha\n'.repeat(200));
+        await page.locator('[data-modo="editor"]').click();
+        await expect(page.locator('#alternar-mapa')).toBeHidden();
+        await expect(page.locator('#container .minimap')).toBeHidden();
+        await page.locator('[data-modo="visual"]').click();
+        await expect(page.locator('#editor-visual .ProseMirror')).toBeVisible({ timeout: 30000 });
+        await expect(page.locator('#mapa-visual')).toBeHidden();
+    });
+
     test('painel de sessão cabe na tela', async ({ page }) => {
         await abrirEditor(page);
         await page.locator('#botao-sessao').click();

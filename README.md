@@ -8,6 +8,7 @@ Editor de texto e código que roda direto no navegador, sem instalação e sem b
 
 - **Editor Monaco** com tema escuro, quebra de linha automática e realce de sintaxe para JavaScript, TypeScript, HTML, CSS, JSON, Markdown e texto puro.
 - **Várias abas**: abra e edite vários arquivos ao mesmo tempo. Cada aba mostra a linguagem, e as que têm alterações não salvas ganham um ponto amarelo.
+- **Minimapa** ao lado da barra de rolagem, como no Sublime Text e no VS Code: uma miniatura do documento onde clicar ou arrastar rola o texto. Funciona nos modos Editor, Dividido e Visual, e o botão **Mapa** no rodapé liga e desliga. Veja [Minimapa](#minimapa).
 - **Paleta de comandos** (`F1`): busque e execute qualquer ação do editor pelo teclado.
 - **Abrir e salvar arquivos locais**: com a [File System Access API](https://developer.mozilla.org/docs/Web/API/File_System_API) (Chrome, Edge), o editor grava direto no arquivo original. Nos navegadores que não têm essa API (Firefox e derivados, como Zen e LibreWolf, Safari e navegadores de celular), o botão vira **Baixar** e um aviso explica o motivo. Veja [Compatibilidade](#compatibilidade).
 - **Detecção de linguagem** pela extensão do arquivo (`.js`, `.mjs`, `.cjs`, `.ts`, `.html`, `.htm`, `.css`, `.json`, `.md`, `.markdown`, `.txt`).
@@ -44,6 +45,15 @@ Nos documentos Markdown, o seletor de visualização tem quatro opções: **Edit
 - **O texto Markdown continua sendo o arquivo.** Cada edição no modo Visual atualiza o Markdown, e dá para trocar de modo a qualquer momento.
 - **Entrar e sair sem editar não muda nada.** Ao editar, o Markdown é reescrito no formato padrão, preservando o estilo que o documento já usa (`-` ou `*` nas listas, `_` ou `*` no itálico, `---` ou `***` nas linhas). Algumas coisas podem mudar mesmo assim: linhas em branco extras somem, e HTML escrito dentro do Markdown pode se perder.
 - O Milkdown é carregado só na primeira vez que você usa o modo Visual. Sem internet, o editor avisa e volta para o modo Dividido.
+
+### Minimapa
+
+O minimapa é a miniatura do documento ao lado da barra de rolagem. A faixa destacada mostra o trecho que está na tela. Clique num ponto do mapa para ir até ele, ou arraste a faixa para rolar.
+
+- **Editor e Dividido:** é o minimapa do próprio Monaco, o mesmo do VS Code, com as letras em miniatura.
+- **Visual:** o Milkdown não tem minimapa, então o editor desenha um. Cada linha de texto vira um traço com o tamanho e a cor dela; blocos de código, tabelas, citações e imagens também aparecem.
+- O botão **Mapa**, no rodapé, liga e desliga o minimapa em todos os modos. A escolha fica guardada no navegador.
+- No celular, o minimapa fica sempre desligado, porque ocuparia espaço demais.
 
 ### Imagens
 
@@ -124,7 +134,7 @@ O navegador pode acrescentar um número ao nome (`notas (1).md`) quando o arquiv
 
 ## Testes automatizados
 
-O projeto tem **202 testes automatizados**, divididos em 10 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 400 execuções.
+O projeto tem **218 testes automatizados**, divididos em 11 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 430 execuções.
 
 📖 **Documentação completa: [docs/TESTES.md](docs/TESTES.md).** Explica como funcionam, a lista de todos os testes, como o projeto escolhe o que testar, como escrever testes novos e o que fazer quando algo falha.
 
@@ -137,7 +147,7 @@ npm run test:alterado    # roda só os testes das áreas que você alterou
 npm test                 # roda todos, no Edge e no Firefox (cerca de 4 minutos)
 ```
 
-Também dá para rodar uma área específica: `npm run test:geral`, `test:atalhos`, `test:abas`, `test:arquivos`, `test:markdown`, `test:visual`, `test:imagens`, `test:json`, `test:sessao` ou `test:celular`, ou só o Firefox: `npm run test:firefox`.
+Também dá para rodar uma área específica: `npm run test:geral`, `test:atalhos`, `test:abas`, `test:arquivos`, `test:markdown`, `test:visual`, `test:imagens`, `test:mapa`, `test:json`, `test:sessao` ou `test:celular`, ou só o Firefox: `npm run test:firefox`.
 
 ### Testa só o que mudou
 

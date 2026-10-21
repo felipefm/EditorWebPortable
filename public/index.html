@@ -152,6 +152,10 @@
                     <section id="editor-visual" aria-label="Editor visual de Markdown">
                         <p id="visual-carregando" role="status" hidden>Carregando editor visual...</p>
                     </section>
+                    <div id="mapa-visual" title="Minimapa: clique ou arraste para rolar o documento" aria-hidden="true">
+                        <canvas id="mapa-visual-tela"></canvas>
+                        <div id="mapa-visual-janela"></div>
+                    </div>
                     <section id="preview-markdown" aria-label="Preview Markdown">
                         <article id="preview-conteudo"></article>
                     </section>
@@ -263,6 +267,10 @@
                     <span id="estado" role="status">Carregando editor...</span>
                 </div>
                 <div id="rodape-info">
+                    <button id="alternar-mapa" class="rodape-botao" type="button" aria-pressed="true" title="Mostrar ou esconder o minimapa (miniatura do documento ao lado da barra de rolagem)">
+                        <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h5M8 10h8M8 13h4M8 16h7"/></svg>
+                        <span>Mapa</span>
+                    </button>
                     <span id="status-cursor" class="rodape-extra"></span>
                     <span id="status-caracteres"></span>
                     <label for="linguagem" class="visualmente-oculto">Linguagem do editor</label>

@@ -20,13 +20,15 @@ const fs = require('fs');
 const path = require('path');
 
 const raizRepositorio = path.resolve(__dirname, '..');
-const areasConhecidas = ['geral', 'atalhos', 'abas', 'arquivos', 'markdown', 'visual', 'imagens', 'json', 'sessao', 'celular'];
+const areasConhecidas = ['geral', 'atalhos', 'abas', 'arquivos', 'markdown', 'visual', 'imagens', 'mapa', 'json', 'sessao', 'celular'];
 
 // Palavras-chave no nome da função ou no texto da linha → área.
 const regras = [
     ['json', /json/i],
     ['visual', /visual|milkdown|crepe|atualizarpreviewmarkdown|aplicarmodopreview/i],
     ['imagens', /imagem|imagens|image|img/i],
+    ['mapa', /mapa|minimap/i],
+    ['abas', /markers/i],
     ['atalhos', /atalho|keydown|keybinding/i],
     ['markdown', /envolver/i],
     ['visual', /envolver/i],

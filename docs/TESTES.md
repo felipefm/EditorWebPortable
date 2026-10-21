@@ -21,20 +21,21 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **202 testes** em **10 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge. Ao todo são cerca de 400 execuções, e a suíte completa leva uns 4 minutos.
+São **218 testes** em **11 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge. Ao todo são cerca de 430 execuções, e a suíte completa leva uns 4 minutos.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
 | geral | `geral.spec.js` | 6 | Carregamento sem erros, barra lateral, paleta de comandos, rodapé |
-| abas | `abas.spec.js` | 10 | Criar, trocar e fechar abas, indicador de não salvo, diálogo de confirmação |
+| abas | `abas.spec.js` | 12 | Criar, trocar e fechar abas, indicador de não salvo, diálogo de confirmação, troca de linguagem |
 | arquivos | `arquivos.spec.js` | 19 | Abrir, salvar, salvar como, detecção de linguagem, modo "Baixar" dos navegadores sem gravação direta |
 | markdown | `markdown.spec.js` | 57 | Barra e **todos os atalhos** de formatação, envolver a seleção com aspas e parênteses, linha horizontal, preview, segurança do preview, modos de visualização |
 | visual | `visual.spec.js` | 41 | Modo Visual (Milkdown): edição formatada, **todos os atalhos**, envolver a seleção, alça de arrastar desativada, sincronia com o Markdown, preservação do estilo, salvar, abas, falta de internet |
 | imagens | `imagens.spec.js` | 17 | Imagens preservadas no modo Visual, diálogo "Inserir imagem" (link e arquivo), item Imagem do menu `/`, redução de tamanho |
+| mapa | `mapa.spec.js` | 13 | Minimapa do Monaco (Editor e Dividido) e o desenhado no modo Visual: botão Mapa, escolha lembrada, clicar e arrastar para rolar, atualização ao digitar |
 | atalhos | `atalhos.spec.js` | 26 | Atalhos gerais (salvar, salvar como, abrir, nova aba, formatador JSON) em cada modo, com o foco dentro e fora do texto |
 | json | `json.spec.js` | 11 | Formatar, compactar, indentação, erros com linha e coluna, copiar, abrir em aba |
 | sessao | `sessao.spec.js` | 10 | Sessão restaurada, painel de backup, exportar e importar |
-| celular | `celular.spec.js` | 5 | Layout em tela de 390 × 844 |
+| celular | `celular.spec.js` | 6 | Layout em tela de 390 × 844 |
 
 Tudo fica na pasta `tests/`, separada do site. O Cloudflare publica só a pasta `public/`, então os testes nunca vão para o ar.
 
@@ -46,6 +47,7 @@ tests/
   markdown.spec.js     │
   visual.spec.js       │
   imagens.spec.js      │
+  mapa.spec.js         │
   atalhos.spec.js      │
   json.spec.js         │
   sessao.spec.js       │
@@ -88,6 +90,7 @@ Todos são executados dentro da pasta `tests/`.
 | `npm run test:markdown` | Só Markdown |
 | `npm run test:visual` | Só o modo Visual |
 | `npm run test:imagens` | Só imagens |
+| `npm run test:mapa` | Só o minimapa |
 | `npm run test:atalhos` | Só os atalhos gerais em todos os modos |
 | `npm run test:firefox` | Todos os testes, só no Firefox |
 | `npm run test:json` | Só o formatador JSON |
@@ -134,6 +137,8 @@ O que mudou:
 | `json` | json |
 | `visual`, `milkdown`, `crepe`, `atualizarPreviewMarkdown`, `aplicarModoPreview` | visual |
 | `imagem`, `image`, `img` | imagens |
+| `mapa`, `minimap` | mapa |
+| `markers` | abas |
 | `atalho`, `keydown`, `keybinding` | atalhos |
 | `envolver` | markdown e visual |
 | `markdown`, `preview`, `modo`, `marcacao`, `citacao`, `tarefas`, `numerada`, `negrito`, `italico`, `tachado`, `horizontal` | markdown |
@@ -207,7 +212,7 @@ Detalhes:
 - rodapé mostra caracteres, cursor, linguagem e quebra de linha
 - rodapé esconde dados do documento no formatador JSON
 
-### abas (10)
+### abas (12)
 
 - botão + cria uma nova aba ativa
 - botão Novo do topo também cria uma aba
@@ -219,6 +224,8 @@ Detalhes:
 - fechar aba modificada e confirmar remove a aba
 - fechar a última aba cria uma aba vazia
 - trocar a linguagem atualiza a sigla da aba
+- trocar de JavaScript para Markdown logo depois de abrir não deixa o texto marcado como erro
+- voltar para JavaScript volta a mostrar os erros
 
 ### arquivos (19)
 
@@ -305,6 +312,27 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - no modo Visual, "/" + Imagem abre o diálogo e insere a imagem no lugar do "/"
 - imagem embutida aparece no preview
 
+### mapa (13)
+
+Modos Editor e Dividido (minimapa do Monaco):
+
+- vem ligado no modo Editor, inclusive em arquivos que não são Markdown
+- aparece no modo Dividido
+- o botão Mapa desliga e liga o minimapa
+- a escolha fica lembrada depois de recarregar
+- clicar no minimapa rola o documento
+
+Modo Visual (minimapa desenhado pelo editor):
+
+- o mapa aparece ao lado da página e tem desenho
+- desligar esconde o mapa e a página ocupa a largura toda
+- a escolha também vale para o modo Visual depois de recarregar
+- clicar no mapa rola o documento até aquele ponto
+- arrastar a janela do mapa rola o documento
+- rolar a página move a janela do mapa
+- o mapa se atualiza ao digitar
+- os botões do bloco de código ("js", "Copiar") não viram traços no mapa
+
 ### atalhos (26)
 
 Em cada modo (Editor, Dividido, Preview e Visual), com o foco num botão, fora do texto:
@@ -349,7 +377,7 @@ Também:
 - configurar backup em arquivo grava a sessão e mostra "Backup ativo"
 - navegador sem backup em arquivo explica e esconde o botão
 
-### celular (5)
+### celular (6)
 
 Estes rodam numa tela de 390 × 844 (projeto `celular` no `playwright.config.js`).
 
@@ -357,6 +385,7 @@ Estes rodam numa tela de 390 × 844 (projeto `celular` no `playwright.config.js`
 - botões do topo mostram só ícones
 - nada ultrapassa a largura da tela
 - modo dividido empilha editor e preview
+- minimapa fica desligado e o botão Mapa não aparece
 - painel de sessão cabe na tela
 
 ## Como os testes funcionam por dentro

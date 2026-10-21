@@ -20,6 +20,13 @@
             const ferramentasMarkdown = document.getElementById('ferramentas-markdown');
             const editorVisual = document.getElementById('editor-visual');
             const carregandoVisual = document.getElementById('visual-carregando');
+            const botaoMapa = document.getElementById('alternar-mapa');
+            const mapaVisual = document.getElementById('mapa-visual');
+            const telaMapaVisual = document.getElementById('mapa-visual-tela');
+            const janelaMapaVisual = document.getElementById('mapa-visual-janela');
+            const chaveMapa = 'meu-editor-web-minimapa';
+            // No celular o minimapa ocupa espaço demais; fica sempre desligado.
+            const telaEstreita = window.matchMedia('(max-width: 640px)');
             const versaoMilkdown = '7.22.2';
             const botaoInserirImagem = document.getElementById('inserir-imagem');
             const dialogoImagem = document.getElementById('dialogo-imagem');
@@ -103,6 +110,16 @@
                 aplicando: false,
                 terminaComQuebra: false,
                 ultimoMarkdown: undefined
+            };
+            let mapaLigado = lerPreferenciaMapa();
+            const mapa = {
+                formas: [],
+                larguraConteudo: 1,
+                escala: 1,
+                deslocamento: 0,
+                temporizador: undefined,
+                quadro: undefined,
+                arrasto: undefined
             };
             let posicaoErroJson;
             let temporizadorSessao;
@@ -803,6 +820,7 @@
                         ouvinte.markdownUpdated(function () {
                             if (visual.crepe === crepe) {
                                 sincronizarEditorVisual();
+                                agendarMedicaoMapaVisual();
                             }
                         });
                     });
@@ -816,6 +834,7 @@
                     visual.modulos = milkdown;
                     visual.terminaComQuebra = /\n$/.test(texto);
                     visual.ultimoMarkdown = normalizarMarkdownVisual(crepe.getMarkdown(), visual.terminaComQuebra);
+                    agendarMedicaoMapaVisual();
                 } catch (erro) {
                     if (geracao !== visual.geracao) {
                         return;
@@ -828,6 +847,198 @@
                         carregandoVisual.hidden = true;
                     }
                 }
+            }
+
+            // Minimapa: no Editor e no Dividido é o do próprio Monaco. No Visual, o Milkdown não tem um,
+            // então ele é desenhado aqui num canvas, com um traço para cada linha de texto da página.
+            function lerPreferenciaMapa() {
+                try {
+                    return localStorage.getItem(chaveMapa) !== 'desligado';
+                } catch (erro) {
+                    return true;
+                }
+            }
+
+            function aplicarMapa() {
+                const ativo = mapaLigado && !telaEstreita.matches;
+                botaoMapa.setAttribute('aria-pressed', mapaLigado ? 'true' : 'false');
+                if (editor) {
+                    editor.updateOptions({ minimap: { enabled: ativo } });
+                }
+                editorPaineis.classList.toggle('com-mapa', ativo);
+                agendarMedicaoMapaVisual();
+            }
+
+            function alternarMapa() {
+                mapaLigado = !mapaLigado;
+                try {
+                    localStorage.setItem(chaveMapa, mapaLigado ? 'ligado' : 'desligado');
+                } catch (erro) {
+                    // Sem armazenamento, a escolha vale só até recarregar a página.
+                }
+                aplicarMapa();
+                atualizarEstado(mapaLigado ? 'Minimapa ligado' : 'Minimapa desligado');
+            }
+
+            function mapaVisualAtivo() {
+                return Boolean(visual.crepe) && !areaDocumentos.hidden
+                    && editorPaineis.classList.contains('modo-visual') && editorPaineis.classList.contains('com-mapa');
+            }
+
+            function agendarMedicaoMapaVisual() {
+                clearTimeout(mapa.temporizador);
+                mapa.temporizador = setTimeout(medirMapaVisual, 120);
+            }
+
+            // Lê a posição de cada linha de texto, bloco de código, tabela, citação e imagem.
+            // As posições ficam guardadas; rolar a página só redesenha, sem medir de novo.
+            function medirMapaVisual() {
+                const raiz = editorVisual.querySelector('.ProseMirror');
+                if (!mapaVisualAtivo() || !raiz) {
+                    return;
+                }
+                const caixaRaiz = raiz.getBoundingClientRect();
+                const topo = editorVisual.getBoundingClientRect().top - editorVisual.scrollTop;
+                const formas = [];
+                const adicionar = function (tipo, retangulo, cor) {
+                    if (retangulo.width > 0 && retangulo.height > 0) {
+                        formas.push({ tipo: tipo, x: retangulo.left - caixaRaiz.left, y: retangulo.top - topo, largura: retangulo.width, altura: retangulo.height, cor: cor });
+                    }
+                };
+                raiz.querySelectorAll('.milkdown-code-block .cm-editor').forEach(function (elemento) {
+                    adicionar('fundo', elemento.getBoundingClientRect());
+                });
+                raiz.querySelectorAll('th, td').forEach(function (elemento) {
+                    adicionar('borda', elemento.getBoundingClientRect());
+                });
+                raiz.querySelectorAll('blockquote').forEach(function (elemento) {
+                    adicionar('barra', elemento.getBoundingClientRect());
+                });
+                raiz.querySelectorAll('hr').forEach(function (elemento) {
+                    adicionar('linha', elemento.getBoundingClientRect());
+                });
+                raiz.querySelectorAll('img[src]').forEach(function (elemento) {
+                    adicionar('imagem', elemento.getBoundingClientRect());
+                });
+                const cores = new Map();
+                const trecho = document.createRange();
+                const percurso = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
+                while (percurso.nextNode()) {
+                    const no = percurso.currentNode;
+                    const pai = no.parentElement;
+                    // Botões do bloco de código e números de linha do CodeMirror não são texto do documento.
+                    if (!no.textContent.trim() || !pai || pai.closest('button, .tools, .cm-gutters')) {
+                        continue;
+                    }
+                    if (!cores.has(pai)) {
+                        cores.set(pai, getComputedStyle(pai).color);
+                    }
+                    trecho.selectNodeContents(no);
+                    for (const retangulo of trecho.getClientRects()) {
+                        adicionar('texto', retangulo, cores.get(pai));
+                    }
+                }
+                mapa.formas = formas;
+                mapa.larguraConteudo = caixaRaiz.width || 1;
+                desenharMapaVisual();
+            }
+
+            function desenharMapaVisual() {
+                mapa.quadro = undefined;
+                const largura = mapaVisual.clientWidth;
+                const altura = mapaVisual.clientHeight;
+                if (!mapaVisualAtivo() || !largura || !altura) {
+                    return;
+                }
+                const densidade = window.devicePixelRatio || 1;
+                if (telaMapaVisual.width !== Math.round(largura * densidade) || telaMapaVisual.height !== Math.round(altura * densidade)) {
+                    telaMapaVisual.width = Math.round(largura * densidade);
+                    telaMapaVisual.height = Math.round(altura * densidade);
+                }
+                const escala = largura / mapa.larguraConteudo;
+                // Como no Sublime: se a miniatura não cabe no painel, ela rola junto com o documento.
+                const alturaMiniatura = editorVisual.scrollHeight * escala;
+                const rolagemMaxima = Math.max(1, editorVisual.scrollHeight - editorVisual.clientHeight);
+                const deslocamento = alturaMiniatura > altura ? (editorVisual.scrollTop / rolagemMaxima) * (alturaMiniatura - altura) : 0;
+                mapa.escala = escala;
+                mapa.deslocamento = deslocamento;
+
+                const contexto = telaMapaVisual.getContext('2d');
+                contexto.setTransform(densidade, 0, 0, densidade, 0, 0);
+                contexto.clearRect(0, 0, largura, altura);
+                mapa.formas.forEach(function (forma) {
+                    const x = forma.x * escala;
+                    const y = forma.y * escala - deslocamento;
+                    const l = forma.largura * escala;
+                    const a = forma.altura * escala;
+                    if (y + a < 0 || y > altura) {
+                        return;
+                    }
+                    contexto.globalAlpha = 1;
+                    if (forma.tipo === 'texto') {
+                        contexto.globalAlpha = 0.6;
+                        contexto.fillStyle = forma.cor;
+                        contexto.fillRect(x, y + a * 0.25, Math.max(1, l), Math.max(1, a * 0.5));
+                    } else if (forma.tipo === 'fundo') {
+                        contexto.fillStyle = 'rgba(255, 255, 255, 0.07)';
+                        contexto.fillRect(x, y, l, a);
+                    } else if (forma.tipo === 'borda') {
+                        contexto.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+                        contexto.lineWidth = 0.5;
+                        contexto.strokeRect(x, y, l, a);
+                    } else if (forma.tipo === 'barra') {
+                        contexto.fillStyle = 'rgba(138, 184, 255, 0.6)';
+                        contexto.fillRect(x, y, 1.5, a);
+                    } else if (forma.tipo === 'linha') {
+                        contexto.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                        contexto.fillRect(x, y + a / 2, l, 1);
+                    } else if (forma.tipo === 'imagem') {
+                        contexto.fillStyle = 'rgba(255, 255, 255, 0.12)';
+                        contexto.fillRect(x, y, l, a);
+                    }
+                });
+                contexto.globalAlpha = 1;
+                janelaMapaVisual.style.top = `${editorVisual.scrollTop * escala - deslocamento}px`;
+                janelaMapaVisual.style.height = `${Math.max(8, editorVisual.clientHeight * escala)}px`;
+            }
+
+            function redesenharMapaVisual() {
+                if (!mapa.quadro && mapaVisualAtivo()) {
+                    mapa.quadro = requestAnimationFrame(desenharMapaVisual);
+                }
+            }
+
+            // Clicar fora da janela centraliza aquele ponto; arrastar move a janela junto com o mouse.
+            function iniciarArrastoMapaVisual(evento) {
+                if (evento.button !== 0 || !mapaVisualAtivo()) {
+                    return;
+                }
+                evento.preventDefault();
+                const y = evento.clientY - mapaVisual.getBoundingClientRect().top;
+                const topoJanela = editorVisual.scrollTop * mapa.escala - mapa.deslocamento;
+                const alturaJanela = editorVisual.clientHeight * mapa.escala;
+                if (y < topoJanela || y > topoJanela + alturaJanela) {
+                    editorVisual.scrollTop = (y + mapa.deslocamento) / mapa.escala - editorVisual.clientHeight / 2;
+                    desenharMapaVisual();
+                }
+                // Quanto a janela anda no mapa para cada pixel rolado no documento.
+                const rolagemMaxima = Math.max(1, editorVisual.scrollHeight - editorVisual.clientHeight);
+                const excesso = Math.max(0, editorVisual.scrollHeight * mapa.escala - mapaVisual.clientHeight);
+                const fator = mapa.escala - excesso / rolagemMaxima;
+                mapa.arrasto = { y: y, rolagem: editorVisual.scrollTop, fator: fator > 0.0001 ? fator : mapa.escala };
+                mapaVisual.setPointerCapture(evento.pointerId);
+            }
+
+            function moverArrastoMapaVisual(evento) {
+                if (!mapa.arrasto) {
+                    return;
+                }
+                const y = evento.clientY - mapaVisual.getBoundingClientRect().top;
+                editorVisual.scrollTop = mapa.arrasto.rolagem + (y - mapa.arrasto.y) / mapa.arrasto.fator;
+            }
+
+            function terminarArrastoMapaVisual() {
+                mapa.arrasto = undefined;
             }
 
             function lerComoDataUrl(blob) {
@@ -2286,7 +2497,7 @@
                     language: linguagem.value,
                     theme: 'editor-portable',
                     automaticLayout: true,
-                    minimap: { enabled: false },
+                    minimap: { enabled: mapaLigado && !telaEstreita.matches, showSlider: 'always' },
                     fontSize: 14,
                     tabSize: 2,
                     wordWrap: 'on',
@@ -2411,6 +2622,19 @@
                 });
                 window.addEventListener('keydown', tratarAtalhosGerais, true);
                 editorVisual.addEventListener('keydown', tratarAtalhosDoVisual, true);
+                aplicarMapa();
+                botaoMapa.addEventListener('click', alternarMapa);
+                telaEstreita.addEventListener('change', aplicarMapa);
+                editorVisual.addEventListener('scroll', redesenharMapaVisual);
+                // Imagens mudam a altura da página quando terminam de carregar.
+                editorVisual.addEventListener('load', agendarMedicaoMapaVisual, true);
+                const observadorTamanhoMapa = new ResizeObserver(agendarMedicaoMapaVisual);
+                observadorTamanhoMapa.observe(mapaVisual);
+                observadorTamanhoMapa.observe(editorVisual);
+                mapaVisual.addEventListener('pointerdown', iniciarArrastoMapaVisual);
+                mapaVisual.addEventListener('pointermove', moverArrastoMapaVisual);
+                mapaVisual.addEventListener('pointerup', terminarArrastoMapaVisual);
+                mapaVisual.addEventListener('pointercancel', terminarArrastoMapaVisual);
                 botaoInserirImagem.addEventListener('click', abrirDialogoImagem);
                 formularioImagem.addEventListener('submit', confirmarDialogoImagem);
                 dialogoImagem.addEventListener('close', function () {
@@ -2434,6 +2658,26 @@
 
                 editor.onDidChangeCursorPosition(atualizarRodape);
                 editor.onKeyDown(envolverSelecaoNoEditor);
+                // O verificador de JavaScript pode terminar uma análise depois que a aba já mudou de
+                // linguagem (comum logo após abrir o editor, enquanto ele ainda carrega) e marcar o texto
+                // inteiro como erro. Cada verificador marca com o nome da sua linguagem; as marcas de
+                // outra linguagem são descartadas.
+                monaco.editor.onDidChangeMarkers(function (recursos) {
+                    recursos.forEach(function (recurso) {
+                        const modelo = monaco.editor.getModel(recurso);
+                        if (!modelo) {
+                            return;
+                        }
+                        const donos = new Set(monaco.editor.getModelMarkers({ resource: recurso }).map(function (marca) {
+                            return marca.owner;
+                        }));
+                        donos.forEach(function (dono) {
+                            if (dono !== modelo.getLanguageId()) {
+                                monaco.editor.setModelMarkers(modelo, dono, []);
+                            }
+                        });
+                    });
+                });
                 linguagem.addEventListener('change', function () {
                     if (!documentoAtual) {
                         return;
