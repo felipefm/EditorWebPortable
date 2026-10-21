@@ -21,7 +21,7 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **90 testes** em **7 áreas**, um arquivo por área. A suíte completa leva cerca de 40 segundos.
+São **102 testes** em **8 áreas**, um arquivo por área. A suíte completa leva cerca de 40 segundos.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
@@ -29,6 +29,7 @@ São **90 testes** em **7 áreas**, um arquivo por área. A suíte completa leva
 | abas | `abas.spec.js` | 10 | Criar, trocar e fechar abas, indicador de não salvo, diálogo de confirmação |
 | arquivos | `arquivos.spec.js` | 19 | Abrir, salvar, salvar como, detecção de linguagem, modo "Baixar" dos navegadores sem gravação direta |
 | markdown | `markdown.spec.js` | 29 | Barra e atalhos de formatação, linha horizontal, preview, segurança do preview, modos de visualização |
+| visual | `visual.spec.js` | 12 | Modo Visual (Milkdown): edição formatada, sincronia com o Markdown, preservação do estilo, salvar, abas, falta de internet |
 | json | `json.spec.js` | 11 | Formatar, compactar, indentação, erros com linha e coluna, copiar, abrir em aba |
 | sessao | `sessao.spec.js` | 10 | Sessão restaurada, painel de backup, exportar e importar |
 | celular | `celular.spec.js` | 5 | Layout em tela de 390 × 844 |
@@ -41,6 +42,7 @@ tests/
   abas.spec.js         │
   arquivos.spec.js     │  um arquivo de teste por área
   markdown.spec.js     │
+  visual.spec.js       │
   json.spec.js         │
   sessao.spec.js       │
   celular.spec.js      ┘
@@ -64,7 +66,7 @@ npm install
 
 Esse comando instala o Playwright e ativa a [verificação antes do push](#verificação-antes-do-push).
 
-Os testes precisam de internet, porque o Monaco Editor, o `marked` e o `DOMPurify` são carregados do CDN.
+Os testes precisam de internet, porque o Monaco Editor, o `marked` e o `DOMPurify` são carregados do CDN, e o Milkdown (modo Visual) do esm.sh.
 
 ## Comandos
 
@@ -80,10 +82,11 @@ Todos são executados dentro da pasta `tests/`.
 | `npm run test:abas` | Só abas |
 | `npm run test:arquivos` | Só arquivos |
 | `npm run test:markdown` | Só Markdown |
+| `npm run test:visual` | Só o modo Visual |
 | `npm run test:json` | Só o formatador JSON |
 | `npm run test:sessao` | Só sessão e backup |
 | `npm run test:celular` | Só o layout de celular |
-| `npm run test:visual` | Roda com o navegador aberto, para acompanhar o que o teste faz |
+| `npm run test:assistir` | Roda com o navegador aberto, para acompanhar o que o teste faz |
 | `npm run test:relatorio` | Abre o relatório da última execução |
 
 Para rodar um único teste pelo nome:
@@ -122,6 +125,7 @@ O que mudou:
 | Se o nome tiver… | Área |
 | --- | --- |
 | `json` | json |
+| `visual`, `milkdown`, `crepe`, `atualizarPreviewMarkdown`, `aplicarModoPreview` | visual |
 | `markdown`, `preview`, `modo`, `marcacao`, `citacao`, `tarefas`, `numerada`, `negrito`, `italico`, `tachado`, `horizontal` | markdown |
 | `sessao`, `backup`, `persist`, `navegador`, `indexeddb`, `instantaneo`, `importar`, `exportar` | sessao |
 | `arquivo`, `salvar`, `salvo`, `baixar`, `download`, `gravacao`, `sugerido`, `carregar`, `manipulador` | arquivos |
@@ -246,6 +250,21 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - usar a barra no modo Preview volta para o modo Dividido
 - documento que não é Markdown não mostra preview
 - modo de visualização é lembrado depois de recarregar
+
+### visual (12)
+
+- mostra o Markdown formatado e esconde a barra do editor de texto
+- entrar e sair do modo Visual sem editar não altera o texto
+- digitar no modo Visual atualiza o Markdown
+- Ctrl+B no modo Visual vira **negrito** no Markdown
+- editar preserva o estilo do documento (listas com `*` e itálico com `*`)
+- tabela editada mantém o separador `| --- |`
+- Ctrl+S no modo Visual salva o texto mais recente
+- trocar de aba mostra o conteúdo da outra e preserva o da primeira
+- modo Visual é lembrado depois de recarregar
+- menu "/" aparece em português
+- sem internet para o editor visual, volta ao modo Dividido e avisa
+- documento que não é Markdown não usa o modo Visual
 
 ### json (11)
 
@@ -389,7 +408,7 @@ Para investigar:
   ```bash
   npx playwright show-trace resultados/<pasta-do-teste>/trace.zip
   ```
-- `npm run test:visual` roda com o navegador aberto, para ver a falha acontecer.
+- `npm run test:assistir` roda com o navegador aberto, para ver a falha acontecer.
 
 As pastas `tests/relatorio/` e `tests/resultados/` são geradas a cada execução e ficam fora do git.
 

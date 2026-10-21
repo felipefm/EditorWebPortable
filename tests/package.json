@@ -10,10 +10,11 @@
     "test:abas": "playwright test abas",
     "test:arquivos": "playwright test arquivos",
     "test:markdown": "playwright test markdown",
+    "test:visual": "playwright test visual",
     "test:json": "playwright test json",
     "test:sessao": "playwright test sessao",
     "test:celular": "playwright test celular",
-    "test:visual": "playwright test --headed",
+    "test:assistir": "playwright test --headed",
     "test:relatorio": "playwright show-report"
   },
   "devDependencies": {

@@ -145,6 +145,36 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px soli
 #preview-markdown { display: none; min-width: 0; min-height: 0; overflow: auto; background: var(--fundo-alt); }
 #editor-paineis.modo-dividido #preview-markdown { display: block; border-left: 1px solid var(--borda); }
 #editor-paineis.modo-preview #preview-markdown { display: block; }
+#editor-visual { display: none; position: relative; min-width: 0; min-height: 0; overflow: auto; background: var(--fundo-alt); }
+#editor-paineis.modo-visual #container, #editor-paineis.modo-visual #preview-markdown { display: none; }
+#editor-paineis.modo-visual #editor-visual { display: block; }
+#visual-carregando { margin: 0; padding: 28px 36px; color: var(--texto-suave); font-style: italic; }
+#editor-visual .milkdown {
+    --crepe-color-background: var(--fundo-alt);
+    --crepe-color-on-background: #d4d8de;
+    --crepe-color-surface: var(--barra);
+    --crepe-color-surface-low: var(--superficie);
+    --crepe-color-on-surface: var(--texto);
+    --crepe-color-on-surface-variant: var(--texto-suave);
+    --crepe-color-outline: var(--borda-forte);
+    --crepe-color-primary: var(--link);
+    --crepe-color-secondary: var(--ativo-fundo);
+    --crepe-color-on-secondary: var(--ativo-texto);
+    --crepe-color-hover: var(--hover);
+    --crepe-color-selected: #2a3a55;
+    --crepe-color-inline-code: #f0c674;
+    --crepe-color-inline-area: var(--superficie);
+    --crepe-font-title: var(--fonte);
+    --crepe-font-default: var(--fonte);
+    --crepe-font-code: var(--fonte-mono);
+    background: transparent;
+}
+#editor-visual .milkdown .ProseMirror { max-width: 760px; margin: 0 auto; padding: 28px 36px 120px; font-size: 15px; line-height: 1.65; }
+#editor-visual .milkdown .ProseMirror h1, #editor-visual .milkdown .ProseMirror h2, #editor-visual .milkdown .ProseMirror h3 { color: #ffffff; font-weight: 600; line-height: 1.25; }
+#editor-visual .milkdown .ProseMirror h1 { font-size: 26px; }
+#editor-visual .milkdown .ProseMirror h2 { font-size: 20px; }
+#editor-visual .milkdown .ProseMirror h3 { font-size: 17px; }
+#modo-visualizacao { margin-left: auto; }
 #preview-conteudo { max-width: 760px; margin: 0 auto; padding: 28px 36px 40px; color: #d4d8de; font: 15px/1.65 var(--fonte); overflow-wrap: anywhere; }
 #preview-conteudo > :first-child { margin-top: 0; }
 #preview-conteudo > :last-child { margin-bottom: 0; }
@@ -241,6 +271,8 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px soli
 @media (max-width: 640px) {
     #topo { gap: 6px; padding: 0 6px; }
     #marca strong, #topo > .divisor, #abrir-paleta, .rotulo { display: none; }
+    #editor-visual .milkdown .ProseMirror { padding: 20px 18px 96px; }
+    .segmentado button { padding: 0 9px; }
     #acoes-arquivo { flex: 1; }
     #acoes-arquivo button, #botao-sessao { min-width: 44px; height: 44px; padding: 0 10px; }
     #salvar-como { min-width: 40px; }

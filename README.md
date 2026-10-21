@@ -12,6 +12,7 @@ Editor de texto e código que roda direto no navegador, sem instalação e sem b
 - **Abrir e salvar arquivos locais**: com a [File System Access API](https://developer.mozilla.org/docs/Web/API/File_System_API) (Chrome, Edge), o editor grava direto no arquivo original. Nos navegadores que não têm essa API (Firefox e derivados, como Zen e LibreWolf, Safari e navegadores de celular), o botão vira **Baixar** e um aviso explica o motivo. Veja [Compatibilidade](#compatibilidade).
 - **Detecção de linguagem** pela extensão do arquivo (`.js`, `.mjs`, `.cjs`, `.ts`, `.html`, `.htm`, `.css`, `.json`, `.md`, `.markdown`, `.txt`).
 - **Preview de Markdown ao vivo**, com três modos: só editor, dividido ou só preview. O HTML gerado é sanitizado com DOMPurify.
+- **Modo Visual de Markdown**: edite vendo o texto já formatado, como no Typora ou no Notion (usa o [Milkdown](https://milkdown.dev)). Digite `/` para inserir títulos, listas, tabelas, citações e blocos de código. Veja [Modo Visual](#modo-visual).
 - **Barra e atalhos de Markdown** para negrito, itálico, tachado, código, links, títulos, listas, citações e linha horizontal. Funcionam com múltiplas seleções.
 - **Formatador JSON**: formata automaticamente enquanto você digita (2 espaços, 4 espaços ou tabulação), compacta, aponta a linha e a coluna do erro, copia o resultado ou abre em uma nova aba.
 - **Sessão persistente**: abas, conteúdo e estado da interface são salvos automaticamente no navegador (localStorage + IndexedDB) e restaurados ao reabrir a página.
@@ -33,7 +34,16 @@ O projeto já vem configurado para o **Cloudflare Workers** (arquivos estáticos
 - **Pelo painel (deploy automático a cada push):** em *Workers & Pages → Create → Import a repository*, escolha este repositório e mantenha o comando de deploy `npx wrangler deploy`.
 - **Pelo terminal:** `npx wrangler login` e depois `npx wrangler deploy`.
 
-> **Requer internet.** O Monaco Editor, o `marked` e o `DOMPurify` são carregados do CDN jsDelivr. Sem conexão, o editor mostra uma mensagem de erro.
+> **Requer internet.** O Monaco Editor, o `marked` e o `DOMPurify` são carregados do CDN jsDelivr, e o Milkdown (modo Visual) do esm.sh. Sem conexão, o editor mostra uma mensagem de erro.
+
+### Modo Visual
+
+Nos documentos Markdown, o seletor de visualização tem quatro opções: **Editor**, **Dividido**, **Preview** e **Visual**. No modo Visual, você edita o texto já formatado: negrito aparece em negrito, listas como listas, tabelas como tabelas.
+
+- **Atalhos:** `Ctrl+B` (negrito), `Ctrl+I` (itálico), `Ctrl+S` (salvar), além de digitar `/` numa linha vazia para inserir blocos. Selecionar um trecho mostra uma barra de formatação.
+- **O texto Markdown continua sendo o arquivo.** Cada edição no modo Visual atualiza o Markdown, e dá para trocar de modo a qualquer momento.
+- **Entrar e sair sem editar não muda nada.** Ao editar, o Markdown é reescrito no formato padrão, preservando o estilo que o documento já usa (`-` ou `*` nas listas, `_` ou `*` no itálico, `---` ou `***` nas linhas). Algumas coisas podem mudar mesmo assim: linhas em branco extras somem, e HTML escrito dentro do Markdown pode se perder.
+- O Milkdown é carregado só na primeira vez que você usa o modo Visual. Sem internet, o editor avisa e volta para o modo Dividido.
 
 ## Atalhos de teclado
 
@@ -99,7 +109,7 @@ O navegador pode acrescentar um número ao nome (`notas (1).md`) quando o arquiv
 
 ## Testes automatizados
 
-O projeto tem **90 testes automatizados**, divididos em 7 áreas: geral, abas, arquivos, Markdown, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor no Microsoft Edge de verdade, clicando, digitando e conferindo o resultado.
+O projeto tem **102 testes automatizados**, divididos em 8 áreas: geral, abas, arquivos, Markdown, modo Visual, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor no Microsoft Edge de verdade, clicando, digitando e conferindo o resultado.
 
 📖 **Documentação completa: [docs/TESTES.md](docs/TESTES.md).** Explica como funcionam, a lista de todos os testes, como o projeto escolhe o que testar, como escrever testes novos e o que fazer quando algo falha.
 
@@ -112,7 +122,7 @@ npm run test:alterado    # roda só os testes das áreas que você alterou
 npm test                 # roda todos (cerca de 40 segundos)
 ```
 
-Também dá para rodar uma área específica: `npm run test:geral`, `test:abas`, `test:arquivos`, `test:markdown`, `test:json`, `test:sessao` ou `test:celular`.
+Também dá para rodar uma área específica: `npm run test:geral`, `test:abas`, `test:arquivos`, `test:markdown`, `test:visual`, `test:json`, `test:sessao` ou `test:celular`.
 
 ### Testa só o que mudou
 
@@ -140,6 +150,7 @@ wrangler.jsonc Configuração de deploy no Cloudflare
 - [Monaco Editor](https://github.com/microsoft/monaco-editor) 0.52.2
 - [marked](https://github.com/markedjs/marked) 15.0.7
 - [DOMPurify](https://github.com/cure53/DOMPurify) 3.2.6
+- [Milkdown](https://github.com/Milkdown/milkdown) (Crepe) 7.22.2, carregado sob demanda no modo Visual
 
 ## Licença
 

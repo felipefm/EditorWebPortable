@@ -17,6 +17,10 @@
             const container = document.getElementById('container');
             const previewConteudo = document.getElementById('preview-conteudo');
             const barraMarkdown = document.getElementById('barra-markdown');
+            const ferramentasMarkdown = document.getElementById('ferramentas-markdown');
+            const editorVisual = document.getElementById('editor-visual');
+            const carregandoVisual = document.getElementById('visual-carregando');
+            const versaoMilkdown = '7.22.2';
             const botoesModoVisualizacao = Array.from(document.querySelectorAll('#modo-visualizacao button'));
             const abas = document.getElementById('abas');
             const linguagem = document.getElementById('linguagem');
@@ -83,6 +87,15 @@
             let visualizacaoAtual = 'editor';
             let modoPreview = 'dividido';
             let jsonCompacto = false;
+            let carregamentoMilkdown;
+            const visual = {
+                crepe: undefined,
+                documento: undefined,
+                geracao: 0,
+                aplicando: false,
+                terminaComQuebra: false,
+                ultimoMarkdown: undefined
+            };
             let posicaoErroJson;
             let temporizadorSessao;
             let temporizadorJson;
@@ -190,6 +203,7 @@
             }
 
             function criarInstantaneoSessao(incluirManipuladores) {
+                sincronizarEditorVisual();
                 return {
                     versao: 2,
                     atualizadoEm: Date.now(),
@@ -574,19 +588,245 @@
             }
 
             function aplicarModoPreview(modo) {
-                modoPreview = ['editor', 'dividido', 'preview'].includes(modo) ? modo : 'dividido';
+                modoPreview = ['editor', 'dividido', 'preview', 'visual'].includes(modo) ? modo : 'dividido';
                 botoesModoVisualizacao.forEach(function (botao) {
                     botao.setAttribute('aria-pressed', botao.dataset.modo === modoPreview ? 'true' : 'false');
                 });
                 atualizarPreviewMarkdown();
             }
 
+            // Editor visual (Milkdown): carregado do CDN só quando o modo Visual é usado.
+            // O texto do Monaco continua sendo a fonte; o visual escreve nele a cada edição.
+            function carregarMilkdown() {
+                if (!carregamentoMilkdown) {
+                    ['lib/theme/common/style.css', 'lib/theme/frame-dark.css'].forEach(function (arquivo) {
+                        const link = document.createElement('link');
+                        link.rel = 'stylesheet';
+                        link.href = `https://cdn.jsdelivr.net/npm/@milkdown/crepe@${versaoMilkdown}/${arquivo}`;
+                        document.head.appendChild(link);
+                    });
+                    carregamentoMilkdown = Promise.all([
+                        import(`https://esm.sh/@milkdown/crepe@${versaoMilkdown}`),
+                        import(`https://esm.sh/@milkdown/kit@${versaoMilkdown}/core`),
+                        import(`https://esm.sh/@milkdown/kit@${versaoMilkdown}/preset/gfm`)
+                    ]).then(function ([moduloCrepe, moduloCore, moduloGfm]) {
+                        return {
+                            Crepe: moduloCrepe.Crepe,
+                            remarkStringifyOptionsCtx: moduloCore.remarkStringifyOptionsCtx,
+                            remarkGFMPlugin: moduloGfm.remarkGFMPlugin
+                        };
+                    }).catch(function (erro) {
+                        carregamentoMilkdown = undefined;
+                        throw erro;
+                    });
+                }
+                return carregamentoMilkdown;
+            }
+
+            // Usa o estilo que o documento já tem (- ou * nas listas, _ ou * no itálico, --- ou ***),
+            // para que editar no modo Visual não reescreva o arquivo inteiro.
+            function detectarEstiloMarkdown(texto) {
+                const contar = function (padrao) {
+                    return (texto.match(padrao) || []).length;
+                };
+                return {
+                    bullet: contar(/^\s*\*\s+\S/gm) > contar(/^\s*-\s+\S/gm) ? '*' : '-',
+                    emphasis: contar(/(^|[^\w*])\*[^*\s][^*\n]*\*(?!\*)/g) > contar(/(^|[^\w_])_[^_\s][^_\n]*_(?!_)/g) ? '*' : '_',
+                    rule: contar(/^\s*\*{3,}\s*$/gm) > contar(/^\s*-{3,}\s*$/gm) ? '*' : '-'
+                };
+            }
+
+            function normalizarMarkdownVisual(markdown, terminaComQuebra) {
+                const linhas = markdown.replace(/\r\n/g, '\n').split('\n').map(function (linha) {
+                    // O Milkdown escreve "| - |" no separador da tabela; o padrão do GitHub é "| --- |".
+                    return /^\s*\|(\s*:?-+:?\s*\|)+\s*$/.test(linha)
+                        ? linha.replace(/:?-+:?/g, function (celula) {
+                            return celula.replace(/-+/, '---');
+                        })
+                        : linha;
+                });
+                const resultado = linhas.join('\n').replace(/\n+$/, '');
+                return terminaComQuebra ? `${resultado}\n` : resultado;
+            }
+
+            function sincronizarEditorVisual() {
+                if (!visual.crepe || !visual.documento || visual.documento.modelo.isDisposed()) {
+                    return;
+                }
+                const markdown = normalizarMarkdownVisual(visual.crepe.getMarkdown(), visual.terminaComQuebra);
+                if (markdown === visual.ultimoMarkdown) {
+                    return;
+                }
+                visual.ultimoMarkdown = markdown;
+                const modelo = visual.documento.modelo;
+                if (modelo.getValue().replace(/\r\n/g, '\n') === markdown) {
+                    return;
+                }
+                visual.aplicando = true;
+                try {
+                    modelo.pushEditOperations([], [{ range: modelo.getFullModelRange(), text: markdown }], function () {
+                        return null;
+                    });
+                } finally {
+                    visual.aplicando = false;
+                }
+            }
+
+            function desmontarEditorVisual(sincronizar) {
+                if (sincronizar) {
+                    sincronizarEditorVisual();
+                }
+                visual.geracao += 1;
+                if (visual.crepe) {
+                    try {
+                        visual.crepe.destroy();
+                    } catch (erro) {
+                        // O editor já pode ter sido destruído; nada a fazer.
+                    }
+                }
+                visual.crepe = undefined;
+                visual.documento = undefined;
+                editorVisual.querySelectorAll('.visual-raiz').forEach(function (raiz) {
+                    raiz.remove();
+                });
+            }
+
+            async function montarEditorVisual() {
+                const documento = documentoAtual;
+                if (visual.documento === documento) {
+                    return;
+                }
+                desmontarEditorVisual(true);
+                visual.documento = documento;
+                const geracao = visual.geracao;
+                carregandoVisual.hidden = false;
+                try {
+                    const milkdown = await carregarMilkdown();
+                    if (geracao !== visual.geracao) {
+                        return;
+                    }
+                    const texto = documento.modelo.getValue().replace(/\r\n/g, '\n');
+                    const estilo = detectarEstiloMarkdown(texto);
+                    const raiz = document.createElement('div');
+                    raiz.className = 'visual-raiz';
+                    editorVisual.appendChild(raiz);
+                    const crepe = new milkdown.Crepe({
+                        root: raiz,
+                        defaultValue: texto,
+                        features: {
+                            [milkdown.Crepe.Feature.Latex]: false,
+                            [milkdown.Crepe.Feature.ImageBlock]: false
+                        },
+                        featureConfigs: {
+                            [milkdown.Crepe.Feature.Placeholder]: { text: 'Escreva aqui, ou digite / para inserir um bloco' },
+                            [milkdown.Crepe.Feature.BlockEdit]: {
+                                textGroup: {
+                                    label: 'Texto',
+                                    text: { label: 'Parágrafo' },
+                                    h1: { label: 'Título 1' },
+                                    h2: { label: 'Título 2' },
+                                    h3: { label: 'Título 3' },
+                                    h4: { label: 'Título 4' },
+                                    h5: { label: 'Título 5' },
+                                    h6: { label: 'Título 6' },
+                                    quote: { label: 'Citação' },
+                                    divider: { label: 'Linha horizontal' }
+                                },
+                                listGroup: {
+                                    label: 'Listas',
+                                    bulletList: { label: 'Lista com marcadores' },
+                                    orderedList: { label: 'Lista numerada' },
+                                    taskList: { label: 'Lista de tarefas' }
+                                },
+                                advancedGroup: {
+                                    label: 'Avançado',
+                                    image: null,
+                                    codeBlock: { label: 'Bloco de código' },
+                                    table: { label: 'Tabela' },
+                                    math: null
+                                }
+                            },
+                            [milkdown.Crepe.Feature.LinkTooltip]: { inputPlaceholder: 'Cole ou digite um link...' },
+                            [milkdown.Crepe.Feature.CodeMirror]: {
+                                searchPlaceholder: 'Buscar linguagem',
+                                noResultText: 'Nenhuma linguagem encontrada',
+                                copyText: 'Copiar',
+                                previewLabel: 'Visualização'
+                            }
+                        }
+                    });
+                    crepe.editor.config(function (ctx) {
+                        ctx.update(milkdown.remarkStringifyOptionsCtx, function (anterior) {
+                            return { ...anterior, bullet: estilo.bullet, emphasis: estilo.emphasis, rule: estilo.rule, strong: '*' };
+                        });
+                        ctx.set(milkdown.remarkGFMPlugin.options.key, { tablePipeAlign: false });
+                    });
+                    crepe.on(function (ouvinte) {
+                        ouvinte.markdownUpdated(function () {
+                            if (visual.crepe === crepe) {
+                                sincronizarEditorVisual();
+                            }
+                        });
+                    });
+                    await crepe.create();
+                    if (geracao !== visual.geracao) {
+                        crepe.destroy();
+                        raiz.remove();
+                        return;
+                    }
+                    visual.crepe = crepe;
+                    visual.terminaComQuebra = /\n$/.test(texto);
+                    visual.ultimoMarkdown = normalizarMarkdownVisual(crepe.getMarkdown(), visual.terminaComQuebra);
+                } catch (erro) {
+                    if (geracao !== visual.geracao) {
+                        return;
+                    }
+                    visual.documento = undefined;
+                    aplicarModoPreview('dividido');
+                    atualizarEstado('Não foi possível carregar o editor visual. Verifique a conexão com a internet.');
+                } finally {
+                    if (geracao === visual.geracao) {
+                        carregandoVisual.hidden = true;
+                    }
+                }
+            }
+
+            function tratarAtalhosDoVisual(evento) {
+                const comando = evento.ctrlKey || evento.metaKey;
+                if (!comando) {
+                    return;
+                }
+                const tecla = evento.key.toLowerCase();
+                let acao;
+                if (tecla === 's') {
+                    acao = evento.shiftKey ? salvarComoArquivo : atalhoSalvar;
+                } else if (tecla === 'o' && !evento.shiftKey && !evento.altKey) {
+                    acao = abrirArquivo;
+                } else if (tecla === 'n' && evento.altKey) {
+                    acao = criarNovoConteudo;
+                }
+                if (acao) {
+                    evento.preventDefault();
+                    evento.stopPropagation();
+                    acao();
+                }
+            }
+
             function atualizarPreviewMarkdown() {
                 const ehMarkdown = Boolean(documentoAtual) && documentoAtual.modelo.getLanguageId() === 'markdown';
                 const modo = ehMarkdown ? modoPreview : 'editor';
                 barraMarkdown.hidden = !ehMarkdown;
+                ferramentasMarkdown.hidden = modo === 'visual';
                 editorPaineis.classList.toggle('modo-dividido', modo === 'dividido');
                 editorPaineis.classList.toggle('modo-preview', modo === 'preview');
+                editorPaineis.classList.toggle('modo-visual', modo === 'visual');
+                if (modo === 'visual' && visualizacaoAtual === 'editor') {
+                    montarEditorVisual();
+                    return;
+                }
+                if (visual.documento) {
+                    desmontarEditorVisual(true);
+                }
                 if (!ehMarkdown || modo === 'editor' || visualizacaoAtual !== 'editor') {
                     return;
                 }
@@ -783,6 +1023,10 @@
                 };
                 proximoIdDocumento = Math.max(proximoIdDocumento, idDocumento + 1);
                 modelo.onDidChangeContent(function () {
+                    // Texto alterado por fora do modo Visual (ex.: importação): recarrega o visual.
+                    if (documento === visual.documento && visual.crepe && !visual.aplicando) {
+                        desmontarEditorVisual(false);
+                    }
                     marcarModificacoes(documento, true);
                     agendarRascunho(documento);
                     if (documento === documentoAtual) {
@@ -991,6 +1235,7 @@
             }
 
             function aplicarSessao(sessao) {
+                desmontarEditorVisual(false);
                 editor.setModel(null);
                 documentos.forEach(function (documento) {
                     window.clearTimeout(documento.temporizadorSalvamento);
@@ -1088,6 +1333,7 @@
             }
 
             function atalhoSalvar() {
+                sincronizarEditorVisual();
                 if (gravacaoDiretaDisponivel || (documentoAtual && documentoAtual.manipulador)) {
                     return salvarArquivo();
                 }
@@ -1095,6 +1341,7 @@
             }
 
             async function salvarComoArquivo() {
+                sincronizarEditorVisual();
                 const documento = documentoAtual;
                 if (!documento) {
                     return;
@@ -1130,6 +1377,7 @@
             }
 
             async function salvarArquivo() {
+                sincronizarEditorVisual();
                 const documento = documentoAtual;
                 if (!documento) {
                     return;
@@ -1173,6 +1421,9 @@
                 }
                 if (!documentos.includes(documento)) {
                     return;
+                }
+                if (visual.documento === documento) {
+                    desmontarEditorVisual(false);
                 }
                 const indice = documentos.indexOf(documento);
                 const eraAtual = documento === documentoAtual;
@@ -1770,11 +2021,12 @@
                         acoesMarkdown[botao.dataset.md]();
                     });
                 });
+                editorVisual.addEventListener('keydown', tratarAtalhosDoVisual, true);
                 botoesModoVisualizacao.forEach(function (botao) {
                     botao.addEventListener('click', function () {
                         aplicarModoPreview(botao.dataset.modo);
                         agendarPersistenciaSessao();
-                        if (modoPreview !== 'preview') {
+                        if (modoPreview !== 'preview' && modoPreview !== 'visual') {
                             editor.focus();
                         }
                     });

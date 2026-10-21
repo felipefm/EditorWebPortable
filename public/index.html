@@ -140,10 +140,14 @@
                         <button type="button" data-modo="editor" aria-pressed="false">Editor</button>
                         <button type="button" data-modo="dividido" aria-pressed="true">Dividido</button>
                         <button type="button" data-modo="preview" aria-pressed="false">Preview</button>
+                        <button type="button" data-modo="visual" aria-pressed="false" title="Editar vendo o resultado formatado">Visual</button>
                     </div>
                 </div>
                 <div id="editor-paineis">
                     <div id="container"></div>
+                    <section id="editor-visual" aria-label="Editor visual de Markdown">
+                        <p id="visual-carregando" role="status" hidden>Carregando editor visual...</p>
+                    </section>
                     <section id="preview-markdown" aria-label="Preview Markdown">
                         <article id="preview-conteudo"></article>
                     </section>
@@ -202,7 +206,7 @@
                     </div>
                     <button id="voltar-editor-markdown" type="button">Voltar ao editor</button>
                 </div>
-                <div id="atalhos-markdown-nota" role="note">Os atalhos de formatação ficam ativos quando a aba atual está em Markdown. Eles funcionam com múltiplas seleções; sem seleção, os comandos de texto inserem os marcadores e posicionam o cursor entre eles.</div>
+                <div id="atalhos-markdown-nota" role="note">Os atalhos de formatação ficam ativos quando a aba atual está em Markdown. Eles funcionam com múltiplas seleções; sem seleção, os comandos de texto inserem os marcadores e posicionam o cursor entre eles. No modo <strong>Visual</strong>, use <kbd>Ctrl/Cmd</kbd> + <kbd>B</kbd> e <kbd>Ctrl/Cmd</kbd> + <kbd>I</kbd>, selecione um trecho para ver a barra de formatação ou digite <kbd>/</kbd> numa linha vazia para inserir títulos, listas, tabelas e outros blocos.</div>
                 <div id="lista-atalhos-markdown">
                     <section class="atalhos-grupo" aria-labelledby="atalhos-texto-titulo">
                         <h2 id="atalhos-texto-titulo">Texto e links</h2>
