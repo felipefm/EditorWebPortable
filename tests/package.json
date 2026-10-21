@@ -1,0 +1,21 @@
+{
+  "name": "editor-portable-testes",
+  "private": true,
+  "description": "Testes automatizados do Editor Portable, separados por área.",
+  "scripts": {
+    "test": "playwright test",
+    "test:alterado": "node alterados.js",
+    "test:geral": "playwright test geral",
+    "test:abas": "playwright test abas",
+    "test:arquivos": "playwright test arquivos",
+    "test:markdown": "playwright test markdown",
+    "test:json": "playwright test json",
+    "test:sessao": "playwright test sessao",
+    "test:celular": "playwright test celular",
+    "test:visual": "playwright test --headed",
+    "test:relatorio": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
+  }
+}

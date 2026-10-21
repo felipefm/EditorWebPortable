@@ -86,6 +86,44 @@ Nenhum conteúdo é enviado para servidores. Tudo fica no seu navegador ou nos a
 | Salvar direto no arquivo original | ✅ | ⬇️ por download |
 | Backup automático em arquivo | ✅ | ❌ |
 
+## Testes automatizados
+
+Os testes ficam na pasta `tests/` e usam o [Playwright](https://playwright.dev) com o Microsoft Edge instalado no Windows. Eles abrem o editor num navegador de verdade, clicam, digitam e conferem o resultado. Precisam de internet, porque o Monaco vem do CDN.
+
+Primeira vez:
+
+```bash
+cd tests
+npm install
+```
+
+### Testar só o que você alterou
+
+```bash
+npm run test:alterado              # alterações ainda não commitadas
+npm run test:alterado -- HEAD~1    # o que mudou no último commit
+npm run test:alterado -- --listar  # só mostra quais áreas seriam testadas
+```
+
+O comando lê o `git diff`, descobre em qual função do `editor.js` (ou em qual id/classe do HTML e do CSS) cada linha mudou e roda só os testes daquela área. Os testes de `geral` rodam sempre. Se não for possível identificar a área, roda tudo.
+
+### Testar uma área específica
+
+| Comando | O que testa |
+| --- | --- |
+| `npm run test:geral` | Carregamento, barra lateral, paleta de comandos e rodapé |
+| `npm run test:abas` | Novo documento, troca e fechamento de abas, diálogo de confirmação |
+| `npm run test:arquivos` | Abrir, salvar, salvar como e detecção de linguagem |
+| `npm run test:markdown` | Barra e atalhos de formatação, preview e modos de visualização |
+| `npm run test:json` | Formatador JSON: formatar, compactar, erros, copiar e abrir em aba |
+| `npm run test:sessao` | Sessão restaurada, painel de backup, exportar e importar |
+| `npm run test:celular` | Layout em tela de celular (390 × 844) |
+| `npm test` | Tudo |
+
+Outros: `npm run test:visual` abre o navegador para você acompanhar, e `npm run test:relatorio` mostra o relatório da última execução (com print e gravação dos testes que falharam).
+
+Para usar o Chrome em vez do Edge: `NAVEGADOR=chrome npm test`.
+
 ## Estrutura
 
 ```
@@ -93,6 +131,7 @@ public/
   index.html   Estrutura da página: barra de ações, abas, editor, preview, formatador JSON e atalhos
   editor.css   Estilos (tema escuro inspirado no VS Code)
   editor.js    Toda a lógica: Monaco, abas, arquivos, sessão, backup, Markdown e JSON
+tests/        Testes automatizados (Playwright), um arquivo por área
 wrangler.jsonc Configuração de deploy no Cloudflare
 ```
 
