@@ -21,7 +21,7 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **218 testes** em **11 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge. Ao todo são cerca de 430 execuções, e a suíte completa leva uns 4 minutos.
+São **220 testes** em **11 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge. Ao todo são cerca de 434 execuções, e a suíte completa leva uns 4 minutos.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
@@ -29,7 +29,7 @@ São **218 testes** em **11 áreas**, um arquivo por área. Eles rodam em dois n
 | abas | `abas.spec.js` | 12 | Criar, trocar e fechar abas, indicador de não salvo, diálogo de confirmação, troca de linguagem |
 | arquivos | `arquivos.spec.js` | 19 | Abrir, salvar, salvar como, detecção de linguagem, modo "Baixar" dos navegadores sem gravação direta |
 | markdown | `markdown.spec.js` | 57 | Barra e **todos os atalhos** de formatação, envolver a seleção com aspas e parênteses, linha horizontal, preview, segurança do preview, modos de visualização |
-| visual | `visual.spec.js` | 41 | Modo Visual (Milkdown): edição formatada, **todos os atalhos**, envolver a seleção, alça de arrastar desativada, sincronia com o Markdown, preservação do estilo, salvar, abas, falta de internet |
+| visual | `visual.spec.js` | 43 | Modo Visual (Milkdown): edição formatada, **todos os atalhos**, envolver a seleção, botão + da margem sem a alça de arrastar, sincronia com o Markdown, preservação do estilo, salvar, abas, falta de internet |
 | imagens | `imagens.spec.js` | 17 | Imagens preservadas no modo Visual, diálogo "Inserir imagem" (link e arquivo), item Imagem do menu `/`, redução de tamanho |
 | mapa | `mapa.spec.js` | 13 | Minimapa do Monaco (Editor e Dividido) e o desenhado no modo Visual: botão Mapa, escolha lembrada, clicar e arrastar para rolar, atualização ao digitar |
 | atalhos | `atalhos.spec.js` | 26 | Atalhos gerais (salvar, salvar como, abrir, nova aba, formatador JSON) em cada modo, com o foco dentro e fora do texto |
@@ -275,7 +275,7 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - documento que não é Markdown não mostra preview
 - modo de visualização é lembrado depois de recarregar
 
-### visual (41)
+### visual (43)
 
 - mostra o Markdown formatado e esconde a barra do editor de texto
 - entrar e sair do modo Visual sem editar não altera o texto
@@ -291,7 +291,9 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - `Ctrl+K` pede o endereço e cria o link
 - apertar o atalho duas vezes desfaz título, listas e citação (5 testes)
 - digitar `"` `'` `(` `[` ou `{` com a palavra selecionada envolve em vez de apagar (5 testes)
-- a alça de arrastar blocos não aparece ao passar o mouse
+- ao passar o mouse aparece o + na margem, sem a alça de arrastar
+- clicar no + abre o menu de blocos
+- arrastar pelo + não move o parágrafo
 - começar a seleção pela margem esquerda não move o parágrafo
 - sem internet para o editor visual, volta ao modo Dividido e avisa
 - documento que não é Markdown não usa o modo Visual

@@ -228,19 +228,52 @@ test.describe('Modo Visual', () => {
         });
     }
 
-    test('a alça de arrastar blocos não aparece ao passar o mouse', async ({ page }) => {
+    const botaoMais = (page) => page.locator('#editor-visual .milkdown-block-handle .operation-item').nth(0);
+    const alcaArrastar = (page) => page.locator('#editor-visual .milkdown-block-handle .operation-item').nth(1);
+
+    test('ao passar o mouse aparece o + na margem, sem a alça de arrastar', async ({ page }) => {
         await abrirVisual(page, 'Primeiro\n\nSegundo\n\nTerceiro');
         const terceiro = await editorVisual(page).locator('p', { hasText: 'Terceiro' }).boundingBox();
         await page.mouse.move(terceiro.x + 30, terceiro.y + terceiro.height / 2);
+        await expect(botaoMais(page)).toBeVisible();
+        await expect(alcaArrastar(page)).toBeHidden();
+        const mais = await botaoMais(page).boundingBox();
+        expect(mais.x + mais.width).toBeLessThanOrEqual(terceiro.x + 1);
+    });
+
+    test('clicar no + abre o menu de blocos', async ({ page }) => {
+        await abrirVisual(page, 'Primeiro\n\nSegundo');
+        const segundo = await editorVisual(page).locator('p', { hasText: 'Segundo' }).boundingBox();
+        await page.mouse.move(segundo.x + 30, segundo.y + segundo.height / 2);
+        await botaoMais(page).click();
+        await expect(page.locator('.milkdown-slash-menu')).toBeVisible();
+        await expect(page.locator('.milkdown-slash-menu')).toContainText('Título 1');
+    });
+
+    test('arrastar pelo + não move o parágrafo', async ({ page }) => {
+        const texto = 'Primeiro parágrafo.\n\nSegundo parágrafo.\n\nTerceiro parágrafo.';
+        await abrirVisual(page, texto);
+        const terceiro = await editorVisual(page).locator('p', { hasText: 'Terceiro' }).boundingBox();
+        await page.mouse.move(terceiro.x + 30, terceiro.y + terceiro.height / 2);
+        const mais = await botaoMais(page).boundingBox();
+        await page.mouse.move(mais.x + mais.width / 2, mais.y + mais.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(mais.x + 200, mais.y - 70, { steps: 12 });
+        await page.mouse.up();
         await page.waitForTimeout(400);
-        await expect(page.locator('.milkdown-block-handle')).not.toBeVisible();
+        expect(await textoNormalizado(page)).toBe(texto);
     });
 
     test('começar a seleção pela margem esquerda não move o parágrafo', async ({ page }) => {
         const texto = 'Primeiro parágrafo.\n\nSegundo parágrafo.\n\nTerceiro parágrafo.';
         await abrirVisual(page, texto);
         const terceiro = await editorVisual(page).locator('p', { hasText: 'Terceiro' }).boundingBox();
-        await page.mouse.move(terceiro.x - 12, terceiro.y + terceiro.height / 2);
+        // Passa o mouse no parágrafo (a margem mostra o +) e aperta logo à esquerda do texto,
+        // onde o Milkdown põe a alça de arrastar.
+        await page.mouse.move(terceiro.x + 30, terceiro.y + terceiro.height / 2);
+        await expect(botaoMais(page)).toBeVisible();
+        const alca = await page.locator('#editor-visual .milkdown-block-handle').boundingBox();
+        await page.mouse.move(alca.x + alca.width - 8, alca.y + alca.height / 2);
         await page.mouse.down();
         await page.mouse.move(terceiro.x + 200, terceiro.y - 70, { steps: 12 });
         await page.mouse.up();

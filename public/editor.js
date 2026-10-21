@@ -2622,6 +2622,13 @@
                 });
                 window.addEventListener('keydown', tratarAtalhosGerais, true);
                 editorVisual.addEventListener('keydown', tratarAtalhosDoVisual, true);
+                // A alça do Milkdown inteira (inclusive o +) pode ser arrastada e leva o parágrafo junto.
+                // O + continua abrindo o menu de blocos; só o arrasto é bloqueado.
+                editorVisual.addEventListener('dragstart', function (evento) {
+                    if (evento.target instanceof Element && evento.target.closest('.milkdown-block-handle')) {
+                        evento.preventDefault();
+                    }
+                }, true);
                 aplicarMapa();
                 botaoMapa.addEventListener('click', alternarMapa);
                 telaEstreita.addEventListener('change', aplicarMapa);
