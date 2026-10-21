@@ -1,6 +1,7 @@
 const { defineConfig, devices } = require('@playwright/test');
 
-// Usa o Edge instalado no Windows. Para usar o Chrome: NAVEGADOR=chrome npm test
+// Desktop e celular usam o Edge instalado no Windows. Para usar o Chrome: NAVEGADOR=chrome npm test
+// O projeto "firefox" usa o motor do Firefox (o mesmo do Zen Browser), baixado pelo Playwright.
 const canal = process.env.NAVEGADOR || 'msedge';
 const porta = 4173;
 
@@ -15,7 +16,6 @@ module.exports = defineConfig({
     outputDir: 'resultados',
     use: {
         baseURL: `http://localhost:${porta}`,
-        channel: canal,
         trace: 'retain-on-failure',
         screenshot: 'only-on-failure'
     },
@@ -23,7 +23,13 @@ module.exports = defineConfig({
         {
             name: 'desktop',
             testIgnore: 'celular.spec.js',
-            use: { viewport: { width: 1440, height: 900 } }
+            use: { channel: canal, viewport: { width: 1440, height: 900 } }
+        },
+        {
+            // Motor do Firefox, o mesmo do Zen Browser e do LibreWolf.
+            name: 'firefox',
+            testIgnore: 'celular.spec.js',
+            use: { browserName: 'firefox', viewport: { width: 1440, height: 900 } }
         },
         {
             name: 'celular',

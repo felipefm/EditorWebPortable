@@ -47,7 +47,7 @@ Nos documentos Markdown, o seletor de visualização tem quatro opções: **Edit
 
 ### Imagens
 
-Nos documentos Markdown, o botão **Imagem** da barra (nos modos Editor e Visual) insere uma imagem de duas formas:
+Nos documentos Markdown, o botão **Imagem** da barra (nos modos Editor e Visual) ou o item **Imagem** do menu `/` (no modo Visual) insere uma imagem de duas formas:
 
 - **Por link:** cole o endereço de uma imagem da internet. O documento guarda só o link.
 - **Por arquivo:** escolha uma imagem do computador. Como o editor não tem servidor, a imagem é guardada **dentro do próprio arquivo `.md`**, codificada como texto (data URI). Antes disso, ela é reduzida para no máximo 1600 px e comprimida (WebP), para o arquivo não crescer demais. O editor avisa quando a imagem passa de 700 KB.
@@ -86,6 +86,10 @@ Use `Ctrl` no Windows/Linux e `Cmd` no macOS.
 | `Ctrl` + `Shift` + `9` | Lista de tarefas (`- [ ]`) |
 | `Ctrl` + `Shift` + `Q` | Citação (`> `) |
 
+Os atalhos gerais (salvar, abrir, nova aba, formatador JSON) funcionam em qualquer modo, mesmo com o foco fora do texto. Os atalhos de Markdown funcionam nos modos Editor, Dividido e Visual.
+
+**Envolver a seleção:** como no VS Code, com um trecho selecionado, digitar `"` `'` `(` `[` `{` ou `` ` `` envolve o trecho em vez de apagá-lo. Em Markdown, também `*` `_` `~` e `<`; digitar `*` duas vezes dá `**negrito**`. No modo Visual, funciona com aspas, parênteses, colchetes e chaves.
+
 A lista completa também está no editor, no ícone de teclado da barra lateral.
 
 ## Onde ficam os dados
@@ -120,7 +124,7 @@ O navegador pode acrescentar um número ao nome (`notas (1).md`) quando o arquiv
 
 ## Testes automatizados
 
-O projeto tem **155 testes automatizados**, divididos em 9 áreas: geral, abas, arquivos, Markdown, modo Visual, imagens, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor no Microsoft Edge de verdade, clicando, digitando e conferindo o resultado.
+O projeto tem **202 testes automatizados**, divididos em 10 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 400 execuções.
 
 📖 **Documentação completa: [docs/TESTES.md](docs/TESTES.md).** Explica como funcionam, a lista de todos os testes, como o projeto escolhe o que testar, como escrever testes novos e o que fazer quando algo falha.
 
@@ -128,12 +132,12 @@ O projeto tem **155 testes automatizados**, divididos em 9 áreas: geral, abas, 
 
 ```bash
 cd tests
-npm install              # primeira vez: instala o Playwright e ativa a verificação antes do push
+npm install              # primeira vez: instala o Playwright e o Firefox de testes, e ativa a verificação antes do push
 npm run test:alterado    # roda só os testes das áreas que você alterou
-npm test                 # roda todos (cerca de 40 segundos)
+npm test                 # roda todos, no Edge e no Firefox (cerca de 4 minutos)
 ```
 
-Também dá para rodar uma área específica: `npm run test:geral`, `test:abas`, `test:arquivos`, `test:markdown`, `test:visual`, `test:imagens`, `test:json`, `test:sessao` ou `test:celular`.
+Também dá para rodar uma área específica: `npm run test:geral`, `test:atalhos`, `test:abas`, `test:arquivos`, `test:markdown`, `test:visual`, `test:imagens`, `test:json`, `test:sessao` ou `test:celular`, ou só o Firefox: `npm run test:firefox`.
 
 ### Testa só o que mudou
 

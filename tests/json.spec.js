@@ -91,7 +91,8 @@ test.describe('Formatador JSON', () => {
         expect((await editorJson(page, 'entrada')).valor).toBe('{"x":true}');
     });
 
-    test('copiar coloca o resultado na área de transferência', async ({ page, context }) => {
+    test('copiar coloca o resultado na área de transferência', async ({ page, context, browserName }) => {
+        test.skip(browserName === 'firefox', 'O Firefox não deixa testes automatizados lerem a área de transferência.');
         await context.grantPermissions(['clipboard-read', 'clipboard-write']);
         await abrirFormatador(page);
         await editorJson(page, 'entrada', '{"a":1}');

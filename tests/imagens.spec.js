@@ -179,6 +179,22 @@ test.describe('Inserir imagem', () => {
         expect(await textoNormalizado(page)).toBe('Texto');
     });
 
+    test('no modo Visual, "/" + Imagem abre o diálogo e insere a imagem no lugar do "/"', async ({ page }) => {
+        await abrirMarkdown(page, 'Texto');
+        await entrarNoVisual(page);
+        await editorVisual(page).locator('p').first().click();
+        await page.keyboard.press('End');
+        await page.keyboard.press('Enter');
+        await page.keyboard.type('/');
+        await page.locator('.milkdown-slash-menu').getByText('Imagem', { exact: true }).click();
+        await expect(page.locator('#dialogo-imagem')).toBeVisible();
+        await page.locator('#imagem-link').fill('https://example.com/barra.png');
+        await page.locator('#imagem-descricao').fill('Pela barra');
+        await page.locator('#imagem-confirmar').click();
+        await expect(editorVisual(page).locator('img[src]')).toHaveCount(1);
+        await expect.poll(() => textoNormalizado(page)).toBe('Texto\n\n![Pela barra](https://example.com/barra.png)');
+    });
+
     test('imagem embutida aparece no preview', async ({ page }) => {
         await abrirMarkdown(page, `![Ponto](${PNG_1PX})`);
         await expect(page.locator('#preview-conteudo img')).toHaveAttribute('alt', 'Ponto');

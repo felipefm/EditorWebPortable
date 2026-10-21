@@ -89,6 +89,62 @@ test.describe('Markdown', () => {
         expect(await obterConteudo(page)).toBe('ola [mundo](url)');
     });
 
+    // Como no VS Code: digitar aspas ou parênteses com texto selecionado envolve a seleção.
+    const envolver = [
+        ['"', '"ola" mundo'],
+        ["'", "'ola' mundo"],
+        ['(', '(ola) mundo'],
+        ['[', '[ola] mundo'],
+        ['{', '{ola} mundo'],
+        ['`', '`ola` mundo'],
+        ['*', '*ola* mundo'],
+        ['_', '_ola_ mundo'],
+        ['<', '<ola> mundo']
+    ];
+    for (const [tecla, esperado] of envolver) {
+        test(`digitar ${tecla} com a palavra selecionada envolve em vez de apagar`, async ({ page }) => {
+            await abrirMarkdown(page, 'ola mundo');
+            await selecionar(page, 1, 1, 1, 4);
+            await page.keyboard.type(tecla);
+            expect(await obterConteudo(page)).toBe(esperado);
+        });
+    }
+
+    test('a palavra continua selecionada: digitar * duas vezes vira **negrito**', async ({ page }) => {
+        await abrirMarkdown(page, 'ola mundo');
+        await selecionar(page, 1, 1, 1, 4);
+        await page.keyboard.type('**');
+        expect(await obterConteudo(page)).toBe('**ola** mundo');
+    });
+
+    test('envolve várias seleções ao mesmo tempo', async ({ page }) => {
+        await abrirMarkdown(page, 'um dois');
+        await page.evaluate(() => {
+            window.editor.setSelections([new window.monaco.Selection(1, 1, 1, 3), new window.monaco.Selection(1, 4, 1, 8)]);
+            window.editor.focus();
+        });
+        await page.keyboard.type('"');
+        expect(await obterConteudo(page)).toBe('"um" "dois"');
+    });
+
+    test('sem seleção, digitar aspas funciona normalmente', async ({ page }) => {
+        await abrirMarkdown(page, 'ola');
+        await selecionar(page, 1, 4, 1, 4);
+        await page.keyboard.type(' x');
+        expect(await obterConteudo(page)).toBe('ola x');
+    });
+
+    test('em código, * substitui a seleção (só Markdown envolve com *)', async ({ page }) => {
+        await abrirEditor(page);
+        await definirConteudo(page, 'a = b');
+        await selecionar(page, 1, 5, 1, 6);
+        await page.keyboard.type('*');
+        expect(await obterConteudo(page)).toBe('a = *');
+        await selecionar(page, 1, 5, 1, 6);
+        await page.keyboard.type('"');
+        expect(await obterConteudo(page)).toBe('a = "*"');
+    });
+
     test('Ctrl+B aplica negrito', async ({ page }) => {
         await abrirMarkdown(page, 'ola mundo');
         await selecionar(page, 1, 1, 1, 4);

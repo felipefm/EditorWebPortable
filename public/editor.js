@@ -621,8 +621,9 @@
                         import(`${base}/preset/commonmark`),
                         import(`${base}/utils`),
                         import(`${base}/component/link-tooltip`),
-                        import(`${base}/prose/transform`)
-                    ]).then(function ([moduloCrepe, moduloCore, moduloGfm, moduloCommonmark, moduloUtils, moduloLink, moduloTransform]) {
+                        import(`${base}/prose/transform`),
+                        import(`${base}/prose/state`)
+                    ]).then(function ([moduloCrepe, moduloCore, moduloGfm, moduloCommonmark, moduloUtils, moduloLink, moduloTransform, moduloEstado]) {
                         return {
                             Crepe: moduloCrepe.Crepe,
                             core: moduloCore,
@@ -630,7 +631,8 @@
                             commonmark: moduloCommonmark,
                             callCommand: moduloUtils.callCommand,
                             linkTooltipAPI: moduloLink.linkTooltipAPI,
-                            transform: moduloTransform
+                            transform: moduloTransform,
+                            estado: moduloEstado
                         };
                     }).catch(function (erro) {
                         carregamentoMilkdown = undefined;
@@ -740,6 +742,16 @@
                         featureConfigs: {
                             [milkdown.Crepe.Feature.Placeholder]: { text: 'Escreva aqui, ou digite / para inserir um bloco' },
                             [milkdown.Crepe.Feature.BlockEdit]: {
+                                buildMenu: function (construtor) {
+                                    construtor.getGroup('advanced').addItem('imagem', {
+                                        label: 'Imagem',
+                                        icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg>',
+                                        onRun: function (ctx) {
+                                            ctx.get(milkdown.core.commandsCtx).call(milkdown.commonmark.clearTextInCurrentBlockCommand.key);
+                                            abrirDialogoImagem();
+                                        }
+                                    });
+                                },
                                 textGroup: {
                                     label: 'Texto',
                                     text: { label: 'Parágrafo' },
@@ -782,6 +794,9 @@
                         ctx.set(milkdown.gfm.remarkGFMPlugin.options.key, { tablePipeAlign: false });
                         ctx.update(milkdown.core.remarkPluginsCtx, function (plugins) {
                             return [...plugins, { plugin: corrigirImagensSemTitulo, options: undefined }];
+                        });
+                        ctx.update(milkdown.core.prosePluginsCtx, function (plugins) {
+                            return [...plugins, criarPluginEnvolverSelecao(milkdown)];
                         });
                     });
                     crepe.on(function (ouvinte) {
@@ -870,6 +885,64 @@
                     atualizarEstado(`Não foi possível inserir a imagem: ${erro && erro.message ? erro.message : 'erro desconhecido'}`);
                     return '';
                 }
+            }
+
+            // Como no VS Code: com texto selecionado, digitar aspas ou parênteses envolve a seleção
+            // em vez de apagá-la. Em Markdown, também *, _, ~ e <.
+            const paresDeEnvolver = { '"': '"', "'": "'", '(': ')', '[': ']', '{': '}', '`': '`' };
+            const paresDeEnvolverMarkdown = { '*': '*', '_': '_', '~': '~', '<': '>' };
+            const paresDeEnvolverVisual = { '"': '"', "'": "'", '(': ')', '[': ']', '{': '}' };
+
+            function envolverSelecaoNoEditor(evento) {
+                const tecla = evento.browserEvent.key;
+                if (evento.browserEvent.ctrlKey || evento.browserEvent.metaKey || evento.browserEvent.altKey) {
+                    return;
+                }
+                const fecha = paresDeEnvolver[tecla] || (estaEmMarkdown() ? paresDeEnvolverMarkdown[tecla] : undefined);
+                const selecoes = editor.getSelections() || [];
+                if (!fecha || !selecoes.length || selecoes.some(function (selecao) { return selecao.isEmpty(); })) {
+                    return;
+                }
+                evento.preventDefault();
+                evento.stopPropagation();
+                const modelo = editor.getModel();
+                const edicoes = selecoes.map(function (selecao) {
+                    return { range: selecao, text: `${tecla}${modelo.getValueInRange(selecao)}${fecha}`, forceMoveMarkers: true };
+                });
+                editor.pushUndoStop();
+                // Mantém selecionado o texto de dentro, para poder envolver de novo (ex.: ** em volta).
+                editor.executeEdits('envolver-selecao', edicoes, function (inversas) {
+                    return inversas.map(function (inversa) {
+                        const intervalo = inversa.range;
+                        return new monaco.Selection(intervalo.startLineNumber, intervalo.startColumn + 1, intervalo.endLineNumber, intervalo.endColumn - 1);
+                    });
+                });
+                editor.pushUndoStop();
+            }
+
+            function criarPluginEnvolverSelecao(milkdown) {
+                return new milkdown.estado.Plugin({
+                    props: {
+                        handleTextInput: function (visao, de, ate, texto) {
+                            const fecha = paresDeEnvolverVisual[texto];
+                            if (!fecha || de === ate) {
+                                return false;
+                            }
+                            // O duplo clique no Windows inclui o espaço seguinte; ele fica de fora.
+                            const selecionado = visao.state.doc.textBetween(de, ate, '\n', '\n');
+                            const aparadoFim = selecionado.length - selecionado.trimEnd().length;
+                            const aparadoInicio = selecionado.length - selecionado.trimStart().length;
+                            if (aparadoInicio + aparadoFim < selecionado.length) {
+                                de += aparadoInicio;
+                                ate -= aparadoFim;
+                            }
+                            const transacao = visao.state.tr.insertText(fecha, ate).insertText(texto, de);
+                            transacao.setSelection(milkdown.estado.TextSelection.create(transacao.doc, de + 1, ate + 1));
+                            visao.dispatch(transacao);
+                            return true;
+                        }
+                    }
+                });
             }
 
             // Defeito do Milkdown: imagem sem título (o caso mais comum, ![alt](url)) chega com
@@ -1000,6 +1073,35 @@
                 });
             }
 
+            // Atalhos gerais valem em qualquer lugar da página, não só com o cursor no editor.
+            // Sem isso, com o foco num botão ou numa área vazia, o navegador abria "Salvar página como".
+            function tratarAtalhosGerais(evento) {
+                if (!(evento.ctrlKey || evento.metaKey)) {
+                    return;
+                }
+                const tecla = evento.key.toLowerCase();
+                let acao;
+                if (tecla === 's' && !evento.altKey) {
+                    acao = evento.shiftKey ? salvarComoArquivo : atalhoSalvar;
+                } else if (tecla === 'o' && !evento.shiftKey && !evento.altKey) {
+                    acao = abrirArquivo;
+                } else if (evento.code === 'KeyN' && evento.altKey && !evento.shiftKey) {
+                    acao = criarNovoConteudo;
+                } else if (evento.code === 'KeyJ' && evento.altKey && !evento.shiftKey) {
+                    acao = ativarFormatadorJson;
+                }
+                if (!acao) {
+                    return;
+                }
+                evento.preventDefault();
+                evento.stopPropagation();
+                // Com um diálogo aberto, só impede a ação do navegador.
+                if (dialogoImagem.open || dialogoConfirmacao.open) {
+                    return;
+                }
+                acao();
+            }
+
             // Os mesmos atalhos do editor de texto, traduzidos para comandos do Milkdown.
             function tratarAtalhosDoVisual(evento) {
                 const comando = evento.ctrlKey || evento.metaKey;
@@ -1010,13 +1112,7 @@
                 const digito = /^Digit([1-9])$/.test(evento.code) ? Number(evento.code.slice(5)) : 0;
                 const m = visual.modulos;
                 let acao;
-                if (tecla === 's' && comando) {
-                    acao = evento.shiftKey ? salvarComoArquivo : atalhoSalvar;
-                } else if (tecla === 'o' && !evento.shiftKey && !evento.altKey) {
-                    acao = abrirArquivo;
-                } else if (tecla === 'n' && evento.altKey) {
-                    acao = criarNovoConteudo;
-                } else if (!m) {
+                if (!m) {
                     return;
                 } else if ((tecla === 'x' && evento.shiftKey) || (digito === 5 && evento.altKey && evento.shiftKey && !comando)) {
                     acao = function () { aparaSelecaoVisual(); comandoVisual(m.gfm.toggleStrikethroughCommand); };
@@ -2313,6 +2409,7 @@
                         acoesMarkdown[botao.dataset.md]();
                     });
                 });
+                window.addEventListener('keydown', tratarAtalhosGerais, true);
                 editorVisual.addEventListener('keydown', tratarAtalhosDoVisual, true);
                 botaoInserirImagem.addEventListener('click', abrirDialogoImagem);
                 formularioImagem.addEventListener('submit', confirmarDialogoImagem);
@@ -2336,6 +2433,7 @@
                 });
 
                 editor.onDidChangeCursorPosition(atualizarRodape);
+                editor.onKeyDown(envolverSelecaoNoEditor);
                 linguagem.addEventListener('change', function () {
                     if (!documentoAtual) {
                         return;
@@ -2434,6 +2532,17 @@
                     }
                 });
                 iniciarBackupAutomatico();
+                // O Firefox nem sempre dispara "beforeunload" ao recarregar ou fechar;
+                // "pagehide" e "visibilitychange" garantem o último salvamento.
+                window.addEventListener('pagehide', function () {
+                    salvarSessaoLocalmente();
+                });
+                document.addEventListener('visibilitychange', function () {
+                    if (document.visibilityState === 'hidden') {
+                        salvarSessaoLocalmente();
+                        persistirSessaoIndexedDb();
+                    }
+                });
                 window.addEventListener('beforeunload', function (evento) {
                     salvarSessaoLocalmente();
                     if (documentos.some(function (documento) {

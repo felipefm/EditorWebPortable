@@ -208,6 +208,36 @@ test.describe('Modo Visual', () => {
         });
     }
 
+    // No Markdown, o "[" sozinho é escrito como "\[" para não virar link.
+    for (const [tecla, esperado] of [['"', '"palavra" final'], ["'", "'palavra' final"], ['(', '(palavra) final'], ['[', '\\[palavra] final'], ['{', '{palavra} final']]) {
+        test(`digitar ${tecla} com a palavra selecionada envolve em vez de apagar (modo Visual)`, async ({ page }) => {
+            await abrirVisual(page, 'palavra final');
+            await posicionarNaPalavra(page, true);
+            await page.keyboard.type(tecla);
+            await expect.poll(() => textoNormalizado(page)).toBe(esperado);
+        });
+    }
+
+    test('a alça de arrastar blocos não aparece ao passar o mouse', async ({ page }) => {
+        await abrirVisual(page, 'Primeiro\n\nSegundo\n\nTerceiro');
+        const terceiro = await editorVisual(page).locator('p', { hasText: 'Terceiro' }).boundingBox();
+        await page.mouse.move(terceiro.x + 30, terceiro.y + terceiro.height / 2);
+        await page.waitForTimeout(400);
+        await expect(page.locator('.milkdown-block-handle')).not.toBeVisible();
+    });
+
+    test('começar a seleção pela margem esquerda não move o parágrafo', async ({ page }) => {
+        const texto = 'Primeiro parágrafo.\n\nSegundo parágrafo.\n\nTerceiro parágrafo.';
+        await abrirVisual(page, texto);
+        const terceiro = await editorVisual(page).locator('p', { hasText: 'Terceiro' }).boundingBox();
+        await page.mouse.move(terceiro.x - 12, terceiro.y + terceiro.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(terceiro.x + 200, terceiro.y - 70, { steps: 12 });
+        await page.mouse.up();
+        await page.waitForTimeout(400);
+        expect(await textoNormalizado(page)).toBe(texto);
+    });
+
     test('documento que não é Markdown não usa o modo Visual', async ({ page }) => {
         await abrirVisual(page, '# Markdown');
         await novaAba(page, 'javascript', 'const a = 1;');

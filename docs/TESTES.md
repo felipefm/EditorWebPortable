@@ -21,16 +21,17 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **155 testes** em **9 áreas**, um arquivo por área. A suíte completa leva cerca de 1 minuto.
+São **202 testes** em **10 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge. Ao todo são cerca de 400 execuções, e a suíte completa leva uns 4 minutos.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
 | geral | `geral.spec.js` | 6 | Carregamento sem erros, barra lateral, paleta de comandos, rodapé |
 | abas | `abas.spec.js` | 10 | Criar, trocar e fechar abas, indicador de não salvo, diálogo de confirmação |
 | arquivos | `arquivos.spec.js` | 19 | Abrir, salvar, salvar como, detecção de linguagem, modo "Baixar" dos navegadores sem gravação direta |
-| markdown | `markdown.spec.js` | 44 | Barra e **todos os atalhos** de formatação, linha horizontal, preview, segurança do preview, modos de visualização |
-| visual | `visual.spec.js` | 34 | Modo Visual (Milkdown): edição formatada, **todos os atalhos**, sincronia com o Markdown, preservação do estilo, salvar, abas, falta de internet |
-| imagens | `imagens.spec.js` | 16 | Imagens preservadas no modo Visual, diálogo "Inserir imagem" (link e arquivo), redução de tamanho |
+| markdown | `markdown.spec.js` | 57 | Barra e **todos os atalhos** de formatação, envolver a seleção com aspas e parênteses, linha horizontal, preview, segurança do preview, modos de visualização |
+| visual | `visual.spec.js` | 41 | Modo Visual (Milkdown): edição formatada, **todos os atalhos**, envolver a seleção, alça de arrastar desativada, sincronia com o Markdown, preservação do estilo, salvar, abas, falta de internet |
+| imagens | `imagens.spec.js` | 17 | Imagens preservadas no modo Visual, diálogo "Inserir imagem" (link e arquivo), item Imagem do menu `/`, redução de tamanho |
+| atalhos | `atalhos.spec.js` | 26 | Atalhos gerais (salvar, salvar como, abrir, nova aba, formatador JSON) em cada modo, com o foco dentro e fora do texto |
 | json | `json.spec.js` | 11 | Formatar, compactar, indentação, erros com linha e coluna, copiar, abrir em aba |
 | sessao | `sessao.spec.js` | 10 | Sessão restaurada, painel de backup, exportar e importar |
 | celular | `celular.spec.js` | 5 | Layout em tela de 390 × 844 |
@@ -45,6 +46,7 @@ tests/
   markdown.spec.js     │
   visual.spec.js       │
   imagens.spec.js      │
+  atalhos.spec.js      │
   json.spec.js         │
   sessao.spec.js       │
   celular.spec.js      ┘
@@ -59,14 +61,14 @@ tests/
 
 ## Instalação
 
-Precisa de [Node.js](https://nodejs.org) e do Microsoft Edge (já vem no Windows). Na primeira vez:
+Precisa de [Node.js](https://nodejs.org) e do Microsoft Edge (já vem no Windows). O Firefox de testes é baixado pelo próprio Playwright. Na primeira vez:
 
 ```bash
 cd tests
 npm install
 ```
 
-Esse comando instala o Playwright e ativa a [verificação antes do push](#verificação-antes-do-push).
+Esse comando instala o Playwright, baixa o Firefox de testes e ativa a [verificação antes do push](#verificação-antes-do-push).
 
 Os testes precisam de internet, porque o Monaco Editor, o `marked` e o `DOMPurify` são carregados do CDN, e o Milkdown (modo Visual) do esm.sh.
 
@@ -86,6 +88,8 @@ Todos são executados dentro da pasta `tests/`.
 | `npm run test:markdown` | Só Markdown |
 | `npm run test:visual` | Só o modo Visual |
 | `npm run test:imagens` | Só imagens |
+| `npm run test:atalhos` | Só os atalhos gerais em todos os modos |
+| `npm run test:firefox` | Todos os testes, só no Firefox |
 | `npm run test:json` | Só o formatador JSON |
 | `npm run test:sessao` | Só sessão e backup |
 | `npm run test:celular` | Só o layout de celular |
@@ -130,6 +134,8 @@ O que mudou:
 | `json` | json |
 | `visual`, `milkdown`, `crepe`, `atualizarPreviewMarkdown`, `aplicarModoPreview` | visual |
 | `imagem`, `image`, `img` | imagens |
+| `atalho`, `keydown`, `keybinding` | atalhos |
+| `envolver` | markdown e visual |
 | `markdown`, `preview`, `modo`, `marcacao`, `citacao`, `tarefas`, `numerada`, `negrito`, `italico`, `tachado`, `horizontal` | markdown |
 | `sessao`, `backup`, `persist`, `navegador`, `indexeddb`, `instantaneo`, `importar`, `exportar` | sessao |
 | `arquivo`, `salvar`, `salvo`, `baixar`, `download`, `gravacao`, `sugerido`, `carregar`, `manipulador` | arquivos |
@@ -236,7 +242,7 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - Ctrl+S não baixa nada e confirma o salvamento no navegador
 - cancelar a pergunta do nome não baixa nada
 
-### markdown (44)
+### markdown (57)
 
 - barra de formatação só aparece em documentos Markdown
 - botão de negrito aplica e remove a marcação
@@ -248,6 +254,11 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - `---` colado no texto vira título; com linha em branco vira linha
 - **cada atalho de linha** (`Ctrl+1` a `6`, `Ctrl+Shift+1`, `2` e `6`, `Ctrl+Shift+7`, `8`, `9` e `Q`) aplica e remove o formato (13 testes)
 - `Alt+Shift+5` aplica tachado; `Ctrl+K` cria link
+- digitar `"` `'` `(` `[` `{` `` ` `` `*` `_` ou `<` com a palavra selecionada envolve em vez de apagar (9 testes)
+- a palavra continua selecionada: digitar `*` duas vezes vira `**negrito**`
+- envolve várias seleções ao mesmo tempo
+- sem seleção, digitar aspas funciona normalmente
+- em código, `*` substitui a seleção (só Markdown envolve com `*`)
 - formatação funciona com várias linhas selecionadas
 - preview renderiza o Markdown ao vivo
 - preview remove scripts e eventos perigosos
@@ -257,7 +268,7 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - documento que não é Markdown não mostra preview
 - modo de visualização é lembrado depois de recarregar
 
-### visual (34)
+### visual (41)
 
 - mostra o Markdown formatado e esconde a barra do editor de texto
 - entrar e sair do modo Visual sem editar não altera o texto
@@ -272,10 +283,13 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - **cada atalho documentado funciona no modo Visual**: negrito, itálico, tachado (os dois atalhos), código inline, títulos 1 a 6, título com `Ctrl+Shift`, listas numerada, com marcadores e de tarefas, e citação (16 testes)
 - `Ctrl+K` pede o endereço e cria o link
 - apertar o atalho duas vezes desfaz título, listas e citação (5 testes)
+- digitar `"` `'` `(` `[` ou `{` com a palavra selecionada envolve em vez de apagar (5 testes)
+- a alça de arrastar blocos não aparece ao passar o mouse
+- começar a seleção pela margem esquerda não move o parágrafo
 - sem internet para o editor visual, volta ao modo Dividido e avisa
 - documento que não é Markdown não usa o modo Visual
 
-### imagens (16)
+### imagens (17)
 
 - imagem sozinha sem título (link e embutida), com título, no meio da frase e sem descrição continua no texto depois de editar outro trecho no modo Visual (5 testes)
 - a descrição da imagem é preservada (não vira "1.00")
@@ -288,7 +302,25 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - arquivo pequeno mantém o tamanho original
 - no modo Visual, o arquivo enviado aparece como imagem
 - arquivo que não é imagem mostra erro e não insere nada
+- no modo Visual, "/" + Imagem abre o diálogo e insere a imagem no lugar do "/"
 - imagem embutida aparece no preview
+
+### atalhos (26)
+
+Em cada modo (Editor, Dividido, Preview e Visual), com o foco num botão, fora do texto:
+
+- `Ctrl+S` salva o documento
+- `Ctrl+Shift+S` salva como
+- `Ctrl+O` abre um arquivo
+- `Ctrl+Alt+N` cria uma aba nova
+- `Ctrl+Alt+J` abre o formatador JSON
+
+Em cada modo, com o foco no texto: `Ctrl+S` salva o documento.
+
+Também:
+
+- navegador sem gravação direta (Zen/Firefox): `Ctrl+S` no modo Visual com foco num botão salva no navegador
+- atalho com um diálogo aberto não executa a ação
 
 ### json (11)
 
@@ -452,5 +484,5 @@ As pastas `tests/relatorio/` e `tests/resultados/` são geradas a cada execuçã
 
 - **Arquivos reais não são testados.** A gravação em disco usa a API simulada. O comportamento das janelas nativas do Windows e das permissões do navegador precisa ser conferido à mão.
 - **A aparência não é comparada pixel a pixel.** Os testes conferem estrutura, textos, posições e tamanhos, mas não pegam, por exemplo, uma cor errada.
-- **Só Edge (Chromium).** Firefox e Safari não são testados automaticamente.
+- **Edge e Firefox.** O Safari não é testado automaticamente. No Firefox, o teste de copiar para a área de transferência é pulado, porque o Firefox não deixa testes lerem a área de transferência.
 - **A escolha da área é por palavras-chave.** Funciona bem para o código atual. Se uma função nova tiver um nome que não diz a área, adicione-a em `funcoesConhecidas` no `alterados.js`.
