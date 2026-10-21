@@ -3,141 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meu Editor Web Portable</title>
+    <title>Editor Portable</title>
     <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/editor/editor.main.css">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%232b6cd4%27/%3E%3Cpath d=%27M12 10l-6 6 6 6M20 10l6 6-6 6%27 fill=%27none%27 stroke=%27white%27 stroke-width=%272.6%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
     <link rel="stylesheet" href="editor.css">
 </head>
 <body>
     <header id="topo">
         <div id="marca">
-            <strong>Meu Editor Web Portable</strong>
-            <span id="arquivo-atual" title="Nenhum arquivo aberto">Sem arquivo</span>
-            <span id="estado" role="status">Carregando editor...</span>
+            <span id="logo" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M8 6l-6 6 6 6"/><path d="M16 6l6 6-6 6"/></svg>
+            </span>
+            <strong>Editor Portable</strong>
         </div>
-        <div id="acoes">
-            <div id="acoes-arquivo">
-                <button id="abrir" type="button">Abrir</button>
-                <label for="linguagem">Linguagem</label>
-                <select id="linguagem" aria-label="Linguagem do editor">
-                    <option value="javascript">JavaScript</option>
-                    <option value="typescript">TypeScript</option>
-                    <option value="html">HTML</option>
-                    <option value="css">CSS</option>
-                    <option value="json">JSON</option>
-                    <option value="markdown">Markdown</option>
-                    <option value="plaintext">Texto puro</option>
-                </select>
-                <button id="novo" type="button">Novo</button>
-                <button id="salvar" class="destaque" type="button">Salvar</button>
-                <button id="salvar-como" type="button">Salvar como</button>
+        <span class="divisor" aria-hidden="true"></span>
+        <div id="acoes-arquivo">
+            <button id="novo" class="botao-fantasma" type="button" title="Novo documento (Ctrl+Alt+N)">
+                <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M12 12v6M9 15h6"/></svg>
+                <span class="rotulo">Novo</span>
+            </button>
+            <button id="abrir" class="botao-fantasma" type="button" title="Abrir arquivo (Ctrl+O)">
+                <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                <span class="rotulo">Abrir</span>
+            </button>
+            <div id="grupo-salvar">
+                <button id="salvar" class="destaque" type="button" title="Salvar (Ctrl+S)">
+                    <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-7h10v7"/></svg>
+                    <span class="rotulo">Salvar</span>
+                </button>
+                <button id="salvar-como" class="destaque" type="button" title="Salvar como (Ctrl+Shift+S)" aria-label="Salvar como">
+                    <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l3 3v4"/><path d="M7 3v5h6"/><path d="M3 5v14a2 2 0 0 0 2 2h6"/><path d="M15 21l6-6-2.5-2.5-6 6V21z"/></svg>
+                </button>
             </div>
-            <button id="abrir-formatador-json" type="button" title="Abrir formatador JSON">Formatador JSON</button>
-            <details id="menu-opcoes">
-                <summary>Opções</summary>
-                <div id="painel-opcoes">
-                    <button id="abrir-atalhos-markdown" type="button">Atalhos de Markdown</button>
-                    <button id="exportar-sessao" type="button">Exportar sessão agora</button>
-                    <button id="importar-sessao" type="button">Importar sessão</button>
-                    <button id="configurar-backup" type="button">Configurar backup automático</button>
-                    <span id="status-backup" role="status">Backup automático no navegador ativo.</span>
-                </div>
-            </details>
         </div>
+        <span class="espaco"></span>
+        <button id="abrir-paleta" type="button" title="Paleta de comandos (F1)">
+            <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <span class="rotulo">Buscar comandos</span>
+            <kbd>F1</kbd>
+        </button>
+        <button id="botao-sessao" class="botao-fantasma" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="painel-sessao">
+            <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
+            <span id="rotulo-sessao" class="rotulo">Salvo no navegador</span>
+        </button>
     </header>
+
+    <div id="painel-sessao" role="dialog" aria-labelledby="titulo-sessao" hidden>
+        <div id="painel-sessao-cabecalho">
+            <strong id="titulo-sessao">Sessão e backup</strong>
+            <span id="sessao-abas"></span>
+        </div>
+        <div class="sessao-item">
+            <span class="sessao-indicador ok" aria-hidden="true"></span>
+            <div>
+                <span class="sessao-titulo">Neste navegador</span>
+                <span id="status-navegador" class="sessao-detalhe">Salvo automaticamente</span>
+            </div>
+        </div>
+        <div class="sessao-item">
+            <span id="indicador-backup" class="sessao-indicador" aria-hidden="true"></span>
+            <div>
+                <span class="sessao-titulo">Arquivo de backup</span>
+                <span id="status-backup" class="sessao-detalhe" role="status">Nenhum arquivo configurado. A sessão fica salva só neste navegador.</span>
+            </div>
+            <button id="configurar-backup" class="botao-link" type="button">Configurar</button>
+        </div>
+        <div id="sessao-acoes">
+            <button id="exportar-sessao" type="button">Exportar cópia</button>
+            <button id="importar-sessao" type="button">Importar sessão</button>
+        </div>
+        <p id="sessao-nota">Nada é enviado para servidores. Os dados ficam neste navegador e no arquivo que você escolher.</p>
+    </div>
+
     <input id="seletor-arquivo" type="file">
     <input id="seletor-sessao" type="file" accept="application/json,.json">
-    <nav id="abas" role="tablist" aria-label="Arquivos abertos"></nav>
-    <div id="editor-paineis">
-        <div id="container"></div>
-        <section id="preview-markdown" aria-label="Preview Markdown">
-            <div id="preview-cabecalho">
-                <strong>Preview Markdown</strong>
-                <span id="preview-status" role="status">Ao vivo</span>
+
+    <div id="corpo">
+        <nav id="trilho" aria-label="Ferramentas">
+            <button id="trilho-documentos" class="trilho-botao ativo" type="button" title="Documentos" aria-label="Documentos" aria-current="page">
+                <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+            </button>
+            <button id="trilho-json" class="trilho-botao" type="button" title="Formatador JSON (Ctrl+Alt+J)" aria-label="Formatador JSON">
+                <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H7a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2 2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h1"/><path d="M16 3h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2 2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-1"/></svg>
+            </button>
+            <button id="trilho-atalhos" class="trilho-botao" type="button" title="Atalhos de teclado" aria-label="Atalhos de teclado">
+                <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>
+            </button>
+        </nav>
+
+        <main id="principal">
+            <div id="area-documentos">
+                <div id="barra-abas">
+                    <nav id="abas" role="tablist" aria-label="Arquivos abertos"></nav>
+                    <button id="nova-aba" type="button" title="Nova aba (Ctrl+Alt+N)" aria-label="Nova aba">
+                        <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                    </button>
+                </div>
+                <div id="barra-markdown" role="toolbar" aria-label="Formatação Markdown" hidden>
+                    <div id="ferramentas-markdown">
+                        <button class="md-botao md-negrito" type="button" data-md="negrito" title="Negrito (Ctrl+B)" aria-label="Negrito">B</button>
+                        <button class="md-botao md-italico" type="button" data-md="italico" title="Itálico (Ctrl+I)" aria-label="Itálico">I</button>
+                        <button class="md-botao md-tachado" type="button" data-md="tachado" title="Tachado (Ctrl+Shift+X)" aria-label="Tachado">S</button>
+                        <button class="md-botao" type="button" data-md="codigo" title="Código inline (Ctrl+`)" aria-label="Código inline">
+                            <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7l-5 5 5 5M15 7l5 5-5 5"/></svg>
+                        </button>
+                        <button class="md-botao" type="button" data-md="link" title="Link (Ctrl+K)" aria-label="Link">
+                            <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
+                        </button>
+                        <span class="divisor" aria-hidden="true"></span>
+                        <button class="md-botao md-texto" type="button" data-md="h1" title="Título 1 (Ctrl+1)" aria-label="Título 1">H1</button>
+                        <button class="md-botao md-texto" type="button" data-md="h2" title="Título 2 (Ctrl+2)" aria-label="Título 2">H2</button>
+                        <button class="md-botao md-texto" type="button" data-md="h3" title="Título 3 (Ctrl+3)" aria-label="Título 3">H3</button>
+                        <button class="md-botao" type="button" data-md="lista" title="Lista com marcadores (Ctrl+Shift+8)" aria-label="Lista com marcadores">
+                            <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>
+                        </button>
+                        <button class="md-botao" type="button" data-md="numerada" title="Lista numerada (Ctrl+Shift+7)" aria-label="Lista numerada">
+                            <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10"/><path d="M4 5l1.5-1V9M4 9h3"/><path d="M4 15h2.5a1 1 0 0 1 0 2H5a1 1 0 0 0 0 2h2.5"/></svg>
+                        </button>
+                        <button class="md-botao" type="button" data-md="tarefas" title="Lista de tarefas (Ctrl+Shift+9)" aria-label="Lista de tarefas">
+                            <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="6" height="6" rx="1"/><path d="M4.5 7l1 1 2-2"/><rect x="3" y="14" width="6" height="6" rx="1"/><path d="M13 7h8M13 17h8"/></svg>
+                        </button>
+                        <button class="md-botao" type="button" data-md="citacao" title="Citação (Ctrl+Shift+Q)" aria-label="Citação">
+                            <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6v12"/><path d="M9 8h11M9 12h11M9 16h7"/></svg>
+                        </button>
+                    </div>
+                    <div id="modo-visualizacao" class="segmentado" role="group" aria-label="Modo de visualização">
+                        <button type="button" data-modo="editor" aria-pressed="false">Editor</button>
+                        <button type="button" data-modo="dividido" aria-pressed="true">Dividido</button>
+                        <button type="button" data-modo="preview" aria-pressed="false">Preview</button>
+                    </div>
+                </div>
+                <div id="editor-paineis">
+                    <div id="container"></div>
+                    <section id="preview-markdown" aria-label="Preview Markdown">
+                        <article id="preview-conteudo"></article>
+                    </section>
+                </div>
             </div>
-            <article id="preview-conteudo"></article>
-        </section>
+
+            <section id="formatador-json" aria-labelledby="titulo-formatador">
+                <div id="formatador-cabecalho">
+                    <h1 id="titulo-formatador">Formatador JSON</h1>
+                    <div id="formatador-acoes">
+                        <button id="usar-json-atual" type="button">Usar aba atual</button>
+                        <label for="indentacao-json">Indentação</label>
+                        <select id="indentacao-json">
+                            <option value="2">2 espaços</option>
+                            <option value="4">4 espaços</option>
+                            <option value="tab">Tabulação</option>
+                        </select>
+                        <button id="compactar-json" type="button">Compactar</button>
+                        <button id="formatar-json" class="destaque" type="button">Formatar</button>
+                    </div>
+                </div>
+                <div id="json-paineis">
+                    <section class="json-painel" aria-label="JSON de entrada">
+                        <div class="json-painel-cabecalho">
+                            <span>Entrada</span>
+                            <span id="json-situacao"></span>
+                        </div>
+                        <div id="json-entrada" class="json-editor"></div>
+                        <div id="json-erro" role="alert" hidden>
+                            <span id="json-erro-texto"></span>
+                            <button id="ir-erro-json" type="button">Ir para o erro</button>
+                        </div>
+                    </section>
+                    <section class="json-painel" aria-label="Resultado formatado">
+                        <div class="json-painel-cabecalho">
+                            <span>Resultado</span>
+                            <div class="json-painel-acoes">
+                                <button id="copiar-json" type="button" disabled>Copiar</button>
+                                <button id="json-nova-aba" type="button" disabled>Abrir em nova aba</button>
+                            </div>
+                        </div>
+                        <div id="json-saida" class="json-editor"></div>
+                        <div id="json-vazio">
+                            <strong>O resultado aparece aqui</strong>
+                            <span>Cole ou digite um JSON na entrada. Ele é formatado automaticamente quando estiver válido.</span>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section id="atalhos-markdown" aria-labelledby="titulo-atalhos">
+                <div id="atalhos-markdown-cabecalho">
+                    <div>
+                        <h1 id="titulo-atalhos">Atalhos de teclado</h1>
+                        <p>Comandos rápidos para escrever sem sair do teclado. As combinações usam Ctrl no Windows/Linux e Cmd no macOS. Pressione <kbd>F1</kbd> no editor para buscar qualquer comando.</p>
+                    </div>
+                    <button id="voltar-editor-markdown" type="button">Voltar ao editor</button>
+                </div>
+                <div id="atalhos-markdown-nota" role="note">Os atalhos de formatação ficam ativos quando a aba atual está em Markdown. Eles funcionam com múltiplas seleções; sem seleção, os comandos de texto inserem os marcadores e posicionam o cursor entre eles.</div>
+                <div id="lista-atalhos-markdown">
+                    <section class="atalhos-grupo" aria-labelledby="atalhos-texto-titulo">
+                        <h2 id="atalhos-texto-titulo">Texto e links</h2>
+                        <table>
+                            <thead><tr><th scope="col">Atalho</th><th scope="col">Ação</th></tr></thead>
+                            <tbody>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>B</kbd></td><td>Aplicar ou remover <strong>negrito</strong> com <code>**texto**</code>.</td></tr>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>I</kbd></td><td>Aplicar ou remover <em>itálico</em> com <code>*texto*</code>.</td></tr>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd><br><span class="atalho-observacao">ou Alt/Option + Shift + 5</span></td><td>Aplicar ou remover ~~tachado~~.</td></tr>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>`</kbd></td><td>Aplicar ou remover código inline com <code>`codigo`</code>.</td></tr>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>K</kbd></td><td>Transformar a seleção em link e selecionar a URL para preenchimento.</td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+                    <section class="atalhos-grupo" aria-labelledby="atalhos-estrutura-titulo">
+                        <h2 id="atalhos-estrutura-titulo">Estrutura do documento</h2>
+                        <table>
+                            <thead><tr><th scope="col">Atalho</th><th scope="col">Ação</th></tr></thead>
+                            <tbody>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>1</kbd> a <kbd>6</kbd></td><td>Aplicar ou alternar títulos de nível 1 a 6.</td></tr>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>7</kbd></td><td>Alternar lista numerada.</td></tr>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>8</kbd></td><td>Alternar lista com marcadores.</td></tr>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>9</kbd></td><td>Alternar lista de tarefas com <code>- [ ]</code>.</td></tr>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd></td><td>Alternar citação com <code>&gt; </code>.</td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+                    <section class="atalhos-grupo" aria-labelledby="atalhos-editor-titulo">
+                        <h2 id="atalhos-editor-titulo">Editor e arquivos</h2>
+                        <table>
+                            <thead><tr><th scope="col">Atalho</th><th scope="col">Ação</th></tr></thead>
+                            <tbody>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>S</kbd></td><td>Salvar a aba atual.</td></tr>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></td><td>Salvar como.</td></tr>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>O</kbd></td><td>Abrir arquivo.</td></tr>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>N</kbd></td><td>Criar uma nova aba.</td></tr>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>J</kbd></td><td>Abrir o formatador JSON.</td></tr>
+                                <tr><td><kbd>F1</kbd></td><td>Abrir a paleta de comandos.</td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+                </div>
+            </section>
+
+            <div id="falha" role="alert"></div>
+
+            <footer id="rodape">
+                <div id="rodape-estado">
+                    <span id="indicador-documento" aria-hidden="true"></span>
+                    <span id="estado" role="status">Carregando editor...</span>
+                </div>
+                <div id="rodape-info">
+                    <span id="status-cursor" class="rodape-extra"></span>
+                    <span id="status-caracteres"></span>
+                    <label for="linguagem" class="visualmente-oculto">Linguagem do editor</label>
+                    <select id="linguagem" title="Mudar linguagem">
+                        <option value="javascript">JavaScript</option>
+                        <option value="typescript">TypeScript</option>
+                        <option value="html">HTML</option>
+                        <option value="css">CSS</option>
+                        <option value="json">JSON</option>
+                        <option value="markdown">Markdown</option>
+                        <option value="plaintext">Texto puro</option>
+                    </select>
+                    <span class="rodape-extra">UTF-8</span>
+                    <span id="status-eol" class="rodape-extra"></span>
+                </div>
+            </footer>
+        </main>
     </div>
-    <section id="formatador-json" aria-label="Formatador JSON">
-        <div id="formatador-cabecalho">
-            <strong>Formatador JSON</strong>
-            <div id="formatador-acoes">
-                <button id="usar-json-atual" type="button">Usar aba atual</button>
-                <label for="indentacao-json">Indentação</label>
-                <select id="indentacao-json" aria-label="Indentação do JSON">
-                    <option value="2">2 espaços</option>
-                    <option value="4">4 espaços</option>
-                    <option value="tab">Tabulação</option>
-                </select>
-                <button id="formatar-json" class="destaque" type="button">Formatar</button>
-                <button id="compactar-json" type="button">Compactar</button>
-                <button id="copiar-json" type="button">Copiar resultado</button>
+
+    <dialog id="dialogo-confirmacao" aria-labelledby="dialogo-mensagem">
+        <form method="dialog">
+            <p id="dialogo-mensagem"></p>
+            <div id="dialogo-acoes">
+                <button value="cancelar" type="submit">Cancelar</button>
+                <button id="dialogo-confirmar" value="confirmar" class="perigo" type="submit">Confirmar</button>
             </div>
-        </div>
-        <div id="json-paineis">
-            <div class="json-painel">
-                <label for="json-entrada">JSON de entrada</label>
-                <textarea id="json-entrada" spellcheck="false" placeholder="Cole aqui um JSON em uma ou várias linhas"></textarea>
-            </div>
-            <div class="json-painel">
-                <label for="json-saida">Visualização formatada</label>
-                <textarea id="json-saida" readonly spellcheck="false"></textarea>
-            </div>
-        </div>
-        <div id="json-mensagem" role="status"></div>
-    </section>
-    <section id="atalhos-markdown" aria-label="Atalhos de Markdown">
-        <div id="atalhos-markdown-cabecalho">
-            <div>
-                <strong>Atalhos de Markdown</strong>
-                <p>Comandos rápidos para escrever Markdown sem sair do teclado. As combinações usam Ctrl no Windows/Linux e Cmd no macOS.</p>
-            </div>
-            <button id="voltar-editor-markdown" type="button">Voltar ao editor</button>
-        </div>
-        <div id="atalhos-markdown-nota" role="note">Os atalhos de formatação abaixo ficam ativos quando a aba atual está configurada como Markdown. Eles também funcionam com múltiplas seleções; sem seleção, os comandos de texto inserem os marcadores e posicionam o cursor entre eles.</div>
-        <div id="lista-atalhos-markdown">
-            <section class="atalhos-grupo" aria-labelledby="atalhos-texto-titulo">
-                <h2 id="atalhos-texto-titulo">Texto e links</h2>
-                <table>
-                    <thead><tr><th scope="col">Atalho</th><th scope="col">Ação</th></tr></thead>
-                    <tbody>
-                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>B</kbd></td><td>Aplicar ou remover <strong>negrito</strong> com <code>**texto**</code>.</td></tr>
-                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>I</kbd></td><td>Aplicar ou remover <em>itálico</em> com <code>*texto*</code>.</td></tr>
-                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd><br><span class="atalho-observacao">ou Alt/Option + Shift + 5</span></td><td>Aplicar ou remover ~~tachado~~.</td></tr>
-                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>`</kbd></td><td>Aplicar ou remover código inline com <code>`codigo`</code>.</td></tr>
-                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>K</kbd></td><td>Transformar a seleção em link e selecionar a URL para preenchimento.</td></tr>
-                    </tbody>
-                </table>
-            </section>
-            <section class="atalhos-grupo" aria-labelledby="atalhos-estrutura-titulo">
-                <h2 id="atalhos-estrutura-titulo">Estrutura do documento</h2>
-                <table>
-                    <thead><tr><th scope="col">Atalho</th><th scope="col">Ação</th></tr></thead>
-                    <tbody>
-                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>1</kbd> a <kbd>6</kbd></td><td>Aplicar ou alternar títulos de nível 1 a 6.</td></tr>
-                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>7</kbd></td><td>Alternar lista numerada.</td></tr>
-                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>8</kbd></td><td>Alternar lista com marcadores.</td></tr>
-                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>9</kbd></td><td>Alternar lista de tarefas com <code>- [ ]</code>.</td></tr>
-                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd></td><td>Alternar citação com <code>&gt; </code>.</td></tr>
-                    </tbody>
-                </table>
-            </section>
-            <section class="atalhos-grupo" aria-labelledby="atalhos-editor-titulo">
-                <h2 id="atalhos-editor-titulo">Editor e arquivos</h2>
-                <table>
-                    <thead><tr><th scope="col">Atalho</th><th scope="col">Ação</th></tr></thead>
-                    <tbody>
-                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>S</kbd></td><td>Salvar a aba atual.</td></tr>
-                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></td><td>Salvar como.</td></tr>
-                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>O</kbd></td><td>Abrir arquivo.</td></tr>
-                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>N</kbd></td><td>Criar uma nova aba.</td></tr>
-                        <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>J</kbd></td><td>Abrir o formatador JSON.</td></tr>
-                    </tbody>
-                </table>
-            </section>
-        </div>
-    </section>
-    <div id="falha" role="alert"></div>
-    <footer id="rodape">Pronto</footer>
+        </form>
+    </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>

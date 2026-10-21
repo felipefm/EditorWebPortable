@@ -7,57 +7,114 @@
             const nomeArmazenamentoSessao = 'sessao';
             const conteudoInicial = '// Digite seu texto ou código aqui...\n// O conteúdo é salvo neste navegador.';
             const estado = document.getElementById('estado');
-            const arquivoAtualElemento = document.getElementById('arquivo-atual');
-            const rodape = document.getElementById('rodape');
+            const indicadorDocumento = document.getElementById('indicador-documento');
+            const statusCursor = document.getElementById('status-cursor');
+            const statusCaracteres = document.getElementById('status-caracteres');
+            const statusEol = document.getElementById('status-eol');
             const falha = document.getElementById('falha');
+            const areaDocumentos = document.getElementById('area-documentos');
             const editorPaineis = document.getElementById('editor-paineis');
             const container = document.getElementById('container');
-            const previewMarkdown = document.getElementById('preview-markdown');
-            const previewStatus = document.getElementById('preview-status');
             const previewConteudo = document.getElementById('preview-conteudo');
+            const barraMarkdown = document.getElementById('barra-markdown');
+            const botoesModoVisualizacao = Array.from(document.querySelectorAll('#modo-visualizacao button'));
             const abas = document.getElementById('abas');
             const linguagem = document.getElementById('linguagem');
             const botaoAbrir = document.getElementById('abrir');
             const botaoNovo = document.getElementById('novo');
+            const botaoNovaAba = document.getElementById('nova-aba');
             const botaoSalvar = document.getElementById('salvar');
             const botaoSalvarComo = document.getElementById('salvar-como');
+            const botaoAbrirPaleta = document.getElementById('abrir-paleta');
             const seletorArquivo = document.getElementById('seletor-arquivo');
-            const acoesArquivo = document.getElementById('acoes-arquivo');
-            const botaoAbrirFormatadorJson = document.getElementById('abrir-formatador-json');
+            const botaoTrilhoDocumentos = document.getElementById('trilho-documentos');
+            const botaoTrilhoJson = document.getElementById('trilho-json');
+            const botaoTrilhoAtalhos = document.getElementById('trilho-atalhos');
             const botaoUsarJsonAtual = document.getElementById('usar-json-atual');
             const botaoFormatarJson = document.getElementById('formatar-json');
             const botaoCompactarJson = document.getElementById('compactar-json');
             const botaoCopiarJson = document.getElementById('copiar-json');
+            const botaoJsonNovaAba = document.getElementById('json-nova-aba');
             const seletorIndentacaoJson = document.getElementById('indentacao-json');
             const formatadorJson = document.getElementById('formatador-json');
-            const entradaJson = document.getElementById('json-entrada');
-            const saidaJson = document.getElementById('json-saida');
-            const mensagemJson = document.getElementById('json-mensagem');
+            const elementoEntradaJson = document.getElementById('json-entrada');
+            const elementoSaidaJson = document.getElementById('json-saida');
+            const situacaoJson = document.getElementById('json-situacao');
+            const erroJson = document.getElementById('json-erro');
+            const erroJsonTexto = document.getElementById('json-erro-texto');
+            const botaoIrErroJson = document.getElementById('ir-erro-json');
+            const vazioJson = document.getElementById('json-vazio');
+            const botaoSessao = document.getElementById('botao-sessao');
+            const rotuloSessao = document.getElementById('rotulo-sessao');
+            const painelSessao = document.getElementById('painel-sessao');
+            const sessaoAbas = document.getElementById('sessao-abas');
+            const statusNavegador = document.getElementById('status-navegador');
+            const indicadorBackup = document.getElementById('indicador-backup');
             const botaoExportarSessao = document.getElementById('exportar-sessao');
             const botaoImportarSessao = document.getElementById('importar-sessao');
             const botaoConfigurarBackup = document.getElementById('configurar-backup');
             const statusBackup = document.getElementById('status-backup');
             const seletorSessao = document.getElementById('seletor-sessao');
-            const menuOpcoes = document.getElementById('menu-opcoes');
-            const botaoAbrirAtalhosMarkdown = document.getElementById('abrir-atalhos-markdown');
             const botaoVoltarEditorMarkdown = document.getElementById('voltar-editor-markdown');
             const atalhosMarkdown = document.getElementById('atalhos-markdown');
+            const dialogoConfirmacao = document.getElementById('dialogo-confirmacao');
+            const dialogoMensagem = document.getElementById('dialogo-mensagem');
+            const dialogoConfirmar = document.getElementById('dialogo-confirmar');
+            const siglasLinguagem = {
+                javascript: 'JS',
+                typescript: 'TS',
+                html: 'HTML',
+                css: 'CSS',
+                json: '{ }',
+                markdown: 'MD',
+                plaintext: 'TXT'
+            };
             let editor;
+            let editorEntradaJson;
+            let editorSaidaJson;
             let documentos = [];
             let documentoAtual;
             let proximoIdDocumento = 1;
             let visualizacaoAtual = 'editor';
+            let modoPreview = 'dividido';
+            let jsonCompacto = false;
+            let posicaoErroJson;
             let temporizadorSessao;
+            let temporizadorJson;
             let temporizadorBackupAutomatico;
             let manipuladorBackupSessao;
+            let ultimoSalvamentoNavegador;
             let backupAutomaticoEmAndamento = false;
+            let backupPrecisaAutorizacao = false;
             let filaPersistenciaSessao = Promise.resolve();
 
             function mostrarFalha(mensagem) {
                 estado.textContent = 'Falha ao carregar';
                 falha.textContent = mensagem;
                 falha.style.display = 'block';
-                editorPaineis.style.display = 'none';
+                areaDocumentos.style.display = 'none';
+            }
+
+            function formatarHorario(data) {
+                return data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
+
+            function confirmar(mensagem, rotuloConfirmar) {
+                if (!dialogoConfirmacao || typeof dialogoConfirmacao.showModal !== 'function') {
+                    return Promise.resolve(window.confirm(mensagem));
+                }
+                dialogoMensagem.textContent = mensagem;
+                dialogoConfirmar.textContent = rotuloConfirmar || 'Confirmar';
+                dialogoConfirmacao.returnValue = '';
+                dialogoConfirmacao.showModal();
+                return new Promise(function (resolver) {
+                    dialogoConfirmacao.addEventListener('close', function () {
+                        resolver(dialogoConfirmacao.returnValue === 'confirmar');
+                        if (editor && visualizacaoAtual === 'editor') {
+                            editor.focus();
+                        }
+                    }, { once: true });
+                });
             }
 
             function abrirBancoSessao() {
@@ -144,17 +201,37 @@
                     }),
                     documentoAtualId: documentoAtual ? documentoAtual.id : undefined,
                     visualizacaoAtual: visualizacaoAtual,
+                    modoPreview: modoPreview,
                     manipuladorBackupSessao: incluirManipuladores ? manipuladorBackupSessao : undefined,
                     formatadorJson: {
-                        entrada: entradaJson.value,
-                        saida: saidaJson.value,
+                        entrada: editorEntradaJson ? editorEntradaJson.getValue() : '',
+                        saida: editorSaidaJson ? editorSaidaJson.getValue() : '',
                         indentacao: seletorIndentacaoJson.value
                     }
                 };
             }
 
-            function atualizarStatusBackup(mensagem) {
+            function atualizarStatusBackup(mensagem, nivel) {
+                const rotulos = {
+                    ok: 'Backup ativo',
+                    aviso: 'Backup pendente',
+                    neutro: 'Salvo no navegador'
+                };
+                const nivelFinal = rotulos[nivel] ? nivel : 'neutro';
                 statusBackup.textContent = mensagem;
+                indicadorBackup.className = `sessao-indicador${nivelFinal === 'neutro' ? '' : ` ${nivelFinal}`}`;
+                botaoSessao.classList.toggle('ok', nivelFinal === 'ok');
+                botaoSessao.classList.toggle('aviso', nivelFinal === 'aviso');
+                rotuloSessao.textContent = rotulos[nivelFinal];
+                botaoSessao.title = `${rotulos[nivelFinal]}. ${mensagem}`;
+                botaoConfigurarBackup.textContent = !manipuladorBackupSessao ? 'Configurar' : (backupPrecisaAutorizacao ? 'Autorizar' : 'Trocar');
+            }
+
+            function atualizarPainelSessao() {
+                sessaoAbas.textContent = `${documentos.length} ${documentos.length === 1 ? 'aba aberta' : 'abas abertas'}`;
+                statusNavegador.textContent = ultimoSalvamentoNavegador
+                    ? `Salvo automaticamente às ${formatarHorario(ultimoSalvamentoNavegador)}`
+                    : 'Salvo automaticamente';
             }
 
             function salvarSessaoLocalmente() {
@@ -162,6 +239,10 @@
                     localStorage.setItem(chaveSessaoLocal, JSON.stringify(criarInstantaneoSessao(false)));
                 } catch (erro) {
                     return false;
+                }
+                ultimoSalvamentoNavegador = new Date();
+                if (!painelSessao.hidden) {
+                    atualizarPainelSessao();
                 }
                 return true;
             }
@@ -312,55 +393,91 @@
                 return nome;
             }
 
+            function atualizarRodape() {
+                const emDocumento = visualizacaoAtual === 'editor';
+                linguagem.hidden = !emDocumento;
+                indicadorDocumento.hidden = !emDocumento;
+                document.querySelectorAll('.rodape-extra').forEach(function (elemento) {
+                    elemento.hidden = !emDocumento;
+                });
+                if (visualizacaoAtual === 'formatador-json') {
+                    const textoJson = editorEntradaJson ? editorEntradaJson.getValue() : '';
+                    indicadorDocumento.classList.remove('modificado');
+                    statusCaracteres.textContent = `${textoJson.length} caracteres`;
+                    statusCursor.textContent = '';
+                    statusEol.textContent = '';
+                    return;
+                }
+                const modelo = documentoAtual ? documentoAtual.modelo : undefined;
+                indicadorDocumento.classList.toggle('modificado', Boolean(documentoAtual && documentoAtual.modificacoesPendentes));
+                statusCaracteres.textContent = `${modelo ? modelo.getValueLength() : 0} caracteres`;
+                statusEol.textContent = modelo && modelo.getEOL() === '\r\n' ? 'CRLF' : 'LF';
+                const posicao = editor && editor.getPosition();
+                statusCursor.textContent = posicao ? `Ln ${posicao.lineNumber}, Col ${posicao.column}` : '';
+            }
+
             function atualizarEstado(mensagem) {
-                const quantidadeCaracteres = visualizacaoAtual === 'formatador-json'
-                    ? entradaJson.value.length
-                    : (documentoAtual ? documentoAtual.modelo.getValue().length : 0);
                 estado.textContent = mensagem;
-                rodape.textContent = `${mensagem} | ${quantidadeCaracteres} caracteres`;
+                atualizarRodape();
             }
 
             function atualizarCabecalho() {
                 if (visualizacaoAtual === 'formatador-json') {
-                    arquivoAtualElemento.textContent = 'Formatador JSON';
-                    arquivoAtualElemento.title = 'Ferramenta de formatação JSON';
-                    document.title = 'Formatador JSON - Meu Editor Web Portable';
+                    document.title = 'Formatador JSON - Editor Portable';
                     return;
                 }
                 if (visualizacaoAtual === 'atalhos-markdown') {
-                    arquivoAtualElemento.textContent = 'Atalhos de Markdown';
-                    arquivoAtualElemento.title = 'Referência de atalhos de Markdown';
-                    document.title = 'Atalhos de Markdown - Meu Editor Web Portable';
+                    document.title = 'Atalhos de teclado - Editor Portable';
                     return;
                 }
                 const nome = documentoAtual ? documentoAtual.nome : '';
-                const indicador = documentoAtual && documentoAtual.modificacoesPendentes ? ' *' : '';
-                const nomeVisivel = nome || 'Sem arquivo';
-                arquivoAtualElemento.textContent = `${nomeVisivel}${indicador}`;
-                arquivoAtualElemento.title = indicador ? `${nomeVisivel} - alterações não salvas` : nomeVisivel;
-                document.title = `${indicador ? '* ' : ''}${nome ? `${nome} - ` : ''}Meu Editor Web Portable`;
+                const indicador = documentoAtual && documentoAtual.modificacoesPendentes ? '● ' : '';
+                document.title = `${indicador}${nome ? `${nome} - ` : ''}Editor Portable`;
+            }
+
+            function atualizarTrilho() {
+                [
+                    [botaoTrilhoDocumentos, 'editor'],
+                    [botaoTrilhoJson, 'formatador-json'],
+                    [botaoTrilhoAtalhos, 'atalhos-markdown']
+                ].forEach(function ([botao, visualizacao]) {
+                    const ativo = visualizacaoAtual === visualizacao;
+                    botao.classList.toggle('ativo', ativo);
+                    if (ativo) {
+                        botao.setAttribute('aria-current', 'page');
+                    } else {
+                        botao.removeAttribute('aria-current');
+                    }
+                });
             }
 
             function atualizarAbas() {
                 abas.textContent = '';
                 documentos.forEach(function (documento) {
                     const aba = document.createElement('div');
+                    const sigla = document.createElement('span');
                     const botaoNome = document.createElement('button');
                     const botaoFechar = document.createElement('button');
-                    const nome = `${documento.nome}${documento.modificacoesPendentes ? ' *' : ''}`;
+                    const idLinguagem = documento.modelo.getLanguageId();
+                    const ehAtual = documento === documentoAtual && visualizacaoAtual === 'editor';
 
-                    aba.className = `aba${documento === documentoAtual ? ' ativa' : ''}`;
-                    aba.setAttribute('role', 'tab');
-                    aba.setAttribute('aria-selected', documento === documentoAtual ? 'true' : 'false');
+                    aba.className = `aba${ehAtual ? ' ativa' : ''}${documento.modificacoesPendentes ? ' modificada' : ''}`;
+                    sigla.className = `aba-linguagem ${idLinguagem}`;
+                    sigla.textContent = siglasLinguagem[idLinguagem] || 'TXT';
+                    sigla.setAttribute('aria-hidden', 'true');
                     botaoNome.className = 'aba-nome';
                     botaoNome.type = 'button';
-                    botaoNome.textContent = nome;
+                    botaoNome.textContent = documento.nome;
+                    botaoNome.setAttribute('role', 'tab');
+                    botaoNome.setAttribute('aria-selected', ehAtual ? 'true' : 'false');
                     botaoNome.title = documento.modificacoesPendentes ? `${documento.nome} - alterações não salvas` : documento.nome;
                     botaoFechar.className = 'fechar-aba';
                     botaoFechar.type = 'button';
-                    botaoFechar.textContent = 'x';
-                    botaoFechar.title = `Fechar ${documento.nome}`;
-                    botaoFechar.setAttribute('aria-label', `Fechar ${documento.nome}`);
+                    botaoFechar.innerHTML = '<svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+                    botaoFechar.title = documento.modificacoesPendentes ? 'Alterações não salvas. Clique para fechar.' : `Fechar ${documento.nome}`;
+                    botaoFechar.setAttribute('aria-label', documento.modificacoesPendentes
+                        ? `Fechar ${documento.nome} (alterações não salvas)`
+                        : `Fechar ${documento.nome}`);
 
                     aba.addEventListener('mousedown', function (evento) {
                         if (evento.button === 1) {
@@ -376,115 +493,107 @@
                         fecharDocumento(documento);
                     });
 
+                    aba.appendChild(sigla);
                     aba.appendChild(botaoNome);
                     aba.appendChild(botaoFechar);
                     abas.appendChild(aba);
                 });
-
-                const abaFerramenta = document.createElement('div');
-                const botaoFerramenta = document.createElement('button');
-                abaFerramenta.className = `aba aba-ferramenta${visualizacaoAtual === 'formatador-json' ? ' ativa' : ''}`;
-                abaFerramenta.setAttribute('role', 'tab');
-                abaFerramenta.setAttribute('aria-selected', visualizacaoAtual === 'formatador-json' ? 'true' : 'false');
-                botaoFerramenta.className = 'aba-nome';
-                botaoFerramenta.type = 'button';
-                botaoFerramenta.textContent = 'Formatador JSON';
-                botaoFerramenta.title = 'Abrir formatador JSON';
-                botaoFerramenta.addEventListener('click', ativarFormatadorJson);
-                abaFerramenta.appendChild(botaoFerramenta);
-                abas.appendChild(abaFerramenta);
-
-                const abaAtalhos = document.createElement('div');
-                const botaoAtalhos = document.createElement('button');
-                abaAtalhos.className = `aba aba-ferramenta${visualizacaoAtual === 'atalhos-markdown' ? ' ativa' : ''}`;
-                abaAtalhos.setAttribute('role', 'tab');
-                abaAtalhos.setAttribute('aria-selected', visualizacaoAtual === 'atalhos-markdown' ? 'true' : 'false');
-                botaoAtalhos.className = 'aba-nome';
-                botaoAtalhos.type = 'button';
-                botaoAtalhos.textContent = 'Atalhos Markdown';
-                botaoAtalhos.title = 'Abrir atalhos de Markdown';
-                botaoAtalhos.addEventListener('click', ativarAtalhosMarkdown);
-                abaAtalhos.appendChild(botaoAtalhos);
-                abas.appendChild(abaAtalhos);
+                const abaAtiva = abas.querySelector('.aba.ativa');
+                if (abaAtiva) {
+                    const esquerda = abaAtiva.offsetLeft;
+                    const direita = esquerda + abaAtiva.offsetWidth;
+                    if (esquerda < abas.scrollLeft) {
+                        abas.scrollLeft = esquerda;
+                    } else if (direita > abas.scrollLeft + abas.clientWidth) {
+                        abas.scrollLeft = direita - abas.clientWidth;
+                    }
+                }
             }
 
             function atualizarInterfaceDocumento(mensagem) {
                 atualizarCabecalho();
                 atualizarAbas();
+                atualizarTrilho();
                 atualizarPreviewMarkdown();
                 if (mensagem) {
                     atualizarEstado(mensagem);
+                } else {
+                    atualizarRodape();
                 }
             }
 
             function marcarModificacoes(documento, pendentes) {
+                if (documento.modificacoesPendentes === pendentes) {
+                    return;
+                }
                 documento.modificacoesPendentes = pendentes;
                 atualizarCabecalho();
                 atualizarAbas();
+                atualizarRodape();
+            }
+
+            function definirVisualizacao(visualizacao) {
+                visualizacaoAtual = visualizacao;
+                areaDocumentos.hidden = visualizacao !== 'editor';
+                formatadorJson.classList.toggle('visivel', visualizacao === 'formatador-json');
+                atalhosMarkdown.classList.toggle('visivel', visualizacao === 'atalhos-markdown');
+                atualizarCabecalho();
+                atualizarAbas();
+                atualizarTrilho();
             }
 
             function mostrarEditor() {
-                visualizacaoAtual = 'editor';
-                acoesArquivo.hidden = false;
-                editorPaineis.style.display = 'grid';
-                formatadorJson.classList.remove('visivel');
-                atalhosMarkdown.classList.remove('visivel');
-                container.style.display = 'block';
+                definirVisualizacao('editor');
                 atualizarPreviewMarkdown();
             }
 
             function ativarFormatadorJson() {
-                visualizacaoAtual = 'formatador-json';
-                acoesArquivo.hidden = true;
-                editorPaineis.style.display = 'none';
-                container.style.display = 'none';
-                formatadorJson.classList.add('visivel');
-                atalhosMarkdown.classList.remove('visivel');
-                if (!entradaJson.value.trim() && documentoAtual) {
-                    entradaJson.value = documentoAtual.modelo.getValue();
+                definirVisualizacao('formatador-json');
+                if (editorEntradaJson && !editorEntradaJson.getValue().trim() && documentoAtual && documentoAtual.modelo.getLanguageId() === 'json') {
+                    editorEntradaJson.setValue(documentoAtual.modelo.getValue());
                 }
-                atualizarCabecalho();
-                atualizarAbas();
                 atualizarEstado('Formatador JSON');
                 agendarPersistenciaSessao();
-                entradaJson.focus();
+                if (editorEntradaJson) {
+                    editorEntradaJson.layout();
+                    editorSaidaJson.layout();
+                    editorEntradaJson.focus();
+                }
             }
 
             function ativarAtalhosMarkdown() {
-                visualizacaoAtual = 'atalhos-markdown';
-                acoesArquivo.hidden = true;
-                editorPaineis.style.display = 'none';
-                container.style.display = 'none';
-                formatadorJson.classList.remove('visivel');
-                atalhosMarkdown.classList.add('visivel');
-                menuOpcoes.open = false;
-                atualizarCabecalho();
-                atualizarAbas();
-                atualizarEstado('Atalhos de Markdown');
+                definirVisualizacao('atalhos-markdown');
+                atualizarEstado('Atalhos de teclado');
                 agendarPersistenciaSessao();
                 botaoVoltarEditorMarkdown.focus();
             }
 
+            function aplicarModoPreview(modo) {
+                modoPreview = ['editor', 'dividido', 'preview'].includes(modo) ? modo : 'dividido';
+                botoesModoVisualizacao.forEach(function (botao) {
+                    botao.setAttribute('aria-pressed', botao.dataset.modo === modoPreview ? 'true' : 'false');
+                });
+                atualizarPreviewMarkdown();
+            }
+
             function atualizarPreviewMarkdown() {
-                const deveExibir = visualizacaoAtual === 'editor'
-                    && Boolean(documentoAtual)
-                    && documentoAtual.modelo.getLanguageId() === 'markdown';
-                editorPaineis.classList.toggle('preview-visivel', deveExibir);
-                previewMarkdown.classList.toggle('visivel', deveExibir);
-                if (!deveExibir) {
+                const ehMarkdown = Boolean(documentoAtual) && documentoAtual.modelo.getLanguageId() === 'markdown';
+                const modo = ehMarkdown ? modoPreview : 'editor';
+                barraMarkdown.hidden = !ehMarkdown;
+                editorPaineis.classList.toggle('modo-dividido', modo === 'dividido');
+                editorPaineis.classList.toggle('modo-preview', modo === 'preview');
+                if (!ehMarkdown || modo === 'editor' || visualizacaoAtual !== 'editor') {
                     return;
                 }
 
                 const conteudo = documentoAtual.modelo.getValue();
                 if (!conteudo.trim()) {
                     previewConteudo.innerHTML = '<p id="preview-vazio">Comece a escrever Markdown para visualizar o resultado aqui.</p>';
-                    previewStatus.textContent = 'Aguardando conteúdo';
                     return;
                 }
 
                 if (!window.marked || typeof window.marked.parse !== 'function' || !window.DOMPurify) {
                     previewConteudo.textContent = conteudo;
-                    previewStatus.textContent = 'Preview simples';
                     return;
                 }
 
@@ -495,10 +604,8 @@
                         link.target = '_blank';
                         link.rel = 'noopener noreferrer';
                     });
-                    previewStatus.textContent = 'Ao vivo';
                 } catch (erro) {
                     previewConteudo.textContent = conteudo;
-                    previewStatus.textContent = 'Preview simples';
                 }
             }
 
@@ -513,61 +620,133 @@
                 return seletorIndentacaoJson.value === 'tab' ? '\t' : Number(seletorIndentacaoJson.value);
             }
 
-            function formatarJson(compacto) {
-                const texto = entradaJson.value.trim();
-                if (!texto) {
-                    saidaJson.value = '';
-                    mensagemJson.textContent = 'Nenhum JSON para formatar.';
-                    atualizarEstado('Aguardando JSON');
+            function localizarErroJson(erro, texto) {
+                const mensagem = erro && erro.message ? erro.message : '';
+                const linhaColuna = mensagem.match(/line (\d+) column (\d+)/i);
+                if (linhaColuna) {
+                    return { lineNumber: Number(linhaColuna[1]), column: Number(linhaColuna[2]) };
+                }
+                const posicao = mensagem.match(/position (\d+)/i);
+                if (posicao) {
+                    return editorEntradaJson.getModel().getPositionAt(Number(posicao[1]));
+                }
+                if (/unexpected end/i.test(mensagem)) {
+                    return editorEntradaJson.getModel().getPositionAt(texto.length);
+                }
+                return undefined;
+            }
+
+            function definirResultadoJson(valor) {
+                editorSaidaJson.setValue(valor);
+                vazioJson.hidden = Boolean(valor);
+                botaoCopiarJson.disabled = !valor;
+                botaoJsonNovaAba.disabled = !valor;
+            }
+
+            function formatarJson(compacto, silencioso) {
+                if (!editorEntradaJson) {
+                    return false;
+                }
+                if (typeof compacto === 'boolean') {
+                    jsonCompacto = compacto;
+                }
+                const texto = editorEntradaJson.getValue();
+                posicaoErroJson = undefined;
+                erroJson.hidden = true;
+
+                if (!texto.trim()) {
+                    definirResultadoJson('');
+                    situacaoJson.textContent = '';
+                    situacaoJson.className = '';
+                    if (!silencioso) {
+                        atualizarEstado('Aguardando JSON');
+                    }
                     return false;
                 }
 
                 try {
                     const valor = JSON.parse(texto);
-                    saidaJson.value = JSON.stringify(valor, null, compacto ? 0 : obterIndentacaoJson());
-                    mensagemJson.textContent = compacto ? 'JSON válido e compactado.' : 'JSON válido e formatado.';
+                    definirResultadoJson(JSON.stringify(valor, null, jsonCompacto ? 0 : obterIndentacaoJson()));
+                    situacaoJson.textContent = jsonCompacto ? 'Válido · compactado' : 'Válido';
+                    situacaoJson.className = 'ok';
                     agendarPersistenciaSessao();
-                    atualizarEstado(compacto ? 'JSON compactado' : 'JSON formatado');
+                    if (!silencioso) {
+                        atualizarEstado(jsonCompacto ? 'JSON compactado' : 'JSON formatado');
+                    }
                     return true;
                 } catch (erro) {
-                    saidaJson.value = '';
-                    mensagemJson.textContent = `JSON inválido: ${erro.message}`;
+                    posicaoErroJson = localizarErroJson(erro, texto);
+                    definirResultadoJson('');
+                    situacaoJson.textContent = '1 erro';
+                    situacaoJson.className = 'erro';
+                    const mensagemErro = erro.message
+                        .replace(/\s*\(line \d+ column \d+\)/i, '')
+                        .replace(/\s*in JSON at position \d+/i, '');
+                    erroJsonTexto.textContent = posicaoErroJson
+                        ? `Linha ${posicaoErroJson.lineNumber}, coluna ${posicaoErroJson.column}: ${mensagemErro}`
+                        : `JSON inválido: ${erro.message}`;
+                    botaoIrErroJson.hidden = !posicaoErroJson;
+                    erroJson.hidden = false;
                     agendarPersistenciaSessao();
-                    atualizarEstado('JSON inválido');
+                    if (!silencioso || visualizacaoAtual === 'formatador-json') {
+                        atualizarEstado('JSON inválido');
+                    }
                     return false;
                 }
             }
 
+            function irParaErroJson() {
+                if (!posicaoErroJson) {
+                    return;
+                }
+                editorEntradaJson.setPosition(posicaoErroJson);
+                editorEntradaJson.revealPositionInCenter(posicaoErroJson);
+                editorEntradaJson.focus();
+            }
+
             async function copiarResultadoJson() {
-                if (!saidaJson.value) {
-                    mensagemJson.textContent = 'Formate um JSON antes de copiar.';
+                const resultado = editorSaidaJson.getValue();
+                if (!resultado) {
                     return;
                 }
 
                 try {
                     if (navigator.clipboard && window.isSecureContext) {
-                        await navigator.clipboard.writeText(saidaJson.value);
+                        await navigator.clipboard.writeText(resultado);
                     } else {
-                        saidaJson.focus();
-                        saidaJson.select();
+                        const areaTemporaria = document.createElement('textarea');
+                        areaTemporaria.value = resultado;
+                        document.body.appendChild(areaTemporaria);
+                        areaTemporaria.select();
                         document.execCommand('copy');
-                        saidaJson.setSelectionRange(0, 0);
+                        areaTemporaria.remove();
                     }
-                    mensagemJson.textContent = 'Resultado copiado.';
                     atualizarEstado('Resultado copiado');
                 } catch (erro) {
-                    mensagemJson.textContent = 'Não foi possível copiar o resultado.';
+                    atualizarEstado('Não foi possível copiar o resultado');
                 }
+            }
+
+            function abrirResultadoJsonEmNovaAba() {
+                const resultado = editorSaidaJson.getValue();
+                if (!resultado) {
+                    return;
+                }
+                const documento = criarDocumento(obterNomeSemTitulo(), resultado, undefined, true, 'json');
+                documento.modificacoesPendentes = true;
+                documentos.push(documento);
+                ativarDocumento(documento, 'JSON aberto em nova aba');
+                agendarPersistenciaSessao();
             }
 
             function usarDocumentoAtualNoJson() {
                 if (!documentoAtual) {
                     return;
                 }
-                entradaJson.value = documentoAtual.modelo.getValue();
-                formatarJson(false);
+                editorEntradaJson.setValue(documentoAtual.modelo.getValue());
+                formatarJson();
                 agendarPersistenciaSessao();
-                entradaJson.focus();
+                editorEntradaJson.focus();
             }
 
             function agendarRascunho(documento) {
@@ -701,9 +880,15 @@
                 return true;
             }
 
+            function descreverBackupAtivo(data) {
+                const nome = manipuladorBackupSessao && manipuladorBackupSessao.name ? manipuladorBackupSessao.name : 'arquivo escolhido';
+                const horario = data ? ` · último às ${formatarHorario(data)}` : '';
+                return `${nome} · a cada 30 s${horario}`;
+            }
+
             async function configurarBackupAutomatico() {
                 if (typeof window.showSaveFilePicker !== 'function') {
-                    atualizarStatusBackup('Backup automático no navegador ativo. Este navegador não permite arquivo automático.');
+                    atualizarStatusBackup('Este navegador não permite backup em arquivo. A sessão fica salva só no navegador; use "Exportar cópia".', 'neutro');
                     atualizarEstado('Backup em arquivo indisponível neste navegador');
                     return false;
                 }
@@ -717,11 +902,12 @@
                         }]
                     });
                     if (!await gravarSessaoNoArquivo(manipulador, true)) {
-                        atualizarStatusBackup('Permissão para o arquivo de backup negada.');
+                        atualizarStatusBackup('Permissão para o arquivo de backup negada.', 'aviso');
                         return false;
                     }
                     manipuladorBackupSessao = manipulador;
-                    atualizarStatusBackup('Backup automático em arquivo ativo (a cada 30 s).');
+                    backupPrecisaAutorizacao = false;
+                    atualizarStatusBackup(descreverBackupAtivo(new Date()), 'ok');
                     agendarPersistenciaSessao();
                     atualizarEstado('Backup automático configurado');
                     return true;
@@ -729,33 +915,32 @@
                     if (erro && erro.name === 'AbortError') {
                         return undefined;
                     }
-                    atualizarStatusBackup('Não foi possível configurar o arquivo de backup.');
+                    atualizarStatusBackup('Não foi possível configurar o arquivo de backup.', 'aviso');
                     atualizarEstado(`Falha no backup: ${erro && erro.message ? erro.message : 'erro desconhecido'}`);
                     return false;
                 }
             }
 
-            async function exportarSessao() {
-                if (manipuladorBackupSessao) {
+            async function acionarBackupEmArquivo() {
+                if (manipuladorBackupSessao && backupPrecisaAutorizacao) {
                     try {
                         if (await gravarSessaoNoArquivo(manipuladorBackupSessao, true)) {
-                            atualizarStatusBackup('Backup automático em arquivo ativo (a cada 30 s).');
-                            atualizarEstado('Sessão exportada');
+                            backupPrecisaAutorizacao = false;
+                            atualizarStatusBackup(descreverBackupAtivo(new Date()), 'ok');
+                            atualizarEstado('Backup em arquivo autorizado');
                             return;
                         }
                     } catch (erro) {
                         manipuladorBackupSessao = undefined;
                     }
                 }
+                await configurarBackupAutomatico();
+            }
 
-                const backupConfigurado = await configurarBackupAutomatico();
-                if (backupConfigurado !== false) {
-                    return;
-                }
-
+            function exportarSessao() {
                 const sessao = criarInstantaneoSessao(false);
                 baixarTexto(JSON.stringify(sessao, null, 2), 'meu-editor-sessao.json', 'application/json;charset=utf-8');
-                atualizarEstado('Sessão exportada por download');
+                atualizarEstado('Cópia da sessão baixada');
             }
 
             async function exportarSessaoAutomaticamente() {
@@ -768,12 +953,15 @@
                     persistirSessaoIndexedDb();
                     if (manipuladorBackupSessao) {
                         const gravou = await gravarSessaoNoArquivo(manipuladorBackupSessao, false);
-                        atualizarStatusBackup(gravou
-                            ? 'Backup automático em arquivo ativo (último: agora).'
-                            : 'Sessão salva no navegador; autorize novamente o arquivo de backup.');
+                        backupPrecisaAutorizacao = !gravou;
+                        if (gravou) {
+                            atualizarStatusBackup(descreverBackupAtivo(new Date()), 'ok');
+                        } else {
+                            atualizarStatusBackup('O navegador pediu nova autorização para gravar o arquivo de backup. A sessão continua salva no navegador.', 'aviso');
+                        }
                     }
                 } catch (erro) {
-                    atualizarStatusBackup('Sessão salva no navegador; backup em arquivo indisponível.');
+                    atualizarStatusBackup('Backup em arquivo indisponível. A sessão continua salva no navegador.', 'aviso');
                 } finally {
                     backupAutomaticoEmAndamento = false;
                 }
@@ -810,6 +998,7 @@
                 linguagem.value = obterLinguagemDisponivel(documentoAtual.modelo.getLanguageId());
                 editor.setModel(documentoAtual.modelo);
                 restaurarEstadoFormatador(sessao);
+                aplicarModoPreview(sessao.modoPreview);
                 if (sessao.visualizacaoAtual === 'formatador-json') {
                     ativarFormatadorJson();
                 } else if (sessao.visualizacaoAtual === 'atalhos-markdown') {
@@ -828,7 +1017,7 @@
                     if (!validarSessaoImportada(sessao)) {
                         throw new Error('O arquivo não contém uma sessão válida.');
                     }
-                    if (possuiAlteracoesPendentes() && !window.confirm('Existem alterações não salvas. Substituir a sessão atual?')) {
+                    if (possuiAlteracoesPendentes() && !await confirmar('Existem alterações não salvas. Substituir a sessão atual pela importada?', 'Substituir')) {
                         return;
                     }
                     aplicarSessao(sessao);
@@ -927,8 +1116,11 @@
                 agendarPersistenciaSessao();
             }
 
-            function fecharDocumento(documento) {
-                if (documento.modificacoesPendentes && !window.confirm(`Existem alterações não salvas em ${documento.nome}. Fechar mesmo assim?`)) {
+            async function fecharDocumento(documento) {
+                if (documento.modificacoesPendentes && !await confirmar(`${documento.nome} tem alterações não salvas. Fechar mesmo assim?`, 'Fechar sem salvar')) {
+                    return;
+                }
+                if (!documentos.includes(documento)) {
                     return;
                 }
                 const indice = documentos.indexOf(documento);
@@ -999,11 +1191,11 @@
                 if (!sessao || !sessao.formatadorJson) {
                     return;
                 }
-                entradaJson.value = sessao.formatadorJson.entrada || '';
-                saidaJson.value = sessao.formatadorJson.saida || '';
                 if (['2', '4', 'tab'].includes(sessao.formatadorJson.indentacao)) {
                     seletorIndentacaoJson.value = sessao.formatadorJson.indentacao;
                 }
+                editorEntradaJson.setValue(sessao.formatadorJson.entrada || '');
+                formatarJson(false, true);
             }
 
             function estaEmMarkdown() {
@@ -1319,14 +1511,31 @@
                 const sessao = await obterSessaoPersistida();
                 manipuladorBackupSessao = sessao && sessao.manipuladorBackupSessao;
                 if (manipuladorBackupSessao) {
-                    atualizarStatusBackup('Backup em arquivo configurado; verificando permissão.');
+                    atualizarStatusBackup('Backup em arquivo configurado; verificando permissão.', 'neutro');
+                } else if (typeof window.showSaveFilePicker !== 'function') {
+                    atualizarStatusBackup('Este navegador não permite backup automático em arquivo. Use "Exportar cópia" para guardar a sessão.', 'neutro');
+                    botaoConfigurarBackup.hidden = true;
                 }
+                monaco.editor.defineTheme('editor-portable', {
+                    base: 'vs-dark',
+                    inherit: true,
+                    rules: [],
+                    colors: {
+                        'editor.background': '#16181c',
+                        'editor.lineHighlightBackground': '#1f232a',
+                        'editorLineNumber.foreground': '#565d68',
+                        'editorLineNumber.activeForeground': '#c9ced6',
+                        'editorWidget.background': '#1f2329',
+                        'editorWidget.border': '#353b45',
+                        'quickInput.background': '#1f2329'
+                    }
+                });
                 restaurarDocumentos(sessao);
                 linguagem.value = obterLinguagemDisponivel(documentoAtual.modelo.getLanguageId());
                 editor = window.editor = monaco.editor.create(container, {
                     model: documentoAtual.modelo,
                     language: linguagem.value,
-                    theme: 'vs-dark',
+                    theme: 'editor-portable',
                     automaticLayout: true,
                     minimap: { enabled: false },
                     fontSize: 14,
@@ -1334,6 +1543,26 @@
                     wordWrap: 'on',
                     padding: { top: 12, bottom: 12 }
                 });
+                const opcoesEditorJson = {
+                    language: 'json',
+                    theme: 'editor-portable',
+                    automaticLayout: true,
+                    minimap: { enabled: false },
+                    fontSize: 13,
+                    tabSize: 2,
+                    scrollBeyondLastLine: false,
+                    padding: { top: 10, bottom: 10 }
+                };
+                editorEntradaJson = monaco.editor.create(elementoEntradaJson, {
+                    ...opcoesEditorJson,
+                    model: monaco.editor.createModel('', 'json', monaco.Uri.parse('inmemory://editor/json-entrada.json'))
+                });
+                editorSaidaJson = monaco.editor.create(elementoSaidaJson, {
+                    ...opcoesEditorJson,
+                    readOnly: true,
+                    model: monaco.editor.createModel('', 'json', monaco.Uri.parse('inmemory://editor/json-saida.json'))
+                });
+                aplicarModoPreview(sessao && sessao.modoPreview);
                 restaurarEstadoFormatador(sessao);
                 if (sessao && sessao.visualizacaoAtual === 'formatador-json') {
                     ativarFormatadorJson();
@@ -1364,8 +1593,8 @@
                 });
                 editor.addAction({
                     id: 'novo-conteudo',
-                    label: 'Criar novo conteúdo',
-                    keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyN],
+                    label: 'Criar novo documento',
+                    keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyN],
                     run: criarNovoConteudo
                 });
                 editor.addAction({
@@ -1374,21 +1603,122 @@
                     keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyJ],
                     run: ativarFormatadorJson
                 });
-                registrarAtalhosMarkdown();
-                editor.onDidChangeCursorPosition(function (evento) {
-                    rodape.textContent = `Linha ${evento.position.lineNumber}, coluna ${evento.position.column} | ${editor.getValue().length} caracteres`;
+                editor.addAction({
+                    id: 'abrir-atalhos',
+                    label: 'Mostrar atalhos de teclado',
+                    run: ativarAtalhosMarkdown
                 });
+                editor.addAction({
+                    id: 'abrir-painel-sessao',
+                    label: 'Sessão e backup',
+                    run: function () {
+                        alternarPainelSessao(true);
+                    }
+                });
+                editor.addAction({
+                    id: 'exportar-sessao',
+                    label: 'Exportar cópia da sessão',
+                    run: exportarSessao
+                });
+                [['editor', 'só editor'], ['dividido', 'editor e preview'], ['preview', 'só preview']].forEach(function ([modo, rotulo]) {
+                    editor.addAction({
+                        id: `modo-preview-${modo}`,
+                        label: `Markdown: visualizar ${rotulo}`,
+                        precondition: 'editorLangId == markdown',
+                        run: function () {
+                            aplicarModoPreview(modo);
+                            agendarPersistenciaSessao();
+                        }
+                    });
+                });
+                registrarAtalhosMarkdown();
+
+                const acoesMarkdown = {
+                    negrito: function () { aplicarMarcacaoMarkdown('**', '**', 'Negrito aplicado'); },
+                    italico: function () { aplicarMarcacaoMarkdown('*', '*', 'Itálico aplicado'); },
+                    tachado: function () { aplicarMarcacaoMarkdown('~~', '~~', 'Tachado aplicado'); },
+                    codigo: function () { aplicarMarcacaoMarkdown('`', '`', 'Código inline aplicado'); },
+                    link: aplicarLinkMarkdown,
+                    h1: function () { aplicarCabecalhoMarkdown(1); },
+                    h2: function () { aplicarCabecalhoMarkdown(2); },
+                    h3: function () { aplicarCabecalhoMarkdown(3); },
+                    lista: function () { editarLinhasMarkdown(transformarListaMarcadoresMarkdown, 'Lista com marcadores alternada'); },
+                    numerada: function () { editarLinhasMarkdown(transformarListaNumeradaMarkdown, 'Lista numerada alternada'); },
+                    tarefas: function () { editarLinhasMarkdown(transformarListaTarefasMarkdown, 'Lista de tarefas alternada'); },
+                    citacao: function () { editarLinhasMarkdown(transformarCitacaoMarkdown, 'Citação alternada'); }
+                };
+                barraMarkdown.querySelectorAll('[data-md]').forEach(function (botao) {
+                    botao.addEventListener('mousedown', function (evento) {
+                        evento.preventDefault();
+                    });
+                    botao.addEventListener('click', function () {
+                        if (modoPreview === 'preview') {
+                            aplicarModoPreview('dividido');
+                        }
+                        editor.focus();
+                        acoesMarkdown[botao.dataset.md]();
+                    });
+                });
+                botoesModoVisualizacao.forEach(function (botao) {
+                    botao.addEventListener('click', function () {
+                        aplicarModoPreview(botao.dataset.modo);
+                        agendarPersistenciaSessao();
+                        if (modoPreview !== 'preview') {
+                            editor.focus();
+                        }
+                    });
+                });
+
+                editor.onDidChangeCursorPosition(atualizarRodape);
                 linguagem.addEventListener('change', function () {
                     if (!documentoAtual) {
                         return;
                     }
                     monaco.editor.setModelLanguage(documentoAtual.modelo, linguagem.value);
-                    atualizarPreviewMarkdown();
-                    atualizarEstado('Linguagem alterada');
+                    atualizarInterfaceDocumento('Linguagem alterada');
+                    agendarPersistenciaSessao();
                     editor.focus();
+                });
+
+                function alternarPainelSessao(abrir) {
+                    const deveAbrir = typeof abrir === 'boolean' ? abrir : painelSessao.hidden;
+                    painelSessao.hidden = !deveAbrir;
+                    botaoSessao.setAttribute('aria-expanded', deveAbrir ? 'true' : 'false');
+                    if (deveAbrir) {
+                        atualizarPainelSessao();
+                        botaoConfigurarBackup.focus();
+                    }
+                }
+
+                botaoSessao.addEventListener('click', function (evento) {
+                    evento.stopPropagation();
+                    alternarPainelSessao();
+                });
+                painelSessao.addEventListener('click', function (evento) {
+                    evento.stopPropagation();
+                });
+                document.addEventListener('click', function () {
+                    if (!painelSessao.hidden) {
+                        alternarPainelSessao(false);
+                    }
+                });
+                document.addEventListener('keydown', function (evento) {
+                    if (evento.key === 'Escape' && !painelSessao.hidden) {
+                        alternarPainelSessao(false);
+                        botaoSessao.focus();
+                    }
+                });
+
+                botaoAbrirPaleta.addEventListener('click', function () {
+                    if (visualizacaoAtual !== 'editor') {
+                        mostrarEditor();
+                    }
+                    editor.focus();
+                    editor.trigger('botao-paleta', 'editor.action.quickCommand', null);
                 });
                 botaoAbrir.addEventListener('click', abrirArquivo);
                 botaoNovo.addEventListener('click', criarNovoConteudo);
+                botaoNovaAba.addEventListener('click', criarNovoConteudo);
                 botaoSalvar.addEventListener('click', salvarArquivo);
                 botaoSalvarComo.addEventListener('click', salvarComoArquivo);
                 botaoExportarSessao.addEventListener('click', exportarSessao);
@@ -1396,9 +1726,10 @@
                     seletorSessao.value = '';
                     seletorSessao.click();
                 });
-                botaoConfigurarBackup.addEventListener('click', configurarBackupAutomatico);
-                botaoAbrirFormatadorJson.addEventListener('click', ativarFormatadorJson);
-                botaoAbrirAtalhosMarkdown.addEventListener('click', ativarAtalhosMarkdown);
+                botaoConfigurarBackup.addEventListener('click', acionarBackupEmArquivo);
+                botaoTrilhoDocumentos.addEventListener('click', voltarAoEditorMarkdown);
+                botaoTrilhoJson.addEventListener('click', ativarFormatadorJson);
+                botaoTrilhoAtalhos.addEventListener('click', ativarAtalhosMarkdown);
                 botaoVoltarEditorMarkdown.addEventListener('click', voltarAoEditorMarkdown);
                 botaoUsarJsonAtual.addEventListener('click', usarDocumentoAtualNoJson);
                 botaoFormatarJson.addEventListener('click', function () {
@@ -1408,17 +1739,19 @@
                     formatarJson(true);
                 });
                 botaoCopiarJson.addEventListener('click', copiarResultadoJson);
+                botaoJsonNovaAba.addEventListener('click', abrirResultadoJsonEmNovaAba);
+                botaoIrErroJson.addEventListener('click', irParaErroJson);
                 seletorIndentacaoJson.addEventListener('change', function () {
-                    if (saidaJson.value) {
-                        formatarJson(false);
-                    }
+                    formatarJson(false);
                     agendarPersistenciaSessao();
                 });
-                entradaJson.addEventListener('input', function () {
-                    saidaJson.value = '';
-                    mensagemJson.textContent = '';
+                editorEntradaJson.onDidChangeModelContent(function () {
+                    window.clearTimeout(temporizadorJson);
+                    temporizadorJson = window.setTimeout(function () {
+                        formatarJson(undefined, true);
+                    }, 400);
                     if (visualizacaoAtual === 'formatador-json') {
-                        atualizarEstado('Editando JSON');
+                        atualizarRodape();
                     }
                     agendarPersistenciaSessao();
                 });
@@ -1444,10 +1777,11 @@
                         evento.returnValue = '';
                     }
                 });
-                atualizarEstado(sessao ? `Sessão restaurada | ${documentos.length} aba(s)` : 'Pronto');
-                editor.focus();
+                atualizarEstado(sessao ? `Sessão restaurada · ${documentos.length} ${documentos.length === 1 ? 'aba' : 'abas'}` : 'Pronto');
+                if (visualizacaoAtual === 'editor') {
+                    editor.focus();
+                }
             }, function (erro) {
                 mostrarFalha(`Não foi possível carregar o Monaco.\n${erro && erro.message ? erro.message : 'Verifique a conexão com a internet.'}`);
             });
         }());
-    
