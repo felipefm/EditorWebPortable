@@ -108,6 +108,7 @@
                 documento: undefined,
                 geracao: 0,
                 aplicando: false,
+                focarAoMontar: false,
                 terminaComQuebra: false,
                 ultimoMarkdown: undefined
             };
@@ -154,7 +155,7 @@
                     dialogoConfirmacao.addEventListener('close', function () {
                         resolver(dialogoConfirmacao.returnValue === 'confirmar');
                         if (editor && visualizacaoAtual === 'editor') {
-                            editor.focus();
+                            focarTexto();
                         }
                     }, { once: true });
                 });
@@ -586,6 +587,22 @@
                 atualizarTrilho();
             }
 
+            // Põe o cursor no texto do documento atual, pronto para digitar. No modo Visual o Monaco fica
+            // escondido, então o foco vai para o Milkdown, esperando a montagem se ele ainda estiver carregando.
+            function focarTexto() {
+                if (visualizacaoAtual === 'editor' && editorPaineis.classList.contains('modo-visual')) {
+                    if (visual.crepe && visual.documento === documentoAtual) {
+                        visual.focarAoMontar = false;
+                        noVisual(function (ctx, visao) { visao.focus(); });
+                    } else {
+                        visual.focarAoMontar = true;
+                    }
+                    return;
+                }
+                visual.focarAoMontar = false;
+                editor.focus();
+            }
+
             function mostrarEditor() {
                 definirVisualizacao('editor');
                 atualizarPreviewMarkdown();
@@ -835,12 +852,18 @@
                     visual.terminaComQuebra = /\n$/.test(texto);
                     visual.ultimoMarkdown = normalizarMarkdownVisual(crepe.getMarkdown(), visual.terminaComQuebra);
                     agendarMedicaoMapaVisual();
+                    if (visual.focarAoMontar) {
+                        focarTexto();
+                    }
                 } catch (erro) {
                     if (geracao !== visual.geracao) {
                         return;
                     }
                     visual.documento = undefined;
                     aplicarModoPreview('dividido');
+                    if (visual.focarAoMontar) {
+                        focarTexto();
+                    }
                     atualizarEstado('Não foi possível carregar o editor visual. Verifique a conexão com a internet.');
                 } finally {
                     if (geracao === visual.geracao) {
@@ -1456,7 +1479,7 @@
                 mostrarEditor();
                 atualizarInterfaceDocumento(documentoAtual && documentoAtual.modificacoesPendentes ? 'Alterações não salvas' : 'Pronto');
                 agendarPersistenciaSessao();
-                editor.focus();
+                focarTexto();
             }
 
             function obterIndentacaoJson() {
@@ -1640,7 +1663,7 @@
                 if (documento === documentoAtual) {
                     atualizarInterfaceDocumento(mensagem);
                     agendarPersistenciaSessao();
-                    editor.focus();
+                    focarTexto();
                     return;
                 }
                 documentoAtual = documento;
@@ -1649,7 +1672,7 @@
                 atualizarPreviewMarkdown();
                 atualizarInterfaceDocumento(mensagem || (documento.modificacoesPendentes ? 'Alterações não salvas' : 'Pronto'));
                 agendarPersistenciaSessao();
-                editor.focus();
+                focarTexto();
             }
 
             async function carregarArquivo(arquivo, manipulador) {
@@ -1856,7 +1879,7 @@
                     atualizarInterfaceDocumento('Sessão importada');
                 }
                 agendarPersistenciaSessao();
-                editor.focus();
+                focarTexto();
             }
 
             async function importarSessao(arquivo) {
@@ -2051,7 +2074,7 @@
                 linguagem.value = obterLinguagemDisponivel(documentoAtual.modelo.getLanguageId());
                 atualizarInterfaceDocumento('Aba fechada');
                 agendarPersistenciaSessao();
-                editor.focus();
+                focarTexto();
             }
 
             function restaurarDocumentos(sessao) {
@@ -2657,8 +2680,8 @@
                     botao.addEventListener('click', function () {
                         aplicarModoPreview(botao.dataset.modo);
                         agendarPersistenciaSessao();
-                        if (modoPreview !== 'preview' && modoPreview !== 'visual') {
-                            editor.focus();
+                        if (modoPreview !== 'preview') {
+                            focarTexto();
                         }
                     });
                 });
@@ -2692,7 +2715,7 @@
                     monaco.editor.setModelLanguage(documentoAtual.modelo, linguagem.value);
                     atualizarInterfaceDocumento('Linguagem alterada');
                     agendarPersistenciaSessao();
-                    editor.focus();
+                    focarTexto();
                 });
 
                 function alternarPainelSessao(abrir) {
@@ -2805,7 +2828,7 @@
                 });
                 atualizarEstado(sessao ? `Sessão restaurada · ${documentos.length} ${documentos.length === 1 ? 'aba' : 'abas'}` : 'Pronto');
                 if (visualizacaoAtual === 'editor') {
-                    editor.focus();
+                    focarTexto();
                 }
             }, function (erro) {
                 mostrarFalha(`Não foi possível carregar o Monaco.\n${erro && erro.message ? erro.message : 'Verifique a conexão com a internet.'}`);

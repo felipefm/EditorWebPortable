@@ -288,3 +288,83 @@ test.describe('Modo Visual', () => {
         await expect(page.locator('#container')).toBeVisible();
     });
 });
+
+// Depois de cada ação, dá para digitar sem clicar no texto: o cursor já está no editor certo.
+test.describe('Modo Visual: foco pronto para digitar', () => {
+    async function digitarSemClicar(page) {
+        await expect(editorVisual(page)).toBeVisible({ timeout: 30000 });
+        await page.keyboard.type('digitado');
+        await expect.poll(() => obterConteudo(page)).toContain('digitado');
+    }
+
+    for (const [nome, acao] of [
+        ['botão Novo', (page) => page.locator('#novo').click()],
+        ['botão + das abas', (page) => page.locator('#nova-aba').click()],
+        ['Ctrl+Alt+N', (page) => page.keyboard.press('Control+Alt+N')]
+    ]) {
+        test(`arquivo novo pelo ${nome} no modo Visual já aceita digitação`, async ({ page }) => {
+            await abrirVisual(page, '# Primeiro');
+            await acao(page);
+            await expect(page.locator('.aba')).toHaveCount(2);
+            await digitarSemClicar(page);
+            expect(await obterConteudo(page)).toBe('digitado');
+        });
+    }
+
+    test('clicar no botão Visual já deixa digitar', async ({ page }) => {
+        await abrirEditor(page);
+        await page.locator('#linguagem').selectOption('markdown');
+        await definirConteudo(page, 'Oi');
+        await page.locator('[data-modo="visual"]').click();
+        await digitarSemClicar(page);
+    });
+
+    test('trocar de aba no modo Visual já deixa digitar', async ({ page }) => {
+        await abrirVisual(page, 'Primeiro');
+        await page.locator('#nova-aba').click();
+        await expect(page.locator('.aba')).toHaveCount(2);
+        await page.locator('.aba-nome').first().click();
+        await expect(editorVisual(page)).toContainText('Primeiro');
+        await digitarSemClicar(page);
+    });
+
+    test('fechar uma aba no modo Visual já deixa digitar na que ficou', async ({ page }) => {
+        await abrirVisual(page, 'Primeiro');
+        await page.locator('#nova-aba').click();
+        await expect(page.locator('.aba')).toHaveCount(2);
+        await page.locator('.aba').nth(1).getByRole('button', { name: /^Fechar/ }).click();
+        await expect(page.locator('.aba')).toHaveCount(1);
+        await expect(editorVisual(page)).toContainText('Primeiro');
+        await digitarSemClicar(page);
+    });
+
+    test('mudar a linguagem para Markdown com o modo Visual escolhido já deixa digitar', async ({ page }) => {
+        await abrirVisual(page, 'Primeiro');
+        await novaAba(page, 'javascript');
+        await expect(page.locator('#container')).toBeVisible();
+        await page.locator('#linguagem').selectOption('markdown');
+        await digitarSemClicar(page);
+    });
+
+    test('recarregar a página no modo Visual já deixa digitar', async ({ page }) => {
+        await abrirVisual(page, 'Primeiro');
+        await recarregar(page);
+        await digitarSemClicar(page);
+    });
+
+    test('voltar da tela de atalhos no modo Visual já deixa digitar', async ({ page }) => {
+        await abrirVisual(page, 'Primeiro');
+        await page.locator('#trilho-atalhos').click();
+        await page.locator('#voltar-editor-markdown').click();
+        await digitarSemClicar(page);
+    });
+
+    test('arquivo novo no modo Editor também já aceita digitação', async ({ page }) => {
+        await abrirEditor(page);
+        await page.locator('#linguagem').selectOption('markdown');
+        await page.locator('[data-modo="editor"]').click();
+        await page.locator('#novo').click();
+        await page.keyboard.type('digitado');
+        await expect.poll(() => obterConteudo(page)).toBe('digitado');
+    });
+});
