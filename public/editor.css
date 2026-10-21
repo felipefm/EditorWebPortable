@@ -66,6 +66,13 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px soli
 #botao-sessao.aviso .icone { stroke: var(--aviso); }
 #botao-sessao[aria-expanded="true"] { background: var(--hover); }
 
+/* Aviso de navegador sem gravação direta */
+#aviso-arquivos { flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: #1d2a3d; border-bottom: 1px solid #2c4366; color: var(--texto); font-size: 13px; line-height: 1.5; }
+#aviso-arquivos .icone { width: 18px; height: 18px; stroke: var(--ativo-texto); }
+#aviso-arquivos p { flex: 1; margin: 0; }
+#aviso-arquivos button { flex-shrink: 0; background: #2c4366; border-color: #2c4366; }
+#aviso-arquivos button:hover { background: #36517a; }
+
 /* Painel de sessão */
 #painel-sessao { position: absolute; z-index: 30; top: 58px; right: 12px; width: min(360px, calc(100vw - 24px)); padding: 16px; display: flex; flex-direction: column; gap: 12px; border: 1px solid #353b45; border-radius: 12px; background: #1f2329; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45); }
 #painel-sessao-cabecalho { display: flex; align-items: center; justify-content: space-between; }
@@ -244,4 +251,7 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px soli
     #formatador-json, #atalhos-markdown { padding: 12px; }
     #preview-conteudo { padding: 20px 18px 32px; }
     .aba { min-width: 110px; }
+    #aviso-arquivos { flex-wrap: wrap; padding: 10px 12px; font-size: 12px; }
+    #aviso-arquivos p { flex-basis: calc(100% - 30px); }
+    #aviso-arquivos button { margin-left: auto; }
 }

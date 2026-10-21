@@ -27,7 +27,7 @@ const regras = [
     ['json', /json/i],
     ['markdown', /markdown|preview|data-md|md-|modo|marcacao|citacao|tarefas|numerada|negrito|italico|tachado/i],
     ['sessao', /sessao|backup|persist|navegador|indexeddb|instantaneo|legada|armazenamento|importar|exportar/i],
-    ['arquivos', /arquivo|salvar|salvo|baixar|gravarno|carregar|manipulador/i],
+    ['arquivos', /arquivo|salvar|salvo|baixar|download|gravarno|gravacao|sugerido|carregar|manipulador/i],
     ['abas', /\baba|abas|documento|semtitulo|modificac|dialogo|confirmar|linguagem/i],
     ['celular', /@media/i],
     ['geral', /topo|trilho|rodape|paleta|marca|logo|falha|visualizacao|cursor|cabecalho/i]

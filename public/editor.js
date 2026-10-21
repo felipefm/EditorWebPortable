@@ -60,6 +60,11 @@
             const dialogoConfirmacao = document.getElementById('dialogo-confirmacao');
             const dialogoMensagem = document.getElementById('dialogo-mensagem');
             const dialogoConfirmar = document.getElementById('dialogo-confirmar');
+            const avisoArquivos = document.getElementById('aviso-arquivos');
+            const botaoFecharAvisoArquivos = document.getElementById('fechar-aviso-arquivos');
+            const chaveAvisoArquivos = 'meu-editor-web-aviso-arquivos';
+            // Chrome, Edge e Opera no computador gravam direto no arquivo; os demais só baixam cópias.
+            const gravacaoDiretaDisponivel = typeof window.showSaveFilePicker === 'function';
             const siglasLinguagem = {
                 javascript: 'JS',
                 typescript: 'TS',
@@ -1043,9 +1048,50 @@
             }
 
             function marcarDocumentoSalvo(documento, mensagem) {
-                marcarModificacoes(documento, false);
+                documento.modificacoesPendentes = false;
                 agendarPersistenciaSessao();
-                atualizarEstado(mensagem);
+                atualizarInterfaceDocumento(mensagem);
+            }
+
+            function obterNomeSugerido(documento) {
+                if (!documento.ehSemTitulo) {
+                    return documento.nome;
+                }
+                const extensoes = {
+                    javascript: 'js',
+                    typescript: 'ts',
+                    html: 'html',
+                    css: 'css',
+                    json: 'json',
+                    markdown: 'md',
+                    plaintext: 'txt'
+                };
+                return `novo-arquivo.${extensoes[documento.modelo.getLanguageId()] || 'txt'}`;
+            }
+
+            function baixarDocumento(documento, nome) {
+                baixarArquivo(documento, nome);
+                documento.nome = nome;
+                documento.ehSemTitulo = false;
+                marcarDocumentoSalvo(documento, `Cópia baixada: ${nome}`);
+            }
+
+            function pedirNomeDownload(documento) {
+                const nome = window.prompt('Nome do arquivo para baixar:', obterNomeSugerido(documento));
+                return nome ? nome.trim() : '';
+            }
+
+            function salvarNoNavegador() {
+                salvarSessaoLocalmente();
+                persistirSessaoIndexedDb();
+                atualizarEstado('Salvo no navegador. Para ter uma cópia em arquivo, use "Baixar".');
+            }
+
+            function atalhoSalvar() {
+                if (gravacaoDiretaDisponivel || (documentoAtual && documentoAtual.manipulador)) {
+                    return salvarArquivo();
+                }
+                salvarNoNavegador();
             }
 
             async function salvarComoArquivo() {
@@ -1054,8 +1100,8 @@
                     return;
                 }
                 try {
-                    if (typeof window.showSaveFilePicker === 'function') {
-                        const nomeSugerido = documento.ehSemTitulo ? 'novo-arquivo.txt' : documento.nome;
+                    if (gravacaoDiretaDisponivel) {
+                        const nomeSugerido = obterNomeSugerido(documento);
                         const manipulador = await window.showSaveFilePicker({
                             suggestedName: nomeSugerido
                         });
@@ -1070,13 +1116,11 @@
                         return;
                     }
 
-                    const nomeSugerido = documento.ehSemTitulo ? 'novo-arquivo.txt' : documento.nome;
-                    const nome = window.prompt('Nome da cópia para baixar:', nomeSugerido);
+                    const nome = pedirNomeDownload(documento);
                     if (!nome) {
                         return;
                     }
-                    baixarArquivo(documento, nome);
-                    atualizarEstado(`Cópia baixada: ${nome}. O arquivo original não foi alterado.`);
+                    baixarDocumento(documento, nome);
                 } catch (erro) {
                     if (erro && erro.name === 'AbortError') {
                         return;
@@ -1097,6 +1141,13 @@
                             return;
                         }
                         marcarDocumentoSalvo(documento, 'Arquivo salvo');
+                        return;
+                    }
+                    if (!gravacaoDiretaDisponivel) {
+                        const nome = documento.ehSemTitulo ? pedirNomeDownload(documento) : documento.nome;
+                        if (nome) {
+                            baixarDocumento(documento, nome);
+                        }
                         return;
                     }
                     await salvarComoArquivo();
@@ -1493,6 +1544,40 @@
                 });
             }
 
+            function mostrarAvisoArquivos() {
+                let jaDispensado = false;
+                try {
+                    jaDispensado = localStorage.getItem(chaveAvisoArquivos) === 'dispensado';
+                } catch (erro) {
+                    jaDispensado = false;
+                }
+                avisoArquivos.hidden = jaDispensado;
+                botaoFecharAvisoArquivos.addEventListener('click', function () {
+                    avisoArquivos.hidden = true;
+                    try {
+                        localStorage.setItem(chaveAvisoArquivos, 'dispensado');
+                    } catch (erro) {
+                        return;
+                    }
+                });
+            }
+
+            function configurarModoArquivos() {
+                if (gravacaoDiretaDisponivel) {
+                    return;
+                }
+                const explicacao = 'Este navegador não grava direto no arquivo: baixa uma cópia';
+                botaoSalvar.querySelector('.rotulo').textContent = 'Baixar';
+                botaoSalvar.querySelector('.icone').innerHTML = '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>';
+                botaoSalvar.title = `${explicacao}.`;
+                botaoSalvarComo.title = 'Baixar com outro nome (Ctrl+Shift+S)';
+                botaoSalvarComo.setAttribute('aria-label', 'Baixar com outro nome');
+                document.body.classList.add('sem-gravacao-direta');
+                mostrarAvisoArquivos();
+            }
+
+            configurarModoArquivos();
+
             if (typeof require !== 'function') {
                 mostrarFalha('Não foi possível carregar o Monaco.\nVerifique a conexão com a internet e recarregue a página.');
                 return;
@@ -1577,7 +1662,7 @@
                     id: 'salvar-arquivo',
                     label: 'Salvar arquivo',
                     keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
-                    run: salvarArquivo
+                    run: atalhoSalvar
                 });
                 editor.addAction({
                     id: 'salvar-como-arquivo',

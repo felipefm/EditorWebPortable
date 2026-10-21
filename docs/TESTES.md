@@ -21,13 +21,13 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **77 testes** em **7 áreas**, um arquivo por área. A suíte completa leva cerca de 30 segundos.
+São **86 testes** em **7 áreas**, um arquivo por área. A suíte completa leva cerca de 40 segundos.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
 | geral | `geral.spec.js` | 6 | Carregamento sem erros, barra lateral, paleta de comandos, rodapé |
 | abas | `abas.spec.js` | 10 | Criar, trocar e fechar abas, indicador de não salvo, diálogo de confirmação |
-| arquivos | `arquivos.spec.js` | 10 | Abrir, salvar, salvar como, detecção de linguagem pela extensão |
+| arquivos | `arquivos.spec.js` | 19 | Abrir, salvar, salvar como, detecção de linguagem, modo "Baixar" dos navegadores sem gravação direta |
 | markdown | `markdown.spec.js` | 25 | Barra e atalhos de formatação, preview, segurança do preview, modos de visualização |
 | json | `json.spec.js` | 11 | Formatar, compactar, indentação, erros com linha e coluna, copiar, abrir em aba |
 | sessao | `sessao.spec.js` | 10 | Sessão restaurada, painel de backup, exportar e importar |
@@ -124,7 +124,7 @@ O que mudou:
 | `json` | json |
 | `markdown`, `preview`, `modo`, `marcacao`, `citacao`, `tarefas`, `numerada`, `negrito`, `italico`, `tachado` | markdown |
 | `sessao`, `backup`, `persist`, `navegador`, `indexeddb`, `instantaneo`, `importar`, `exportar` | sessao |
-| `arquivo`, `salvar`, `salvo`, `baixar`, `carregar`, `manipulador` | arquivos |
+| `arquivo`, `salvar`, `salvo`, `baixar`, `download`, `gravacao`, `sugerido`, `carregar`, `manipulador` | arquivos |
 | `aba`, `documento`, `semtitulo`, `modificac`, `dialogo`, `confirmar`, `linguagem` | abas |
 | `topo`, `trilho`, `rodape`, `paleta`, `falha`, `visualizacao`, `cursor`, `cabecalho` | geral |
 
@@ -206,13 +206,27 @@ Detalhes:
 - fechar a última aba cria uma aba vazia
 - trocar a linguagem atualiza a sigla da aba
 
-### arquivos (10)
+### arquivos (19)
+
+Com gravação direta (Chrome, Edge):
 
 - abrir `notas.md`, `dados.json`, `estilo.css`, `pagina.html`, `script.ts` e `leia.txt` detecta a linguagem certa (6 testes)
 - sem a API de arquivos, salvar baixa uma cópia com o nome informado
 - com a API de arquivos, salvar um documento novo grava e limpa o indicador
+- nome sugerido para documento novo usa a extensão da linguagem
+- com gravação direta o botão continua "Salvar" e não há aviso
 - arquivo aberto é salvo no mesmo arquivo com Ctrl+S
 - Salvar como grava com o nome sugerido
+
+Sem gravação direta (Firefox, Zen, Safari, celular):
+
+- botão vira "Baixar" e o aviso explica o motivo
+- "Entendi" esconde o aviso, que não volta depois de recarregar
+- primeiro download pergunta o nome; os seguintes reaproveitam sem perguntar
+- arquivo aberto é baixado com o próprio nome, sem perguntar
+- "Baixar com outro nome" sempre pergunta e renomeia a aba
+- Ctrl+S não baixa nada e confirma o salvamento no navegador
+- cancelar a pergunta do nome não baixa nada
 
 ### markdown (25)
 

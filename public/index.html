@@ -48,6 +48,12 @@
         </button>
     </header>
 
+    <div id="aviso-arquivos" role="note" hidden>
+        <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+        <p><strong>Este navegador não grava direto nos seus arquivos.</strong> Por isso o botão <strong>Baixar</strong> salva uma cópia na pasta de downloads. Seu texto continua salvo automaticamente neste navegador. Para gravar no arquivo original, use Chrome ou Edge no computador.</p>
+        <button id="fechar-aviso-arquivos" type="button">Entendi</button>
+    </div>
+
     <div id="painel-sessao" role="dialog" aria-labelledby="titulo-sessao" hidden>
         <div id="painel-sessao-cabecalho">
             <strong id="titulo-sessao">Sessão e backup</strong>
@@ -226,8 +232,8 @@
                         <table>
                             <thead><tr><th scope="col">Atalho</th><th scope="col">Ação</th></tr></thead>
                             <tbody>
-                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>S</kbd></td><td>Salvar a aba atual.</td></tr>
-                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></td><td>Salvar como.</td></tr>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>S</kbd></td><td>Salvar a aba atual.<br><span class="atalho-observacao">Em navegadores que não gravam direto no arquivo (Firefox, Safari), confirma o salvamento no navegador; para ter uma cópia, use o botão Baixar.</span></td></tr>
+                                <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></td><td>Salvar como (ou baixar com outro nome).</td></tr>
                                 <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>O</kbd></td><td>Abrir arquivo.</td></tr>
                                 <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>N</kbd></td><td>Criar uma nova aba.</td></tr>
                                 <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>J</kbd></td><td>Abrir o formatador JSON.</td></tr>

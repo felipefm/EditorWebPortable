@@ -9,7 +9,7 @@ Editor de texto e código que roda direto no navegador, sem instalação e sem b
 - **Editor Monaco** com tema escuro, quebra de linha automática e realce de sintaxe para JavaScript, TypeScript, HTML, CSS, JSON, Markdown e texto puro.
 - **Várias abas**: abra e edite vários arquivos ao mesmo tempo. Cada aba mostra a linguagem, e as que têm alterações não salvas ganham um ponto amarelo.
 - **Paleta de comandos** (`F1`): busque e execute qualquer ação do editor pelo teclado.
-- **Abrir e salvar arquivos locais**: com a [File System Access API](https://developer.mozilla.org/docs/Web/API/File_System_API) (Chrome, Edge), o editor grava direto no arquivo original. Em outros navegadores, o salvamento é feito por download.
+- **Abrir e salvar arquivos locais**: com a [File System Access API](https://developer.mozilla.org/docs/Web/API/File_System_API) (Chrome, Edge), o editor grava direto no arquivo original. Nos navegadores que não têm essa API (Firefox e derivados, como Zen e LibreWolf, Safari e navegadores de celular), o botão vira **Baixar** e um aviso explica o motivo. Veja [Compatibilidade](#compatibilidade).
 - **Detecção de linguagem** pela extensão do arquivo (`.js`, `.mjs`, `.cjs`, `.ts`, `.html`, `.htm`, `.css`, `.json`, `.md`, `.markdown`, `.txt`).
 - **Preview de Markdown ao vivo**, com três modos: só editor, dividido ou só preview. O HTML gerado é sanitizado com DOMPurify.
 - **Barra e atalhos de Markdown** para negrito, itálico, tachado, código, links, títulos, listas e citações. Funcionam com múltiplas seleções.
@@ -79,16 +79,27 @@ Nenhum conteúdo é enviado para servidores. Tudo fica no seu navegador ou nos a
 
 ## Compatibilidade
 
-| Recurso | Chrome / Edge | Firefox / Safari |
+| Recurso | Chrome / Edge / Opera (computador) | Firefox, Zen, LibreWolf, Safari, celular |
 | --- | --- | --- |
 | Edição, abas, preview, formatador JSON | ✅ | ✅ |
 | Sessão salva no navegador | ✅ | ✅ |
-| Salvar direto no arquivo original | ✅ | ⬇️ por download |
+| Salvar direto no arquivo original | ✅ | ⬇️ botão **Baixar** |
 | Backup automático em arquivo | ✅ | ❌ |
+
+**Por que alguns navegadores só baixam?** Gravar num arquivo do computador exige a [File System Access API](https://developer.mozilla.org/docs/Web/API/Window/showSaveFilePicker), que só os navegadores baseados no Chromium oferecem. A Mozilla decidiu não implementá-la, por segurança, e não existe opção para ativá-la no Firefox nem nos navegadores derivados dele. No Brave, ela vem desligada e pode ser ativada em `brave://flags/#file-system-access-api`.
+
+Nesses navegadores, o editor:
+
+- mostra o botão **Baixar** no lugar de **Salvar**, e um aviso na primeira visita (some ao clicar em **Entendi**);
+- pergunta o nome só no primeiro download de um documento novo e depois reaproveita o nome. Arquivos abertos são baixados com o próprio nome;
+- marca o documento como salvo depois de baixar;
+- no `Ctrl+S`, só confirma que o texto está salvo no navegador, sem baixar nada.
+
+O navegador pode acrescentar um número ao nome (`notas (1).md`) quando o arquivo já existe na pasta de downloads. Isso é controlado pelo navegador, não pelo editor.
 
 ## Testes automatizados
 
-O projeto tem **77 testes automatizados**, divididos em 7 áreas: geral, abas, arquivos, Markdown, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor no Microsoft Edge de verdade, clicando, digitando e conferindo o resultado.
+O projeto tem **86 testes automatizados**, divididos em 7 áreas: geral, abas, arquivos, Markdown, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor no Microsoft Edge de verdade, clicando, digitando e conferindo o resultado.
 
 📖 **Documentação completa: [docs/TESTES.md](docs/TESTES.md).** Explica como funcionam, a lista de todos os testes, como o projeto escolhe o que testar, como escrever testes novos e o que fazer quando algo falha.
 
@@ -98,7 +109,7 @@ O projeto tem **77 testes automatizados**, divididos em 7 áreas: geral, abas, a
 cd tests
 npm install              # primeira vez: instala o Playwright e ativa a verificação antes do push
 npm run test:alterado    # roda só os testes das áreas que você alterou
-npm test                 # roda todos (cerca de 30 segundos)
+npm test                 # roda todos (cerca de 40 segundos)
 ```
 
 Também dá para rodar uma área específica: `npm run test:geral`, `test:abas`, `test:arquivos`, `test:markdown`, `test:json`, `test:sessao` ou `test:celular`.
