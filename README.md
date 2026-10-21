@@ -32,7 +32,7 @@ Editor de texto e código que roda direto no navegador, sem instalação e sem b
 
 O projeto já vem configurado para o **Cloudflare Workers** (arquivos estáticos, sem build), pelo `wrangler.jsonc`. Só a pasta `public/` vai para o ar.
 
-- **Pelo painel (deploy automático a cada push):** em *Workers & Pages → Create → Import a repository*, escolha este repositório e mantenha o comando de deploy `npx wrangler deploy`.
+- **Automático, pelo GitHub (como está configurado):** a cada push na `main`, o GitHub Actions roda os testes e, se passarem, publica com `wrangler deploy`. Veja [Verificação automática no GitHub](#verificação-automática-no-github). Precisa dos segredos `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` no repositório.
 - **Pelo terminal:** `npx wrangler login` e depois `npx wrangler deploy`.
 
 > **Requer internet.** O Monaco Editor, o `marked` e o `DOMPurify` são carregados do CDN jsDelivr, e o Milkdown (modo Visual) do esm.sh. Sem conexão, o editor mostra uma mensagem de erro.
@@ -142,7 +142,7 @@ O projeto tem **230 testes automatizados**, divididos em 11 áreas: geral, atalh
 
 ```bash
 cd tests
-npm install              # primeira vez: instala o Playwright e o Firefox de testes, e ativa a verificação antes do push
+npm install              # primeira vez: instala o Playwright e o Firefox de testes
 npm run test:alterado    # roda só os testes das áreas que você alterou
 npm test                 # roda todos, no Edge e no Firefox (cerca de 4 minutos)
 ```
@@ -153,9 +153,9 @@ Também dá para rodar uma área específica: `npm run test:geral`, `test:atalho
 
 O `npm run test:alterado` lê o `git diff`, descobre em qual função do `editor.js` (ou em qual id/classe do HTML e do CSS) cada linha mudou e roda só os testes daquela área. Por exemplo, mudar `formatarJson` roda os testes de JSON. Em caso de dúvida, roda tudo.
 
-### Verificação automática antes do push
+### Verificação automática no GitHub
 
-Todo `git push` roda antes os testes das áreas alteradas. Se algum falhar, o push é cancelado e nada vai para o ar, porque o Cloudflare só publica o que chega ao GitHub. Numa emergência: `git push --no-verify`.
+Os testes rodam nos servidores do GitHub (GitHub Actions), não no seu computador. A cada `git push` na `main`, o GitHub roda os testes das áreas alteradas, no Edge e no Firefox, numa máquina Windows. Se passarem, publica o site no Cloudflare. Se algum falhar, o site **não é publicado** e o GitHub avisa por e-mail. O resultado fica na aba **Actions** do repositório. Detalhes em [docs/TESTES.md](docs/TESTES.md#verificação-no-github).
 
 ## Estrutura
 
@@ -166,7 +166,8 @@ public/
   editor.js    Toda a lógica: Monaco, abas, arquivos, sessão, backup, Markdown e JSON
 tests/        Testes automatizados (Playwright), um arquivo por área
 docs/         Documentação (TESTES.md)
-.githooks/    Verificação de testes antes do push
+.github/      Testes e publicação no GitHub Actions
+.githooks/    Verificação opcional antes do push, no próprio computador
 wrangler.jsonc Configuração de deploy no Cloudflare
 ```
 

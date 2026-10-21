@@ -8,7 +8,7 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 - [Instalação](#instalação)
 - [Comandos](#comandos)
 - [Testar só o que mudou](#testar-só-o-que-mudou)
-- [Verificação antes do push](#verificação-antes-do-push)
+- [Verificação no GitHub](#verificação-no-github)
 - [Lista de testes por área](#lista-de-testes-por-área)
 - [Como os testes funcionam por dentro](#como-os-testes-funcionam-por-dentro)
 - [Escrevendo um teste novo](#escrevendo-um-teste-novo)
@@ -57,8 +57,10 @@ tests/
   servidor.js          servidor local que serve public/ durante os testes
   playwright.config.js configuração (navegador, telas, relatório)
   package.json         comandos npm
+.github/workflows/
+  testes-e-publicacao.yml  roda os testes no GitHub e publica no Cloudflare
 .githooks/
-  pre-push             roda os testes antes de cada git push
+  pre-push             opcional: roda os testes no computador antes do push
 ```
 
 ## Instalação
@@ -70,7 +72,7 @@ cd tests
 npm install
 ```
 
-Esse comando instala o Playwright, baixa o Firefox de testes e ativa a [verificação antes do push](#verificação-antes-do-push).
+Esse comando instala o Playwright e baixa o Firefox de testes.
 
 Os testes precisam de internet, porque o Monaco Editor, o `marked` e o `DOMPurify` são carregados do CDN, e o Milkdown (modo Visual) do esm.sh.
 
@@ -171,35 +173,36 @@ Se a linha alterada estiver **fora de uma função** (por exemplo, no bloco de i
 
 Mudanças fora de `public/` e `tests/` (por exemplo, só no README) não rodam testes.
 
-## Verificação antes do push
+## Verificação no GitHub
 
-Todo `git push` passa pelo script `.githooks/pre-push`, que roda os testes das áreas alteradas **nos commits que estão sendo enviados**:
-
-```
-git push
-  └─ .githooks/pre-push
-       └─ compara o que está no GitHub com o que você está enviando
-            └─ node tests/alterados.js <commit no GitHub>..<seu commit>
-                 ├─ testes passaram → o push continua → o Cloudflare publica
-                 └─ algum teste falhou → push cancelado → nada vai para o ar
-```
-
-Como o Cloudflare só publica o que chega ao GitHub, um teste falhando também impede que a versão quebrada seja publicada.
-
-Quando o push é cancelado, aparece:
+Os testes rodam nos servidores do GitHub (GitHub Actions), de graça porque o repositório é público. Nada roda no seu computador, e o `git push` termina na hora. O arquivo é `.github/workflows/testes-e-publicacao.yml`:
 
 ```
-Push cancelado: há testes falhando. Corrija e tente de novo.
-Para ver detalhes: cd tests && npm run test:relatorio
-Para enviar mesmo assim (não recomendado): git push --no-verify
+git push (main)
+  └─ GitHub Actions, numa máquina Windows
+       ├─ testes: node tests/alterados.js <commit anterior>..<commit novo>
+       │    ├─ passaram → publicar: wrangler deploy → site no ar
+       │    └─ falhou   → nada é publicado, e o GitHub avisa por e-mail
 ```
 
 Detalhes:
 
-- **Branch nova** (que ainda não existe no GitHub): roda todos os testes.
-- **Alterações não commitadas:** os testes rodam sobre os arquivos da pasta, então essas alterações também entram no teste. O hook avisa quando isso acontece.
-- **Emergência:** `git push --no-verify` envia sem testar.
-- **Ativação:** o `npm install` em `tests/` roda `git config core.hooksPath .githooks`. Isso vale por computador, porque a configuração do git não vai junto com o repositório. Em outro computador, basta rodar `npm install` em `tests/` de novo.
+- **Onde ver:** na aba **Actions** do repositório no GitHub. Cada push aparece com ✓ (publicado) ou ✗ (teste falhou, não publicado).
+- **Quanto demora:** a máquina do GitHub é mais lenta que um computador de mesa. Um push que muda uma área leva poucos minutos; um que roda tudo, uns 10 a 15 minutos. O site só muda depois disso.
+- **Quando um teste falha:** o relatório completo, com prints e traces, fica em **Actions → (o push) → Artifacts → relatorio-dos-testes**, por 14 dias. Baixe, descompacte e abra com `npx playwright show-report relatorio` ou `npx playwright show-trace resultados/<pasta>/trace.zip`.
+- **Rodar tudo de novo:** em **Actions → Testes e publicação → Run workflow**, roda todos os testes e publica se passarem. Serve, por exemplo, para republicar depois de uma falha de rede.
+- **Uma publicação por vez:** pushes seguidos entram numa fila, na ordem em que chegaram.
+- **Segredos:** a publicação usa `CLOUDFLARE_API_TOKEN` (token do Cloudflare com o modelo *Edit Cloudflare Workers*) e `CLOUDFLARE_ACCOUNT_ID`, guardados em **Settings → Secrets and variables → Actions** no GitHub. A publicação automática do próprio Cloudflare (Workers Builds) fica desligada, senão ela publicaria sem esperar os testes.
+
+### Verificação opcional no computador
+
+O script `.githooks/pre-push` faz a mesma verificação no seu computador, antes do push, e cancela o push se algum teste falhar. Ele vem desligado, porque usa bastante o processador durante alguns minutos. Para ligar neste computador:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Para desligar: `git config --unset core.hooksPath`. Com ele ligado, `git push --no-verify` envia sem testar.
 
 ## Lista de testes por área
 
@@ -526,7 +529,9 @@ Um defeito de verdade falha nas duas tentativas e continua bloqueando o push. Se
 | Todos os testes falham esperando `window.editor` | Sem internet, ou o CDN fora do ar | Confira a conexão; o Monaco vem do jsDelivr |
 | `browserType.launch: Chromium distribution 'msedge' is not found` | Edge não instalado | Instale o Edge ou rode com `NAVEGADOR=chrome` |
 | `As dependências dos testes não estão instaladas` | Falta `npm install` | `cd tests && npm install` |
-| O push não roda os testes | Hook não ativado neste computador | `git config core.hooksPath .githooks` |
+| O site não atualizou depois do push | Algum teste falhou no GitHub, ou a publicação ainda está na fila | Veja a aba **Actions** do repositório |
+| A publicação falha com erro de autenticação | Segredo do Cloudflare ausente ou vencido | Crie um token novo e atualize `CLOUDFLARE_API_TOKEN` no GitHub |
+| O push não roda os testes no computador | O hook opcional está desligado (o padrão) | `git config core.hooksPath .githooks` |
 | Erro `\r: command not found` no push | O hook ficou com quebras de linha do Windows | O `.gitattributes` evita isso; se acontecer, rode `git checkout -- .githooks/pre-push` |
 | Porta 4173 em uso | Outro programa usando a porta | Feche o programa ou mude `porta` no `playwright.config.js` |
 | Teste de copiar falha raramente | A área de transferência é do sistema inteiro | Rode de novo; evite copiar algo enquanto os testes rodam |

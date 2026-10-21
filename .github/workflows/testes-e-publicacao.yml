@@ -1,0 +1,70 @@
+# A cada push na main: roda os testes das áreas alteradas e, se passarem, publica no Cloudflare.
+# Se algum teste falhar, o site não é publicado e o GitHub avisa por e-mail.
+# Em "Actions → Testes e publicação → Run workflow" dá para rodar todos os testes e publicar.
+name: Testes e publicação
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Uma publicação por vez, na ordem dos pushes.
+concurrency:
+  group: publicacao
+  cancel-in-progress: false
+
+jobs:
+  testes:
+    name: Testes (Edge e Firefox)
+    # Windows, como no computador de desenvolvimento: mesmo Edge e mesmas fontes.
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Histórico completo, para comparar com o commit anterior e escolher as áreas.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Instalar o Playwright e o Firefox de testes
+        working-directory: tests
+        run: npm ci
+
+      - name: Rodar os testes
+        working-directory: tests
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            node alterados.js --tudo
+          else
+            node alterados.js "${{ github.event.before }}..${{ github.sha }}"
+          fi
+
+      - name: Guardar o relatório dos testes
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-dos-testes
+          path: |
+            tests/relatorio
+            tests/resultados
+          retention-days: 14
+
+  publicar:
+    name: Publicar no Cloudflare
+    needs: testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy

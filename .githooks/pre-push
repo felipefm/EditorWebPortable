@@ -1,8 +1,9 @@
 #!/bin/sh
-# Roda os testes das áreas alteradas antes de enviar para o GitHub.
-# Se algum teste falhar, o push é cancelado (e o Cloudflare não publica).
-# Para pular numa emergência: git push --no-verify
-# Ativação (uma vez por computador): git config core.hooksPath .githooks
+# Opcional: roda os testes das áreas alteradas no computador, antes de enviar para o GitHub.
+# Normalmente os testes rodam no GitHub Actions (.github/workflows/testes-e-publicacao.yml).
+# Se algum teste falhar, o push é cancelado. Para pular: git push --no-verify
+# Ligar neste computador: git config core.hooksPath .githooks
+# Desligar: git config --unset core.hooksPath
 
 raiz="$(git rev-parse --show-toplevel)"
 zero="0000000000000000000000000000000000000000"

@@ -4,7 +4,7 @@
 //   npm run test:alterado                 alterações ainda não commitadas
 //   npm run test:alterado -- HEAD~1       o que mudou no último commit
 //   npm run test:alterado -- --listar     só mostra as áreas, sem rodar
-//   node alterados.js abc123..def456      o que mudou entre dois commits (usado no pre-push)
+//   node alterados.js abc123..def456      o que mudou entre dois commits (usado no GitHub Actions e no pre-push)
 //   node alterados.js --tudo              roda todos os testes
 //
 // Como decide a área:
