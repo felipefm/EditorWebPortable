@@ -3,6 +3,7 @@
   "private": true,
   "description": "Testes automatizados do Editor Portable, separados por área.",
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks",
     "test": "playwright test",
     "test:alterado": "node alterados.js",
     "test:geral": "playwright test geral",

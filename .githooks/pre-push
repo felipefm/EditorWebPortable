@@ -1,0 +1,33 @@
+#!/bin/sh
+# Roda os testes das áreas alteradas antes de enviar para o GitHub.
+# Se algum teste falhar, o push é cancelado (e o Cloudflare não publica).
+# Para pular numa emergência: git push --no-verify
+# Ativação (uma vez por computador): git config core.hooksPath .githooks
+
+raiz="$(git rev-parse --show-toplevel)"
+zero="0000000000000000000000000000000000000000"
+resultado=0
+
+while read -r ref_local sha_local ref_remota sha_remoto; do
+    # Apagando uma branch remota: nada para testar.
+    if [ "$sha_local" = "$zero" ]; then
+        continue
+    fi
+
+    echo ""
+    echo "=== Testes antes do push ($ref_remota) ==="
+    if [ "$sha_remoto" = "$zero" ] || ! git cat-file -e "$sha_remoto^{commit}" 2>/dev/null; then
+        # Branch nova ou commit remoto desconhecido: roda tudo.
+        node "$raiz/tests/alterados.js" --tudo --pre-push || resultado=1
+    else
+        node "$raiz/tests/alterados.js" "$sha_remoto..$sha_local" --pre-push || resultado=1
+    fi
+done
+
+if [ "$resultado" -ne 0 ]; then
+    echo ""
+    echo "Push cancelado: há testes falhando. Corrija e tente de novo."
+    echo "Para ver detalhes: cd tests && npm run test:relatorio"
+    echo "Para enviar mesmo assim (não recomendado): git push --no-verify"
+fi
+exit $resultado

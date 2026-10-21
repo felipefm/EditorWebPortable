@@ -4,6 +4,8 @@
 //   npm run test:alterado                 alterações ainda não commitadas
 //   npm run test:alterado -- HEAD~1       o que mudou no último commit
 //   npm run test:alterado -- --listar     só mostra as áreas, sem rodar
+//   node alterados.js abc123..def456      o que mudou entre dois commits (usado no pre-push)
+//   node alterados.js --tudo              roda todos os testes
 //
 // Como decide a área:
 //   - public/editor.js: pela função onde a linha mudou (ex.: formatarJson → json).
@@ -51,7 +53,8 @@ function git(argumentos) {
 
 // Lê o diff e devolve { arquivo: [números de linha no arquivo atual] }.
 function linhasAlteradas(base) {
-    const diff = git(['diff', '-U0', base, '--', 'public', 'tests']);
+    const intervalo = base.includes('..') ? base.split('..') : undefined;
+    const diff = git(['diff', '-U0', ...(intervalo || [base]), '--', 'public', 'tests']);
     const resultado = {};
     let arquivoAtual;
     for (const linha of diff.split('\n')) {
@@ -75,9 +78,11 @@ function linhasAlteradas(base) {
             }
         }
     }
-    const novos = git(['ls-files', '--others', '--exclude-standard', '--', 'public', 'tests']).split('\n').filter(Boolean);
-    for (const arquivo of novos) {
-        resultado[arquivo] = [0];
+    if (!intervalo) {
+        const novos = git(['ls-files', '--others', '--exclude-standard', '--', 'public', 'tests']).split('\n').filter(Boolean);
+        for (const arquivo of novos) {
+            resultado[arquivo] = [0];
+        }
     }
     return resultado;
 }
@@ -111,7 +116,19 @@ function dentroDeMedia(linhas, numero) {
     return false;
 }
 
-function analisar(alteracoes) {
+// Conteúdo do arquivo na versão analisada (o commit final do intervalo, se houver).
+function lerArquivo(arquivo, versao) {
+    try {
+        const texto = versao
+            ? git(['show', `${versao}:${arquivo}`])
+            : fs.readFileSync(path.join(raizRepositorio, arquivo), 'utf8');
+        return texto.replace(/\r\n/g, '\n').split('\n');
+    } catch (erro) {
+        return [];
+    }
+}
+
+function analisar(alteracoes, versao) {
     const areas = new Set(['geral']);
     const motivos = [];
     const marcar = (lista, motivo) => {
@@ -121,8 +138,7 @@ function analisar(alteracoes) {
 
     for (const [arquivo, numeros] of Object.entries(alteracoes)) {
         const nomeBase = path.basename(arquivo);
-        const caminho = path.join(raizRepositorio, arquivo);
-        const linhas = fs.existsSync(caminho) ? fs.readFileSync(caminho, 'utf8').replace(/\r\n/g, '\n').split('\n') : [];
+        const linhas = lerArquivo(arquivo, versao);
 
         if (arquivo.startsWith('tests/')) {
             const area = nomeBase.replace('.spec.js', '');
@@ -180,34 +196,59 @@ function analisar(alteracoes) {
     return { areas, motivos };
 }
 
+function rodarTestes(filtros) {
+    const cliPlaywright = require.resolve('@playwright/test/cli', { paths: [__dirname] });
+    const execucao = spawnSync(process.execPath, [cliPlaywright, 'test', ...filtros], {
+        cwd: __dirname,
+        stdio: 'inherit'
+    });
+    return execucao.status === null ? 1 : execucao.status;
+}
+
 function principal() {
     const argumentos = process.argv.slice(2);
     const apenasListar = argumentos.includes('--listar');
+    const prePush = argumentos.includes('--pre-push');
     const base = argumentos.find((item) => !item.startsWith('--')) || 'HEAD';
 
-    const alteracoes = linhasAlteradas(base);
+    if (!apenasListar && !fs.existsSync(path.join(__dirname, 'node_modules', '@playwright', 'test'))) {
+        console.error('As dependências dos testes não estão instaladas. Rode uma vez:\n  cd tests && npm install');
+        return 1;
+    }
+
+    if (argumentos.includes('--tudo')) {
+        console.log('Rodando todos os testes.\n');
+        return apenasListar ? 0 : rodarTestes([]);
+    }
+
+    let alteracoes;
+    try {
+        alteracoes = linhasAlteradas(base);
+    } catch (erro) {
+        console.error(`Não foi possível comparar com ${base}. Rodando todos os testes.\n`);
+        return apenasListar ? 0 : rodarTestes([]);
+    }
     if (!Object.keys(alteracoes).length) {
-        console.log(`Nenhuma alteração em public/ ou tests/ desde ${base}. Nada para testar.`);
+        console.log(`Nenhuma alteração em public/ ou tests/${prePush ? ' neste push' : ` desde ${base}`}. Nada para testar.`);
         return 0;
     }
 
-    const { areas, motivos } = analisar(alteracoes);
+    const versao = base.includes('..') ? base.split('..')[1] : undefined;
+    const { areas, motivos } = analisar(alteracoes, versao);
     const rodarTudo = areas.has('todas');
     console.log('O que mudou:');
     [...new Set(motivos)].forEach((motivo) => console.log(`  - ${motivo}`));
     const listaAreas = rodarTudo ? 'todas' : [...areas].join(', ');
     console.log(`\nÁreas a testar: ${listaAreas}\n`);
 
+    if (prePush && git(['status', '--porcelain', '--', 'public', 'tests']).trim()) {
+        console.log('Atenção: há alterações não commitadas em public/ ou tests/. Os testes rodam sobre os arquivos da pasta, incluindo essas alterações.\n');
+    }
+
     if (apenasListar) {
         return 0;
     }
-    const filtros = rodarTudo ? [] : [...areas];
-    const execucao = spawnSync('npx', ['playwright', 'test', ...filtros], {
-        cwd: __dirname,
-        stdio: 'inherit',
-        shell: process.platform === 'win32'
-    });
-    return execucao.status === null ? 1 : execucao.status;
+    return rodarTestes(rodarTudo ? [] : [...areas]);
 }
 
 process.exitCode = principal();

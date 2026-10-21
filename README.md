@@ -90,12 +90,19 @@ Nenhum conteúdo é enviado para servidores. Tudo fica no seu navegador ou nos a
 
 Os testes ficam na pasta `tests/` e usam o [Playwright](https://playwright.dev) com o Microsoft Edge instalado no Windows. Eles abrem o editor num navegador de verdade, clicam, digitam e conferem o resultado. Precisam de internet, porque o Monaco vem do CDN.
 
-Primeira vez:
+Primeira vez (instala o Playwright e ativa a verificação antes do push):
 
 ```bash
 cd tests
 npm install
 ```
+
+### Verificação automática antes do push
+
+Todo `git push` roda antes os testes das áreas alteradas nos commits que estão sendo enviados. Se algum teste falhar, o push é cancelado e nada vai para o ar, porque o Cloudflare só publica o que chega ao GitHub. Pushes que não mexem em `public/` nem em `tests/` (só o README, por exemplo) não rodam testes.
+
+- O hook fica em `.githooks/pre-push` e é ativado pelo `npm install` acima. Para ativar manualmente: `git config core.hooksPath .githooks`.
+- Numa emergência, dá para enviar sem testar: `git push --no-verify`.
 
 ### Testar só o que você alterou
 
