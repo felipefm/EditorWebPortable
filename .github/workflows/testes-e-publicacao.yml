@@ -67,4 +67,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Sem isto a ação instala o Wrangler 3.90, que não publica um Worker só com arquivos estáticos.
+          wranglerVersion: '4.151.3'
           command: deploy
