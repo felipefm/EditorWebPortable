@@ -88,48 +88,28 @@ Nenhum conteúdo é enviado para servidores. Tudo fica no seu navegador ou nos a
 
 ## Testes automatizados
 
-Os testes ficam na pasta `tests/` e usam o [Playwright](https://playwright.dev) com o Microsoft Edge instalado no Windows. Eles abrem o editor num navegador de verdade, clicam, digitam e conferem o resultado. Precisam de internet, porque o Monaco vem do CDN.
+O projeto tem **77 testes automatizados**, divididos em 7 áreas: geral, abas, arquivos, Markdown, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor no Microsoft Edge de verdade, clicando, digitando e conferindo o resultado.
 
-Primeira vez (instala o Playwright e ativa a verificação antes do push):
+📖 **Documentação completa: [docs/TESTES.md](docs/TESTES.md).** Explica como funcionam, a lista de todos os testes, como o projeto escolhe o que testar, como escrever testes novos e o que fazer quando algo falha.
+
+### Começando
 
 ```bash
 cd tests
-npm install
+npm install              # primeira vez: instala o Playwright e ativa a verificação antes do push
+npm run test:alterado    # roda só os testes das áreas que você alterou
+npm test                 # roda todos (cerca de 30 segundos)
 ```
+
+Também dá para rodar uma área específica: `npm run test:geral`, `test:abas`, `test:arquivos`, `test:markdown`, `test:json`, `test:sessao` ou `test:celular`.
+
+### Testa só o que mudou
+
+O `npm run test:alterado` lê o `git diff`, descobre em qual função do `editor.js` (ou em qual id/classe do HTML e do CSS) cada linha mudou e roda só os testes daquela área. Por exemplo, mudar `formatarJson` roda os testes de JSON. Em caso de dúvida, roda tudo.
 
 ### Verificação automática antes do push
 
-Todo `git push` roda antes os testes das áreas alteradas nos commits que estão sendo enviados. Se algum teste falhar, o push é cancelado e nada vai para o ar, porque o Cloudflare só publica o que chega ao GitHub. Pushes que não mexem em `public/` nem em `tests/` (só o README, por exemplo) não rodam testes.
-
-- O hook fica em `.githooks/pre-push` e é ativado pelo `npm install` acima. Para ativar manualmente: `git config core.hooksPath .githooks`.
-- Numa emergência, dá para enviar sem testar: `git push --no-verify`.
-
-### Testar só o que você alterou
-
-```bash
-npm run test:alterado              # alterações ainda não commitadas
-npm run test:alterado -- HEAD~1    # o que mudou no último commit
-npm run test:alterado -- --listar  # só mostra quais áreas seriam testadas
-```
-
-O comando lê o `git diff`, descobre em qual função do `editor.js` (ou em qual id/classe do HTML e do CSS) cada linha mudou e roda só os testes daquela área. Os testes de `geral` rodam sempre. Se não for possível identificar a área, roda tudo.
-
-### Testar uma área específica
-
-| Comando | O que testa |
-| --- | --- |
-| `npm run test:geral` | Carregamento, barra lateral, paleta de comandos e rodapé |
-| `npm run test:abas` | Novo documento, troca e fechamento de abas, diálogo de confirmação |
-| `npm run test:arquivos` | Abrir, salvar, salvar como e detecção de linguagem |
-| `npm run test:markdown` | Barra e atalhos de formatação, preview e modos de visualização |
-| `npm run test:json` | Formatador JSON: formatar, compactar, erros, copiar e abrir em aba |
-| `npm run test:sessao` | Sessão restaurada, painel de backup, exportar e importar |
-| `npm run test:celular` | Layout em tela de celular (390 × 844) |
-| `npm test` | Tudo |
-
-Outros: `npm run test:visual` abre o navegador para você acompanhar, e `npm run test:relatorio` mostra o relatório da última execução (com print e gravação dos testes que falharam).
-
-Para usar o Chrome em vez do Edge: `NAVEGADOR=chrome npm test`.
+Todo `git push` roda antes os testes das áreas alteradas. Se algum falhar, o push é cancelado e nada vai para o ar, porque o Cloudflare só publica o que chega ao GitHub. Numa emergência: `git push --no-verify`.
 
 ## Estrutura
 
@@ -139,6 +119,8 @@ public/
   editor.css   Estilos (tema escuro inspirado no VS Code)
   editor.js    Toda a lógica: Monaco, abas, arquivos, sessão, backup, Markdown e JSON
 tests/        Testes automatizados (Playwright), um arquivo por área
+docs/         Documentação (TESTES.md)
+.githooks/    Verificação de testes antes do push
 wrangler.jsonc Configuração de deploy no Cloudflare
 ```
 
