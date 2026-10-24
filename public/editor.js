@@ -629,11 +629,15 @@
                 botaoVoltarEditorMarkdown.focus();
             }
 
-            function aplicarModoPreview(modo) {
+            function definirModoPreview(modo) {
                 modoPreview = ['editor', 'dividido', 'preview', 'visual'].includes(modo) ? modo : 'dividido';
                 botoesModoVisualizacao.forEach(function (botao) {
                     botao.setAttribute('aria-pressed', botao.dataset.modo === modoPreview ? 'true' : 'false');
                 });
+            }
+
+            function aplicarModoPreview(modo) {
+                definirModoPreview(modo);
                 atualizarPreviewMarkdown();
             }
 
@@ -685,7 +689,8 @@
                 return {
                     bullet: contar(/^\s*\*\s+\S/gm) > contar(/^\s*-\s+\S/gm) ? '*' : '-',
                     emphasis: contar(/(^|[^\w*])\*[^*\s][^*\n]*\*(?!\*)/g) > contar(/(^|[^\w_])_[^_\s][^_\n]*_(?!_)/g) ? '*' : '_',
-                    rule: contar(/^\s*\*{3,}\s*$/gm) > contar(/^\s*-{3,}\s*$/gm) ? '*' : '-'
+                    rule: contar(/^\s*\*{3,}\s*$/gm) > contar(/^\s*-{3,}\s*$/gm) ? '*' : '-',
+                    bulletOrdered: contar(/^\s*\d+\)\s+\S/gm) > contar(/^\s*\d+\.\s+\S/gm) ? ')' : '.'
                 };
             }
 
@@ -821,16 +826,26 @@
                             }
                         }
                     });
+                    // No Milkdown, item de lista criado no Visual nasce "espaçado": uma sublista criada com Tab
+                    // ganhava uma linha em branco antes, o que deixa a lista inteira espaçada no Markdown.
+                    // Itens novos nascem compactos; os lidos do arquivo mantêm o espaçamento que já tinham.
+                    // Parte da versão do GFM, que acrescenta o "marcado" das listas de tarefas.
+                    crepe.editor.use(milkdown.gfm.extendListItemSchemaForTask.extendSchema(function (anterior) {
+                        return function (ctx) {
+                            const esquema = anterior(ctx);
+                            return { ...esquema, attrs: { ...esquema.attrs, spread: { ...esquema.attrs.spread, default: false } } };
+                        };
+                    }));
                     crepe.editor.config(function (ctx) {
                         ctx.update(milkdown.core.remarkStringifyOptionsCtx, function (anterior) {
-                            return { ...anterior, bullet: estilo.bullet, emphasis: estilo.emphasis, rule: estilo.rule, strong: '*' };
+                            return { ...anterior, bullet: estilo.bullet, bulletOrdered: estilo.bulletOrdered, emphasis: estilo.emphasis, rule: estilo.rule, strong: '*' };
                         });
                         ctx.set(milkdown.gfm.remarkGFMPlugin.options.key, { tablePipeAlign: false });
                         ctx.update(milkdown.core.remarkPluginsCtx, function (plugins) {
                             return [...plugins, { plugin: corrigirImagensSemTitulo, options: undefined }];
                         });
                         ctx.update(milkdown.core.prosePluginsCtx, function (plugins) {
-                            return [...plugins, criarPluginEnvolverSelecao(milkdown)];
+                            return [...plugins, criarPluginEnvolverSelecao(milkdown), criarPluginFecharPares(milkdown)];
                         });
                     });
                     crepe.on(function (ouvinte) {
@@ -1172,6 +1187,104 @@
                             }
                             const transacao = visao.state.tr.insertText(fecha, ate).insertText(texto, de);
                             transacao.setSelection(milkdown.estado.TextSelection.create(transacao.doc, de + 1, ate + 1));
+                            visao.dispatch(transacao);
+                            return true;
+                        }
+                    }
+                });
+            }
+
+            // Como no modo Editor: digitar (, [ ou { já insere o fechamento, com o cursor no meio. Só fecha
+            // quando depois do cursor vem espaço, fim da linha ou pontuação (no meio de uma palavra, não).
+            // Digitar o fechamento em cima de um inserido automaticamente só avança o cursor, e Backspace
+            // entre um par vazio apaga os dois.
+            function criarPluginFecharPares(milkdown) {
+                const pares = { '(': ')', '[': ']', '{': '}' };
+                const fechaAntesDe = /^$|^[\s)\]}.,;:!?]/;
+                const chave = new milkdown.estado.PluginKey('fechar-pares');
+                // Posições dos fechamentos inseridos automaticamente, acompanhando as edições.
+                const fechamentos = function (estado) {
+                    return chave.getState(estado) || [];
+                };
+                return new milkdown.estado.Plugin({
+                    key: chave,
+                    state: {
+                        init: function () {
+                            return [];
+                        },
+                        apply: function (transacao, posicoes) {
+                            const novas = transacao.getMeta(chave);
+                            if (novas) {
+                                return novas;
+                            }
+                            if (!transacao.docChanged) {
+                                return posicoes;
+                            }
+                            return posicoes.map(function (posicao) {
+                                return transacao.mapping.map(posicao);
+                            });
+                        }
+                    },
+                    props: {
+                        handleTextInput: function (visao, de, ate, texto) {
+                            const estado = visao.state;
+                            // Depois de um espaço no fim da linha, o navegador informa "trocou o espaço por
+                            // ' ('" em vez de "digitou '('". O começo (o espaço, já normalizado) é reaplicado
+                            // como veio, e só o último caractere conta como digitado.
+                            const prefixo = texto.slice(0, -1);
+                            const tecla = texto.slice(-1);
+                            if (de !== ate && prefixo.replace(/ /g, ' ') !== estado.doc.textBetween(de, ate).replace(/ /g, ' ')) {
+                                return false;
+                            }
+                            if (de === ate && prefixo) {
+                                return false;
+                            }
+                            const posicoes = fechamentos(estado);
+                            const depois = estado.doc.textBetween(ate, Math.min(ate + 1, estado.doc.content.size));
+                            if (Object.values(pares).includes(tecla) && posicoes.includes(ate) && depois === tecla) {
+                                const transacao = estado.tr.insertText(prefixo, de, ate);
+                                const cursor = transacao.mapping.map(ate) + 1;
+                                transacao.setSelection(milkdown.estado.TextSelection.create(transacao.doc, cursor));
+                                transacao.setMeta(chave, posicoes.filter(function (posicao) {
+                                    return posicao !== ate;
+                                }).map(function (posicao) {
+                                    return transacao.mapping.map(posicao);
+                                }));
+                                visao.dispatch(transacao);
+                                return true;
+                            }
+                            const fecha = pares[tecla];
+                            if (!fecha || !fechaAntesDe.test(depois) || estado.selection.$from.parent.type.spec.code) {
+                                return false;
+                            }
+                            const transacao = estado.tr.insertText(prefixo + tecla + fecha, de, ate);
+                            const cursor = de + prefixo.length + 1;
+                            transacao.setSelection(milkdown.estado.TextSelection.create(transacao.doc, cursor));
+                            transacao.setMeta(chave, posicoes.map(function (posicao) {
+                                return transacao.mapping.map(posicao);
+                            }).concat(cursor));
+                            visao.dispatch(transacao);
+                            return true;
+                        },
+                        handleKeyDown: function (visao, evento) {
+                            const estado = visao.state;
+                            const selecao = estado.selection;
+                            if (evento.key !== 'Backspace' || !selecao.empty || selecao.from < 1) {
+                                return false;
+                            }
+                            const de = selecao.from;
+                            const posicoes = fechamentos(estado);
+                            const antes = estado.doc.textBetween(de - 1, de);
+                            const depois = estado.doc.textBetween(de, Math.min(de + 1, estado.doc.content.size));
+                            if (!pares[antes] || pares[antes] !== depois || !posicoes.includes(de)) {
+                                return false;
+                            }
+                            const transacao = estado.tr.delete(de - 1, de + 1);
+                            transacao.setMeta(chave, posicoes.filter(function (posicao) {
+                                return posicao !== de;
+                            }).map(function (posicao) {
+                                return transacao.mapping.map(posicao);
+                            }));
                             visao.dispatch(transacao);
                             return true;
                         }
@@ -2028,10 +2141,11 @@
                 }
             }
 
+            // Documento novo começa em Markdown, no modo Visual, pronto para escrever.
             function criarNovoConteudo() {
-                const linguagemInicial = documentoAtual ? documentoAtual.modelo.getLanguageId() : 'plaintext';
-                const documento = criarDocumento(obterNomeSemTitulo(), '', undefined, true, linguagemInicial);
+                const documento = criarDocumento(obterNomeSemTitulo(), '', undefined, true, 'markdown');
                 documentos.push(documento);
+                definirModoPreview('visual');
                 ativarDocumento(documento, 'Novo arquivo');
                 agendarPersistenciaSessao();
             }
@@ -2062,8 +2176,9 @@
                 documento.modelo.dispose();
 
                 if (documentos.length === 0) {
-                    const novoDocumento = criarDocumento(obterNomeSemTitulo(), '', undefined, true, 'plaintext');
+                    const novoDocumento = criarDocumento(obterNomeSemTitulo(), '', undefined, true, 'markdown');
                     documentos.push(novoDocumento);
+                    definirModoPreview('visual');
                     documentoAtual = novoDocumento;
                     editor.setModel(novoDocumento.modelo);
                 } else if (!eraAtual) {

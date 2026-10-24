@@ -43,7 +43,10 @@ Nos documentos Markdown, o seletor de visualização tem quatro opções: **Edit
 
 - **Atalhos:** todos os [atalhos de teclado](#atalhos-de-teclado) funcionam também no modo Visual. Além disso, digite `/` numa linha vazia para inserir blocos, ou selecione um trecho para ver uma barra de formatação.
 - **O texto Markdown continua sendo o arquivo.** Cada edição no modo Visual atualiza o Markdown, e dá para trocar de modo a qualquer momento.
-- **Entrar e sair sem editar não muda nada.** Ao editar, o Markdown é reescrito no formato padrão, preservando o estilo que o documento já usa (`-` ou `*` nas listas, `_` ou `*` no itálico, `---` ou `***` nas linhas). Algumas coisas podem mudar mesmo assim: linhas em branco extras somem, e HTML escrito dentro do Markdown pode se perder.
+- **Documento novo já começa aqui:** o botão Novo, o + das abas e `Ctrl+Alt+N` criam um documento em Markdown, aberto no modo Visual.
+- **Listas no Markdown padrão:** listas digitadas no Visual saem como `- item`, `1. item` e `- [ ] tarefa`, e sublistas ficam coladas ao item de cima. Uma linha vazia fica marcada com `<br />`, como no Typora.
+- **Fechamento automático:** como no modo Editor, digitar `(`, `[` ou `{` já insere o fechamento, com o cursor no meio. Digitar o fechamento em cima dele não duplica, e Backspace entre um par vazio apaga os dois.
+- **Entrar e sair sem editar não muda nada.** Ao editar, o Markdown é reescrito no formato padrão, preservando o estilo que o documento já usa (`-` ou `*` nas listas, `1.` ou `1)` nas numeradas, `_` ou `*` no itálico, `---` ou `***` nas linhas). Algumas coisas podem mudar mesmo assim: linhas em branco extras somem, e HTML escrito dentro do Markdown pode se perder.
 - O Milkdown é carregado só na primeira vez que você usa o modo Visual. Sem internet, o editor avisa e volta para o modo Dividido.
 
 ### Minimapa
@@ -134,7 +137,7 @@ O navegador pode acrescentar um número ao nome (`notas (1).md`) quando o arquiv
 
 ## Testes automatizados
 
-O projeto tem **230 testes automatizados**, divididos em 11 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 454 execuções.
+O projeto tem **260 testes automatizados**, divididos em 11 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 514 execuções.
 
 📖 **Documentação completa: [docs/TESTES.md](docs/TESTES.md).** Explica como funcionam, a lista de todos os testes, como o projeto escolhe o que testar, como escrever testes novos e o que fazer quando algo falha.
 
@@ -144,7 +147,7 @@ O projeto tem **230 testes automatizados**, divididos em 11 áreas: geral, atalh
 cd tests
 npm install              # primeira vez: instala o Playwright e o Firefox de testes
 npm run test:alterado    # roda só os testes das áreas que você alterou
-npm test                 # roda todos, no Edge e no Firefox (cerca de 4 minutos)
+npm test                 # roda todos, no Edge e no Firefox (cerca de 6 minutos)
 ```
 
 Também dá para rodar uma área específica: `npm run test:geral`, `test:atalhos`, `test:abas`, `test:arquivos`, `test:markdown`, `test:visual`, `test:imagens`, `test:mapa`, `test:json`, `test:sessao` ou `test:celular`, ou só o Firefox: `npm run test:firefox`.

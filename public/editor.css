@@ -11,6 +11,7 @@
     --texto-medio: #c9ced6;
     --texto-suave: #9ba3ae;
     --texto-apagado: #6b7280;
+    --linha-horizontal: #6b7480;
     --destaque: #2b6cd4;
     --destaque-hover: #3a7ae0;
     --destaque-borda: #1f56ad;
@@ -194,7 +195,7 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px soli
 #preview-conteudo p, #preview-conteudo ul, #preview-conteudo ol, #preview-conteudo blockquote, #preview-conteudo pre, #preview-conteudo table { margin: 0 0 1em; }
 #preview-conteudo a { color: var(--link); }
 #preview-conteudo img { max-width: 100%; height: auto; }
-#preview-conteudo hr { height: 0; margin: 28px 0; border: 0; border-top: 1px solid #4a515c; }
+#preview-conteudo hr { height: 0; margin: 28px 0; border: 0; border-top: 2px solid var(--linha-horizontal); }
 #preview-conteudo blockquote { margin-left: 0; padding: 10px 14px; border-radius: 6px; background: var(--barra); color: #b4bbc5; }
 #preview-conteudo code { padding: 2px 5px; border-radius: 4px; background: var(--superficie); color: #f0c674; font: 13px var(--fonte-mono); }
 #preview-conteudo pre { padding: 12px 14px; overflow: auto; border: 1px solid var(--borda); border-radius: 6px; background: #111317; }
@@ -280,6 +281,9 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px soli
 #formulario-imagem .dialogo-acoes { margin-top: 14px; }
 .md-botao-texto { width: auto; gap: 6px; padding: 0 10px; font-size: 12px; }
 #editor-visual .milkdown .ProseMirror img { max-width: 100%; height: auto; }
+/* O tema do Milkdown desenha a linha horizontal com 20% de opacidade; fica quase invisível no fundo escuro. */
+#editor-visual .milkdown .ProseMirror hr { height: 14px; padding: 6px 0; background-color: var(--linha-horizontal); }
+#editor-visual .milkdown .ProseMirror hr.ProseMirror-selectednode { background-color: var(--ativo-texto); }
 #preview-conteudo img { border-radius: 4px; }
 
 @media (max-width: 1100px) {

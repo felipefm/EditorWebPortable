@@ -21,15 +21,15 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **230 testes** em **11 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge. Ao todo são cerca de 454 execuções, e a suíte completa leva uns 4 minutos.
+São **260 testes** em **11 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge. Ao todo são cerca de 514 execuções, e a suíte completa leva uns 6 minutos num computador de mesa.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
 | geral | `geral.spec.js` | 6 | Carregamento sem erros, barra lateral, paleta de comandos, rodapé |
 | abas | `abas.spec.js` | 12 | Criar, trocar e fechar abas, indicador de não salvo, diálogo de confirmação, troca de linguagem |
 | arquivos | `arquivos.spec.js` | 19 | Abrir, salvar, salvar como, detecção de linguagem, modo "Baixar" dos navegadores sem gravação direta |
-| markdown | `markdown.spec.js` | 57 | Barra e **todos os atalhos** de formatação, envolver a seleção com aspas e parênteses, linha horizontal, preview, segurança do preview, modos de visualização |
-| visual | `visual.spec.js` | 53 | Modo Visual (Milkdown): edição formatada, **todos os atalhos**, cursor pronto para digitar, envolver a seleção, botão + da margem sem a alça de arrastar, sincronia com o Markdown, preservação do estilo, salvar, abas, falta de internet |
+| markdown | `markdown.spec.js` | 58 | Barra e **todos os atalhos** de formatação, envolver a seleção com aspas e parênteses, linha horizontal, preview, segurança do preview, modos de visualização |
+| visual | `visual.spec.js` | 82 | Modo Visual (Milkdown): edição formatada, **todos os atalhos**, cursor pronto para digitar, listas no Markdown padrão, fechamento automático de ( [ {, documento novo em Markdown e Visual, linha horizontal visível, envolver a seleção, botão + da margem sem a alça de arrastar, sincronia com o Markdown, preservação do estilo, salvar, abas, falta de internet |
 | imagens | `imagens.spec.js` | 17 | Imagens preservadas no modo Visual, diálogo "Inserir imagem" (link e arquivo), item Imagem do menu `/`, redução de tamanho |
 | mapa | `mapa.spec.js` | 13 | Minimapa do Monaco (Editor e Dividido) e o desenhado no modo Visual: botão Mapa, escolha lembrada, clicar e arrastar para rolar, atualização ao digitar |
 | atalhos | `atalhos.spec.js` | 26 | Atalhos gerais (salvar, salvar como, abrir, nova aba, formatador JSON) em cada modo, com o foco dentro e fora do texto |
@@ -252,7 +252,7 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - Ctrl+S não baixa nada e confirma o salvamento no navegador
 - cancelar a pergunta do nome não baixa nada
 
-### markdown (57)
+### markdown (58)
 
 - barra de formatação só aparece em documentos Markdown
 - botão de negrito aplica e remove a marcação
@@ -261,6 +261,7 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - link transforma a seleção e seleciona a URL
 - H1, H2, H3, lista, lista numerada, lista de tarefas e citação aplicam e removem o formato da linha (7 testes)
 - linha horizontal no meio do texto, numa linha vazia e no fim do documento insere `---` com as linhas em branco certas (3 testes)
+- linha horizontal do preview tem 2 px, bem visível
 - `---` colado no texto vira título; com linha em branco vira linha
 - **cada atalho de linha** (`Ctrl+1` a `6`, `Ctrl+Shift+1`, `2` e `6`, `Ctrl+Shift+7`, `8`, `9` e `Q`) aplica e remove o formato (13 testes)
 - `Alt+Shift+5` aplica tachado; `Ctrl+K` cria link
@@ -278,7 +279,7 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - documento que não é Markdown não mostra preview
 - modo de visualização é lembrado depois de recarregar
 
-### visual (53)
+### visual (82)
 
 - mostra o Markdown formatado e esconde a barra do editor de texto
 - entrar e sair do modo Visual sem editar não altera o texto
@@ -309,7 +310,32 @@ Cursor pronto para digitar, sem clicar no texto, depois de:
 - mudar a linguagem para Markdown com o modo Visual escolhido
 - recarregar a página
 - voltar da tela de atalhos
-- criar um arquivo novo no modo Editor (comparação: o Monaco recebe o foco)
+- voltar do Visual para o modo Editor (comparação: o Monaco recebe o foco)
+
+Listas no Markdown padrão (digitando com intervalo de 50 ms, como uma pessoa):
+
+- lista com marcadores sai como `- item`; numerada, como `1. item`; de tarefas, como `- [ ] item`
+- sublista criada com Tab fica colada ao item, sem linha em branco
+- Enter num item vazio sai da lista e a linha vazia fica marcada com `<br />`, como no Typora
+- listas que já estão no arquivo continuam iguais depois de editar outro trecho: compacta, espaçada, com sublista, numerada com sublista, começando em 3, com `1)`, de tarefas, com `*` e com parágrafo dentro do item (9 testes)
+
+Fechamento automático:
+
+- digitar `(`, `[` ou `{` insere o fechamento e o texto fica dentro (3 testes)
+- digitar o fechamento em cima do automático não duplica (3 testes)
+- Backspace entre um par vazio apaga os dois
+- colado numa palavra, não fecha
+- no Markdown, o texto entre parênteses sai normal (sem espaço especial antes)
+
+Documento novo:
+
+- pelo botão Novo, pelo + das abas e por Ctrl+Alt+N, mesmo vindo de uma aba JavaScript no modo Editor, abre em Markdown no modo Visual (3 testes)
+- fechar a última aba abre um documento novo em Markdown, no modo Visual
+- a aba que já existia continua com a linguagem dela
+
+Também:
+
+- a linha horizontal do modo Visual é sólida e tem pelo menos 2 px
 - documento que não é Markdown não usa o modo Visual
 
 ### imagens (17)

@@ -359,12 +359,194 @@ test.describe('Modo Visual: foco pronto para digitar', () => {
         await digitarSemClicar(page);
     });
 
-    test('arquivo novo no modo Editor também já aceita digitação', async ({ page }) => {
-        await abrirEditor(page);
-        await page.locator('#linguagem').selectOption('markdown');
+    test('voltar do Visual para o modo Editor já deixa digitar (comparação: o Monaco recebe o foco)', async ({ page }) => {
+        await abrirVisual(page, 'Primeiro');
         await page.locator('[data-modo="editor"]').click();
-        await page.locator('#novo').click();
         await page.keyboard.type('digitado');
-        await expect.poll(() => obterConteudo(page)).toBe('digitado');
+        await expect.poll(() => obterConteudo(page)).toContain('digitado');
     });
+});
+
+// Listas criadas no Visual saem no Markdown padrão, sem marcações próprias.
+test.describe('Modo Visual: listas no Markdown padrão', () => {
+    // Digita com intervalo de gente, não de robô: o Milkdown precisa de alguns milissegundos
+    // depois de transformar o bloco (Tab, "1. ") para posicionar o cursor.
+    const digitar = (page, texto) => page.keyboard.type(texto, { delay: 50 });
+
+    async function noFimDoPrimeiroParagrafo(page, conteudo) {
+        const erros = await abrirVisual(page, conteudo);
+        await editorVisual(page).locator('p').first().click();
+        await page.keyboard.press('End');
+        return erros;
+    }
+
+    test('lista com marcadores digitada sai como "- item"', async ({ page }) => {
+        await noFimDoPrimeiroParagrafo(page, 'Início');
+        await page.keyboard.press('Enter');
+        await digitar(page, '- um');
+        await page.keyboard.press('Enter');
+        await digitar(page, 'dois');
+        await expect.poll(() => textoNormalizado(page)).toBe('Início\n\n- um\n- dois');
+    });
+
+    test('sublista criada com Tab fica colada ao item, sem linha em branco', async ({ page }) => {
+        await noFimDoPrimeiroParagrafo(page, 'Início');
+        await page.keyboard.press('Enter');
+        await digitar(page, '- um');
+        await page.keyboard.press('Enter');
+        await page.keyboard.press('Tab');
+        await digitar(page, 'sub');
+        await expect.poll(() => textoNormalizado(page)).toBe('Início\n\n- um\n  - sub');
+    });
+
+    test('lista numerada digitada sai como "1. item"', async ({ page }) => {
+        await noFimDoPrimeiroParagrafo(page, 'Início');
+        await page.keyboard.press('Enter');
+        await digitar(page, '1. um');
+        await page.keyboard.press('Enter');
+        await digitar(page, 'dois');
+        await expect.poll(() => textoNormalizado(page)).toBe('Início\n\n1. um\n2. dois');
+    });
+
+    test('lista de tarefas digitada sai como "- [ ] item"', async ({ page }) => {
+        await noFimDoPrimeiroParagrafo(page, 'Início');
+        await page.keyboard.press('Enter');
+        await digitar(page, '- [ ] tarefa');
+        await expect.poll(() => textoNormalizado(page)).toBe('Início\n\n- [ ] tarefa');
+    });
+
+    test('Enter num item vazio sai da lista e a linha vazia fica marcada com <br />, como no Typora', async ({ page }) => {
+        await noFimDoPrimeiroParagrafo(page, 'Início');
+        await page.keyboard.press('Enter');
+        await digitar(page, '- um');
+        await page.keyboard.press('Enter');
+        await page.keyboard.press('Enter');
+        await expect.poll(() => textoNormalizado(page)).toBe('Início\n\n- um\n\n<br />');
+    });
+
+    // Listas que já estão no arquivo continuam iguais depois de editar outro trecho.
+    for (const [nome, lista] of [
+        ['compacta', '- um\n- dois'],
+        ['espaçada', '- um\n\n- dois'],
+        ['com sublista', '- um\n  - sub um\n  - sub dois\n- dois'],
+        ['numerada com sublista', '1. um\n   1. sub\n2. dois'],
+        ['numerada começando em 3', '3. três\n4. quatro'],
+        ['numerada com 1)', '1) um\n2) dois'],
+        ['de tarefas', '- [ ] a fazer\n- [x] feito'],
+        ['com *', '* um\n* dois'],
+        ['com parágrafo dentro do item', '- um\n\n  continuação\n- dois']
+    ]) {
+        test(`lista ${nome} do arquivo continua igual depois de editar`, async ({ page }) => {
+            await noFimDoPrimeiroParagrafo(page, `Início\n\n${lista}\n`);
+            await digitar(page, '!');
+            await expect.poll(() => textoNormalizado(page)).toBe(`Início!\n\n${lista}\n`);
+        });
+    }
+});
+
+// Como no modo Editor: (, [ e { já fecham sozinhos.
+test.describe('Modo Visual: fechamento automático', () => {
+    const textoDoParagrafo = (page) => editorVisual(page).locator('p').first().textContent();
+
+    async function noFim(page, conteudo) {
+        await abrirVisual(page, conteudo);
+        await editorVisual(page).locator('p').first().click();
+        await page.keyboard.press('End');
+    }
+
+    for (const [abre, fecha] of [['(', ')'], ['[', ']'], ['{', '}']]) {
+        test(`digitar ${abre} insere ${fecha} e o texto fica dentro`, async ({ page }) => {
+            await noFim(page, 'texto');
+            await page.keyboard.type(` ${abre}dentro`, { delay: 30 });
+            await expect.poll(() => textoDoParagrafo(page)).toBe(`texto ${abre}dentro${fecha}`);
+        });
+
+        test(`digitar ${fecha} em cima do fechamento automático não duplica`, async ({ page }) => {
+            await noFim(page, 'texto');
+            await page.keyboard.type(` ${abre}a${fecha} fim`, { delay: 30 });
+            await expect.poll(() => textoDoParagrafo(page)).toBe(`texto ${abre}a${fecha} fim`);
+        });
+    }
+
+    test('Backspace entre um par vazio apaga os dois', async ({ page }) => {
+        await noFim(page, 'texto');
+        await page.keyboard.type(' (', { delay: 30 });
+        await expect.poll(() => textoDoParagrafo(page)).toBe('texto ()');
+        await page.keyboard.press('Backspace');
+        await expect.poll(() => textoDoParagrafo(page)).toBe('texto ');
+    });
+
+    test('colado numa palavra não fecha, para não sobrar um parêntese', async ({ page }) => {
+        await abrirVisual(page, 'palavra');
+        await editorVisual(page).locator('p').first().click();
+        await page.keyboard.press('Home');
+        await page.keyboard.type('(', { delay: 30 });
+        await expect.poll(() => textoDoParagrafo(page)).toBe('(palavra');
+    });
+
+    test('no Markdown, o texto entre parênteses sai normal', async ({ page }) => {
+        await noFim(page, 'texto');
+        await page.keyboard.type(' (nota)', { delay: 30 });
+        await expect.poll(() => textoNormalizado(page)).toBe('texto (nota)');
+    });
+});
+
+// Documento novo já começa em Markdown, no modo Visual.
+test.describe('Documento novo', () => {
+    async function conferirMarkdownVisual(page) {
+        await expect(page.locator('.aba.ativa .aba-linguagem')).toHaveText('MD');
+        await expect(page.locator('#linguagem')).toHaveValue('markdown');
+        await expect(page.locator('[data-modo="visual"]')).toHaveAttribute('aria-pressed', 'true');
+        await expect(editorVisual(page)).toBeVisible({ timeout: 30000 });
+        await page.keyboard.type('# Título', { delay: 30 });
+        await expect.poll(() => textoNormalizado(page)).toBe('# Título');
+    }
+
+    for (const [nome, acao] of [
+        ['botão Novo', (page) => page.locator('#novo').click()],
+        ['botão + das abas', (page) => page.locator('#nova-aba').click()],
+        ['Ctrl+Alt+N', (page) => page.keyboard.press('Control+Alt+N')]
+    ]) {
+        test(`pelo ${nome}, mesmo vindo de uma aba JavaScript no modo Editor`, async ({ page }) => {
+            await abrirEditor(page);
+            await page.locator('#linguagem').selectOption('javascript');
+            await expect(page.locator('#container')).toBeVisible();
+            await acao(page);
+            await expect(page.locator('.aba')).toHaveCount(2);
+            await conferirMarkdownVisual(page);
+        });
+    }
+
+    test('fechar a última aba abre um documento novo em Markdown, no modo Visual', async ({ page }) => {
+        await abrirEditor(page);
+        await page.locator('.aba').first().getByRole('button', { name: /^Fechar/ }).click();
+        await expect(page.locator('.aba')).toHaveCount(1);
+        await conferirMarkdownVisual(page);
+    });
+
+    test('a aba que já existia continua com a linguagem dela', async ({ page }) => {
+        await abrirEditor(page);
+        await page.locator('#linguagem').selectOption('javascript');
+        await page.locator('#novo').click();
+        await expect(editorVisual(page)).toBeVisible({ timeout: 30000 });
+        await page.locator('.aba-nome').first().click();
+        await expect(page.locator('.aba.ativa .aba-linguagem')).toHaveText('JS');
+        await expect(page.locator('#container')).toBeVisible();
+    });
+});
+
+test('linha horizontal do modo Visual é sólida e bem visível', async ({ page }) => {
+    await abrirVisual(page, 'acima\n\n---\n\nabaixo\n');
+    const linha = editorVisual(page).locator('hr');
+    await expect(linha).toBeVisible();
+    const estilo = await linha.evaluate((elemento) => {
+        const calculado = getComputedStyle(elemento);
+        return {
+            cor: calculado.backgroundColor,
+            espessura: parseFloat(calculado.height) - parseFloat(calculado.paddingTop) - parseFloat(calculado.paddingBottom)
+        };
+    });
+    // Cor sem transparência (antes era 20% de opacidade) e pelo menos 2 px de espessura.
+    expect(estilo.cor).toMatch(/^rgb\(/);
+    expect(estilo.espessura).toBeGreaterThanOrEqual(2);
 });

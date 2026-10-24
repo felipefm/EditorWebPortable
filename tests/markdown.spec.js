@@ -205,6 +205,12 @@ test.describe('Markdown', () => {
         await expect(page.locator('#preview-conteudo hr')).toBeVisible();
     });
 
+    test('linha horizontal do preview tem 2 px, bem visível', async ({ page }) => {
+        await abrirMarkdown(page, 'acima\n\n---\n\nabaixo');
+        await expect(page.locator('#preview-conteudo hr')).toHaveCSS('border-top-width', '2px');
+        await expect(page.locator('#preview-conteudo hr')).toHaveCSS('border-top-color', 'rgb(107, 116, 128)');
+    });
+
     test('formatação funciona com várias linhas selecionadas', async ({ page }) => {
         await abrirMarkdown(page, 'um\ndois\ntres');
         await selecionar(page, 1, 1, 3, 5);
@@ -266,6 +272,8 @@ test.describe('Markdown', () => {
         await abrirEditor(page);
         await expect(page.locator('#preview-markdown')).toBeHidden();
         await novaAba(page, 'markdown', '# Oi');
+        // Documento novo abre no modo Visual; o preview aparece no Dividido.
+        await page.locator('[data-modo="dividido"]').click();
         await expect(page.locator('#preview-markdown')).toBeVisible();
         await page.locator('.aba-nome', { hasText: 'Sem título 1' }).click();
         await expect(page.locator('#preview-markdown')).toBeHidden();
