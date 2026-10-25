@@ -111,10 +111,11 @@ No Edge e no Chrome, o próprio navegador permite isso (`showDirectoryPicker`), 
 
 ### Segurança
 
-O servidor fica na rede de casa, então qualquer aparelho da rede chega até ele. Por isso:
+O servidor fica na rede de casa, então qualquer aparelho da rede (ou da VPN) chega até ele.
 
-- **Senha**, definida no `docker-compose` (`SENHA=`). O editor pede uma vez; o servidor responde com um cookie de sessão (`HttpOnly`, `SameSite=Strict`). Tentativas erradas seguidas são atrasadas.
-- **Conferência de origem** em toda gravação, contra outro site da sua rede tentar mandar pedidos ao editor.
+- **Sem senha, por decisão do usuário (25/10/2026):** é só a rede de casa. A senha fica **opcional**: com `SENHA=` vazio no `docker-compose`, o editor abre direto; preenchida, o editor pede uma vez e o servidor responde com um cookie de sessão (`HttpOnly`, `SameSite=Strict`).
+- **Conferência de origem** em toda gravação: um site qualquer aberto no navegador não consegue mandar pedidos escondidos ao servidor (CSRF).
+- **Conferência do endereço (`Host`)**, contra um site se passar por um endereço da rede de casa (DNS rebinding).
 - **Caminhos presos à pasta montada**: `..`, caminhos absolutos e links simbólicos para fora são recusados.
 - **Excluir move para `.editor/lixeira`** e **gravar por cima guarda uma cópia em `.editor/copias`**, dentro da pasta montada. A pasta `.editor` não aparece na árvore. Limpeza automática: proposta de 30 dias na lixeira e 10 cópias por arquivo.
 - **Conflito:** se o arquivo mudou no disco depois de aberto (por outro aparelho), o servidor recusa a gravação e o editor pergunta o que fazer.
@@ -130,11 +131,11 @@ O servidor fica na rede de casa, então qualquer aparelho da rede chega até ele
 
 ### Tarefas
 
-1. **Servidor** (`servidor/`): arquivos estáticos, login, `/api` (listar, ler, gravar com conflito, criar arquivo e pasta, renomear, mover para a lixeira), cópias e limpeza.
-2. **Editor:** detectar `/api`, tela de senha, fonte "servidor" no painel de pastas, sessão lembrando a pasta do servidor.
+1. **Servidor** (`servidor/`): arquivos estáticos, senha opcional, `/api` (listar, ler, gravar com conflito, criar arquivo e pasta, renomear, mover para a lixeira), cópias e limpeza.
+2. **Editor:** detectar `/api`, tela de senha (só se estiver ligada), fonte "servidor" no painel de pastas, sessão lembrando a pasta do servidor.
 3. **Docker:** `Dockerfile`, `docker-compose.yml` de exemplo e publicação da imagem no GitHub Actions.
 4. **Testes:**
-   - do servidor: senha, origem, caminhos fora da pasta, links simbólicos, limite de tamanho, conflito, lixeira e cópias;
+   - do servidor: com e sem senha, origem, endereço, caminhos fora da pasta, links simbólicos, limite de tamanho, conflito, lixeira e cópias;
    - do editor: a área `pastas` roda também contra o servidor, numa pasta temporária, inclusive no Firefox.
 5. **Documentação:** README (seção "Versão homelab") e `docs/TESTES.md`.
 
