@@ -21,7 +21,7 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **260 testes** em **11 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge. Ao todo são cerca de 514 execuções, e a suíte completa leva uns 6 minutos num computador de mesa.
+São **294 testes** em **12 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge, e os de pastas também (o Firefox não abre pastas; nele, só o aviso é testado). Ao todo são cerca de 548 execuções, e a suíte completa leva uns 6 minutos num computador de mesa.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
@@ -32,10 +32,11 @@ São **260 testes** em **11 áreas**, um arquivo por área. Eles rodam em dois n
 | visual | `visual.spec.js` | 82 | Modo Visual (Milkdown): edição formatada, **todos os atalhos**, cursor pronto para digitar, listas no Markdown padrão, fechamento automático de ( [ {, documento novo em Markdown e Visual, linha horizontal visível, envolver a seleção, botão + da margem sem a alça de arrastar, sincronia com o Markdown, preservação do estilo, salvar, abas, falta de internet |
 | imagens | `imagens.spec.js` | 17 | Imagens preservadas no modo Visual, diálogo "Inserir imagem" (link e arquivo), item Imagem do menu `/`, redução de tamanho |
 | mapa | `mapa.spec.js` | 13 | Minimapa do Monaco (Editor e Dividido) e o desenhado no modo Visual: botão Mapa, escolha lembrada, clicar e arrastar para rolar, atualização ao digitar |
+| pastas | `pastas.spec.js` | 33 | Painel de pastas: abrir pasta, árvore, abrir e salvar arquivos, criar, renomear e excluir, teclado, menu, permissão, restaurar ao recarregar, largura, aviso no Firefox |
 | atalhos | `atalhos.spec.js` | 26 | Atalhos gerais (salvar, salvar como, abrir, nova aba, formatador JSON) em cada modo, com o foco dentro e fora do texto |
 | json | `json.spec.js` | 11 | Formatar, compactar, indentação, erros com linha e coluna, copiar, abrir em aba |
 | sessao | `sessao.spec.js` | 10 | Sessão restaurada, painel de backup, exportar e importar |
-| celular | `celular.spec.js` | 6 | Layout em tela de 390 × 844 |
+| celular | `celular.spec.js` | 7 | Layout em tela de 390 × 844 |
 
 Tudo fica na pasta `tests/`, separada do site. O Cloudflare publica só a pasta `public/`, então os testes nunca vão para o ar.
 
@@ -48,6 +49,7 @@ tests/
   visual.spec.js       │
   imagens.spec.js      │
   mapa.spec.js         │
+  pastas.spec.js       │
   atalhos.spec.js      │
   json.spec.js         │
   sessao.spec.js       │
@@ -93,6 +95,7 @@ Todos são executados dentro da pasta `tests/`.
 | `npm run test:visual` | Só o modo Visual |
 | `npm run test:imagens` | Só imagens |
 | `npm run test:mapa` | Só o minimapa |
+| `npm run test:pastas` | Só o painel de pastas |
 | `npm run test:atalhos` | Só os atalhos gerais em todos os modos |
 | `npm run test:firefox` | Todos os testes, só no Firefox |
 | `npm run test:json` | Só o formatador JSON |
@@ -141,6 +144,7 @@ O que mudou:
 | `imagem`, `image`, `img` | imagens |
 | `mapa`, `minimap` | mapa |
 | `markers` | abas |
+| `pasta`, `arvore`, `directory` | pastas |
 | `atalho`, `keydown`, `keybinding` | atalhos |
 | `envolver` | markdown e visual |
 | `markdown`, `preview`, `modo`, `marcacao`, `citacao`, `tarefas`, `numerada`, `negrito`, `italico`, `tachado`, `horizontal` | markdown |
@@ -375,6 +379,64 @@ Modo Visual (minimapa desenhado pelo editor):
 - o mapa se atualiza ao digitar
 - os botões do bloco de código ("js", "Copiar") não viram traços no mapa
 
+### pastas (33)
+
+Rodam só no Edge, com uma pasta simulada (veja [Pasta simulada](#pasta-simulada)).
+
+Painel e pasta:
+
+- o painel começa fechado; o botão Pastas abre e fecha, e a escolha fica lembrada (o foco vai para o botão Abrir pasta ao abrir, e para o texto ao fechar)
+- abrir uma pasta mostra pastas primeiro, em ordem alfabética (Item 2 antes de Item 10), sem `.git` e `node_modules`, com o foco no primeiro item
+- cada arquivo tem o ícone do seu tipo
+- cancelar a escolha da pasta não muda nada
+- clicar numa pasta expande e recolhe; o conteúdo é lido na hora; Recolher fecha todas
+- pasta vazia mostra "Pasta vazia"
+- Atualizar mostra o que mudou na pasta por fora do editor
+- fechar a pasta volta ao início e mantém as abas
+- a paleta de comandos abre uma pasta
+- a largura do painel muda arrastando a borda (e com as setas), tem limite e fica lembrada
+
+Arquivos:
+
+- clicar num arquivo abre numa aba, com o foco no texto; clicar de novo só volta para ela; o arquivo da aba atual fica destacado
+- arquivo que não é texto não abre
+- Ctrl+S grava direto no arquivo da pasta
+
+Criar:
+
+- novo arquivo pelo topo do painel: nome sugerido com só o nome selecionado, abre no modo Visual com o foco pronto para escrever, e salva
+- novo arquivo com outra extensão abre no modo da linguagem
+- o nome sugerido não repete um que já existe
+- botão direito numa pasta cria arquivo e pasta dentro dela
+- botão direito num arquivo cria ao lado dele; no espaço vazio, na pasta aberta
+- nome repetido (mesmo com maiúsculas diferentes), com caractere proibido, terminado em ponto ou reservado pelo Windows mostra o motivo e não cria nada; Esc desiste e devolve o foco
+
+Renomear e excluir:
+
+- renomear com F2 muda o arquivo e a aba aberta, inclusive a linguagem
+- renomear sem mudar o nome, ou com Esc, não altera nada
+- renomear funciona também quando o navegador não sabe mover (copia e apaga), para arquivos e pastas
+- renomear uma pasta com um arquivo aberto: as pastas continuam expandidas e a aba continua salvando no lugar certo
+- excluir pede confirmação; Cancelar mantém e Excluir apaga, fecha a aba e passa o foco ao item seguinte
+- excluir um arquivo aberto com alterações avisa e mantém o texto na aba
+- excluir uma pasta apaga tudo dentro e fecha as abas sem alterações
+
+Teclado e menu:
+
+- dá para usar a árvore só com o teclado (setas, Home, End, Enter, Tab, Shift+F10)
+- o menu do botão ⋯ anda com as setas, fecha com Esc e devolve o foco ao item
+
+Sessão:
+
+- depois de recarregar, a pasta, as pastas expandidas e o destaque da aba voltam, e a aba continua gravando no arquivo
+- se o navegador pedir permissão de novo, um clique em "Permitir acesso" mostra a árvore
+- permissão negada mostra o aviso e deixa tentar de novo
+
+Navegadores sem o recurso:
+
+- no Edge sem acesso a arquivos, o painel explica que não abre pastas
+- no Firefox (motor do Zen), o botão Pastas aparece e explica que é preciso o Edge, o Chrome ou o ajudante
+
 ### atalhos (26)
 
 Em cada modo (Editor, Dividido, Preview e Visual), com o foco num botão, fora do texto:
@@ -419,7 +481,7 @@ Também:
 - configurar backup em arquivo grava a sessão e mostra "Backup ativo"
 - navegador sem backup em arquivo explica e esconde o botão
 
-### celular (6)
+### celular (7)
 
 Estes rodam numa tela de 390 × 844 (projeto `celular` no `playwright.config.js`).
 
@@ -428,6 +490,7 @@ Estes rodam numa tela de 390 × 844 (projeto `celular` no `playwright.config.js`
 - nada ultrapassa a largura da tela
 - modo dividido empilha editor e preview
 - minimapa fica desligado e o botão Mapa não aparece
+- o botão e o painel de pastas não aparecem
 - painel de sessão cabe na tela
 
 ## Como os testes funcionam por dentro
@@ -448,6 +511,12 @@ Os testes não abrem as janelas de "Abrir" e "Salvar" do Windows, que travariam 
 - `showSaveFilePicker` devolve um arquivo falso, e tudo o que é gravado fica em `window.__arquivosGravados[nome]`, onde o teste pode conferir.
 
 Também dá para simular um navegador **sem** essa API (como o Firefox), para testar o caminho de download.
+
+### Pasta simulada
+
+Os testes de pastas (`pastas.spec.js`) também não abrem a janela de escolher pasta. O `showDirectoryPicker` simulado devolve a pasta `projeto` do armazenamento privado do navegador (o OPFS, *Origin Private File System*). Ele usa a mesma API das pastas do computador, então criar, ler, renomear e apagar acontecem de verdade, só que fora do disco. Cada teste começa com a pasta vazia e cria os arquivos de que precisa.
+
+Três chaves do `localStorage` simulam situações do navegador: `teste-cancelar-pasta` faz o seletor ser cancelado, `teste-permissao-pasta` faz o navegador pedir permissão de novo depois de recarregar, e `teste-resposta-permissao` faz ele recusar o pedido.
 
 ### Funções de apoio (`utilidades.js`)
 

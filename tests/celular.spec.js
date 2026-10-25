@@ -50,6 +50,16 @@ test.describe('Celular', () => {
         await expect(page.locator('#mapa-visual')).toBeHidden();
     });
 
+    test('o botão e o painel de pastas não aparecem', async ({ page }) => {
+        await page.addInitScript(() => {
+            localStorage.setItem('meu-editor-web-painel-pastas', JSON.stringify({ aberto: true, largura: 240 }));
+        });
+        await abrirEditor(page);
+        await expect(page.locator('#trilho-pastas')).toBeHidden();
+        await expect(page.locator('#painel-pastas')).toBeHidden();
+        await expect(page.locator('#painel-pastas-alca')).toBeHidden();
+    });
+
     test('painel de sessão cabe na tela', async ({ page }) => {
         await abrirEditor(page);
         await page.locator('#botao-sessao').click();

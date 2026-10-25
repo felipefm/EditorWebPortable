@@ -9,6 +9,7 @@ Editor de texto e código que roda direto no navegador, sem instalação e sem b
 - **Editor Monaco** com tema escuro, quebra de linha automática e realce de sintaxe para JavaScript, TypeScript, HTML, CSS, JSON, Markdown e texto puro.
 - **Várias abas**: abra e edite vários arquivos ao mesmo tempo. Cada aba mostra a linguagem, e as que têm alterações não salvas ganham um ponto amarelo.
 - **Minimapa** ao lado da barra de rolagem, como no Sublime Text e no VS Code: uma miniatura do documento onde clicar ou arrastar rola o texto. Funciona nos modos Editor, Dividido e Visual, e o botão **Mapa** no rodapé liga e desliga. Veja [Minimapa](#minimapa).
+- **Painel de pastas** (Edge e Chrome): abra uma pasta do computador e veja os arquivos numa árvore à esquerda, como no VS Code e no Sublime Text. Pela árvore dá para abrir, criar, renomear e excluir arquivos e pastas. Veja [Painel de pastas](#painel-de-pastas).
 - **Paleta de comandos** (`F1`): busque e execute qualquer ação do editor pelo teclado.
 - **Abrir e salvar arquivos locais**: com a [File System Access API](https://developer.mozilla.org/docs/Web/API/File_System_API) (Chrome, Edge), o editor grava direto no arquivo original. Nos navegadores que não têm essa API (Firefox e derivados, como Zen e LibreWolf, Safari e navegadores de celular), o botão vira **Baixar** e um aviso explica o motivo. Veja [Compatibilidade](#compatibilidade).
 - **Detecção de linguagem** pela extensão do arquivo (`.js`, `.mjs`, `.cjs`, `.ts`, `.html`, `.htm`, `.css`, `.json`, `.md`, `.markdown`, `.txt`).
@@ -57,6 +58,21 @@ O minimapa é a miniatura do documento ao lado da barra de rolagem. A faixa dest
 - **Visual:** o Milkdown não tem minimapa, então o editor desenha um. Cada linha de texto vira um traço com o tamanho e a cor dela; blocos de código, tabelas, citações e imagens também aparecem.
 - O botão **Mapa**, no rodapé, liga e desliga o minimapa em todos os modos. A escolha fica guardada no navegador.
 - No celular, o minimapa fica sempre desligado, porque ocuparia espaço demais.
+
+### Painel de pastas
+
+O botão de pasta na barra lateral mostra ou esconde o painel. Em **Abrir pasta**, escolha uma pasta do computador; o navegador pede permissão para editar os arquivos dela.
+
+- **A árvore:** pastas primeiro, depois arquivos, em ordem alfabética. Cada pasta só é lida quando você a expande, então pastas grandes não travam o editor. As pastas `.git` e `node_modules` ficam escondidas.
+- **Abrir:** clique num arquivo para abri-lo numa aba. Se ele já estiver aberto, o editor só muda para a aba dele. O arquivo da aba atual fica destacado, e `Ctrl+S` grava direto nele. Imagens, PDFs e outros arquivos que não são texto não abrem.
+- **Criar:** os botões do topo do painel criam um arquivo ou uma pasta. Depois que você escolhe um item na árvore, eles criam dentro da pasta escolhida (ou ao lado do arquivo); antes disso, na pasta aberta. O nome sugerido é `novo-arquivo.md`. Arquivos Markdown novos abrem no modo Visual, prontos para escrever.
+- **Renomear e excluir:** clique com o botão direito num item, ou no botão ⋯ que aparece ao passar o mouse. Também dá para usar `F2` (renomear) e `Delete` (excluir). Renomear atualiza a aba, se o arquivo estiver aberto, inclusive a linguagem quando a extensão muda.
+- **Excluir é definitivo:** o arquivo é apagado do computador e **não vai para a Lixeira**, por isso o editor sempre pergunta antes. Se o arquivo estiver aberto com alterações não salvas, o aviso diz isso, e a aba continua aberta com o texto.
+- **Teclado:** as setas para cima e para baixo andam pela árvore, direita e esquerda expandem e recolhem, `Enter` abre e `Shift+F10` mostra as ações do item.
+- **Outros botões do topo:** **Atualizar** mostra o que mudou na pasta por fora do editor, **Recolher** fecha todas as pastas e **Fechar a pasta** tira a pasta do painel, sem mexer nos arquivos nem nas abas.
+- **Ao reabrir o editor,** a pasta e as pastas expandidas voltam. Às vezes o navegador pede para confirmar a permissão de novo; nesse caso, basta clicar em **Permitir acesso**.
+- Arraste a borda direita do painel para mudar a largura. A escolha fica guardada.
+- No **Zen, no Firefox** e no celular, o navegador não deixa abrir pastas. No Zen e no Firefox, o painel explica isso; a árvore nesses navegadores depende do ajudante local, ainda em planejamento (veja `docs/PLANO-DE-ACAO.md`). No celular, o botão não aparece.
 
 ### Imagens
 
@@ -123,6 +139,7 @@ Nenhum conteúdo é enviado para servidores. Tudo fica no seu navegador ou nos a
 | Sessão salva no navegador | ✅ | ✅ |
 | Salvar direto no arquivo original | ✅ | ⬇️ botão **Baixar** |
 | Backup automático em arquivo | ✅ | ❌ |
+| Painel de pastas (abrir uma pasta inteira) | ✅ | ❌ |
 
 **Por que alguns navegadores só baixam?** Gravar num arquivo do computador exige a [File System Access API](https://developer.mozilla.org/docs/Web/API/Window/showSaveFilePicker), que só os navegadores baseados no Chromium oferecem. A Mozilla decidiu não implementá-la, por segurança, e não existe opção para ativá-la no Firefox nem nos navegadores derivados dele. No Brave, ela vem desligada e pode ser ativada em `brave://flags/#file-system-access-api`.
 
@@ -137,7 +154,7 @@ O navegador pode acrescentar um número ao nome (`notas (1).md`) quando o arquiv
 
 ## Testes automatizados
 
-O projeto tem **260 testes automatizados**, divididos em 11 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 514 execuções.
+O projeto tem **294 testes automatizados**, divididos em 12 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 548 execuções.
 
 📖 **Documentação completa: [docs/TESTES.md](docs/TESTES.md).** Explica como funcionam, a lista de todos os testes, como o projeto escolhe o que testar, como escrever testes novos e o que fazer quando algo falha.
 

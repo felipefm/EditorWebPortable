@@ -40,6 +40,7 @@ function instalarArquivosSimulados(arquivosParaAbrir) {
 function removerAcessoArquivos() {
     window.showOpenFilePicker = undefined;
     window.showSaveFilePicker = undefined;
+    window.showDirectoryPicker = undefined;
 }
 
 /**

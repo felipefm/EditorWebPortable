@@ -14,6 +14,7 @@
     "test:visual": "playwright test visual",
     "test:imagens": "playwright test imagens",
     "test:mapa": "playwright test mapa",
+    "test:pastas": "playwright test pastas",
     "test:json": "playwright test json",
     "test:sessao": "playwright test sessao",
     "test:celular": "playwright test celular",

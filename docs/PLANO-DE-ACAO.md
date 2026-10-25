@@ -1,6 +1,6 @@
 # Plano de ação
 
-> **Criado em:** 24/10/2026. **Status:** aguardando decisões. Nada deste plano foi implementado ainda.
+> **Criado em:** 24/10/2026. **Status:** etapa 2 concluída em 25/10/2026; etapa 1 cancelada; etapas 0, 3 e 4 pendentes.
 
 Lista do que falta fazer no editor, em ordem sugerida, com as decisões que precisam ser tomadas antes de cada etapa.
 
@@ -21,7 +21,7 @@ Lista do que falta fazer no editor, em ordem sugerida, com as decisões que prec
 | --- | --- | --- | --- |
 | 0 | Terminar a publicação pelo GitHub Actions | Ações no GitHub e no Cloudflare | Pequeno |
 | 1 | ~~Listas com letras~~ (cancelada) | — | — |
-| 2 | Painel com a árvore de uma pasta do computador (Edge e Chrome) | Nada | Grande |
+| 2 | ✅ Painel com a árvore de uma pasta do computador (Edge e Chrome), concluído | — | — |
 | 3 | Ajudante local, para a árvore e o salvar funcionarem no Zen | Etapa 2 (reaproveita o painel) | Grande |
 | 4 | Guardar documentos num banco de dados na nuvem | Decisão sobre o objetivo e a política da empresa | Médio |
 
@@ -47,6 +47,8 @@ Os testes já rodam no GitHub a cada push, mas a publicação no Cloudflare falh
 **Decisão do usuário (25/10/2026):** cancelada. O Markdown padrão não tem lista com letras, e todas as formas de gravar isso no arquivo (letras no texto, comentário oculto ou HTML) bagunçam o Markdown ou quebram em outros programas. As listas continuam só com números, em todos os níveis.
 
 ## Etapa 2: árvore de pastas no Edge e no Chrome
+
+> **Concluída em 25/10/2026.** Implementada como descrito abaixo, com 33 testes na área `pastas`. Diferenças do plano: os botões do topo criam na pasta aberta até a pessoa escolher um item na árvore, arquivos que não são texto (imagens, PDFs) não abrem, e o menu também abre com `Shift+F10`. Detalhes no README, em "Painel de pastas".
 
 **Pedido:** abrir uma pasta do computador e ver os arquivos numa árvore ao lado esquerdo, nos modos Editor, Dividido e Visual. Pela árvore, abrir, criar, renomear e excluir arquivos e pastas, como no Notepad++ e no Sublime Text.
 
@@ -170,6 +172,8 @@ Resumo do que precisa ser respondido antes de começar:
 | 4 | Qual o objetivo do banco? A S.I. permite conteúdo de trabalho? Usar domínio próprio? |
 
 ## Já concluído
+
+- **Etapa 2, painel de pastas** (25/10/2026): árvore no Edge e no Chrome, com abrir, criar, renomear, excluir, teclado, sessão e aviso no Zen e no Firefox.
 
 Itens da mesma lista de pedidos, implementados e testados em 24/10/2026 (commit `b8fbca2`):
 

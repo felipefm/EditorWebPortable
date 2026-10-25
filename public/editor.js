@@ -84,6 +84,30 @@
             const chaveAvisoArquivos = 'meu-editor-web-aviso-arquivos';
             // Chrome, Edge e Opera no computador gravam direto no arquivo; os demais só baixam cópias.
             const gravacaoDiretaDisponivel = typeof window.showSaveFilePicker === 'function';
+            const botaoTrilhoPastas = document.getElementById('trilho-pastas');
+            const painelPastas = document.getElementById('painel-pastas');
+            const alcaPainelPastas = document.getElementById('painel-pastas-alca');
+            const tituloPastas = document.getElementById('pastas-titulo');
+            const acoesPastas = document.getElementById('pastas-acoes');
+            const semSuportePastas = document.getElementById('pastas-sem-suporte');
+            const vazioPastas = document.getElementById('pastas-vazio');
+            const permissaoPastas = document.getElementById('pastas-permissao');
+            const textoPermissaoPastas = document.getElementById('pastas-permissao-texto');
+            const arvorePastas = document.getElementById('arvore-pastas');
+            const erroPastas = document.getElementById('pastas-erro');
+            const menuPastas = document.getElementById('menu-pastas');
+            const chavePainelPastas = 'meu-editor-web-painel-pastas';
+            // Abrir uma pasta inteira só existe no Chrome e no Edge do computador.
+            const aberturaPastaDisponivel = typeof window.showDirectoryPicker === 'function';
+            const pastasIgnoradas = ['.git', 'node_modules'];
+            const extensoesBinarias = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'tif', 'tiff', 'pdf', 'zip', '7z', 'rar', 'gz', 'tar', 'exe', 'dll', 'msi', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'mp3', 'mp4', 'wav', 'ogg', 'avi', 'mov', 'mkv', 'woff', 'woff2', 'ttf', 'otf', 'eot', 'class', 'jar', 'so', 'bin', 'iso', 'db', 'sqlite'];
+            const iconesPastas = {
+                seta: '<svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
+                pasta: '<svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+                pastaAberta: '<svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17V7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v1"/><path d="M3 17l3-7h15l-3 7a2 2 0 0 1-1.8 1.2H5A2 2 0 0 1 3 17z"/></svg>',
+                arquivo: '<svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>',
+                mais: '<svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="18" cy="12" r="1"/></svg>'
+            };
             const siglasLinguagem = {
                 javascript: 'JS',
                 typescript: 'TS',
@@ -120,6 +144,21 @@
                 deslocamento: 0,
                 temporizador: undefined,
                 quadro: undefined,
+                arrasto: undefined
+            };
+            const pastas = {
+                ...lerPreferenciasPastas(),
+                raiz: undefined,
+                permitida: false,
+                // Caminho relativo à pasta aberta ("" é a própria pasta) → { caminho, nome, tipo, manipulador, filhos }.
+                // "filhos" fica undefined até a pasta ser lida pela primeira vez.
+                nos: new Map(),
+                expandidas: new Set(),
+                focado: undefined,
+                // Se a pessoa já clicou ou navegou na árvore. Antes disso, os botões do topo criam na pasta aberta.
+                escolhido: false,
+                edicao: undefined,
+                menu: undefined,
                 arrasto: undefined
             };
             let posicaoErroJson;
@@ -241,13 +280,20 @@
                             linguagem: documento.modelo.getLanguageId(),
                             ehSemTitulo: documento.ehSemTitulo,
                             modificacoesPendentes: documento.modificacoesPendentes,
-                            manipulador: incluirManipuladores ? documento.manipulador : undefined
+                            manipulador: incluirManipuladores ? documento.manipulador : undefined,
+                            caminhoPasta: documento.caminhoPasta
                         };
                     }),
                     documentoAtualId: documentoAtual ? documentoAtual.id : undefined,
                     visualizacaoAtual: visualizacaoAtual,
                     modoPreview: modoPreview,
                     manipuladorBackupSessao: incluirManipuladores ? manipuladorBackupSessao : undefined,
+                    pasta: {
+                        aberta: Boolean(pastas.raiz),
+                        nome: pastas.raiz ? pastas.raiz.name : undefined,
+                        expandidas: Array.from(pastas.expandidas),
+                        manipulador: incluirManipuladores ? pastas.raiz : undefined
+                    },
                     formatadorJson: {
                         entrada: editorEntradaJson ? editorEntradaJson.getValue() : '',
                         saida: editorSaidaJson ? editorSaidaJson.getValue() : '',
@@ -379,8 +425,20 @@
                             manipulador: manipuladoresPorId.get(registro.id)
                         };
                     }),
-                    manipuladorBackupSessao: manipuladorBackup
+                    manipuladorBackupSessao: manipuladorBackup,
+                    pasta: mesclarPastaDasSessoes(sessaoPrincipal.pasta, sessoes)
                 };
+            }
+
+            // A cópia no localStorage é a mais recente, mas não guarda o acesso à pasta; ele vem do IndexedDB.
+            function mesclarPastaDasSessoes(pasta, sessoes) {
+                if (!pasta || !pasta.aberta || pasta.manipulador) {
+                    return pasta;
+                }
+                const comManipulador = sessoes.find(function (sessao) {
+                    return sessao.pasta && sessao.pasta.manipulador && sessao.pasta.nome === pasta.nome;
+                });
+                return comManipulador ? { ...pasta, manipulador: comManipulador.pasta.manipulador } : pasta;
             }
 
             async function obterSessaoPersistida() {
@@ -559,6 +617,7 @@
                 atualizarCabecalho();
                 atualizarAbas();
                 atualizarTrilho();
+                destacarDocumentoNaArvore();
                 atualizarPreviewMarkdown();
                 if (mensagem) {
                     atualizarEstado(mensagem);
@@ -1795,6 +1854,10 @@
                     documentos.push(documento);
                     ativarDocumento(documento, 'Arquivo aberto');
                     agendarPersistenciaSessao();
+                    // Um arquivo de dentro da pasta aberta fica destacado na árvore.
+                    if (manipulador && pastas.permitida) {
+                        associarDocumentoPasta(documento).then(destacarDocumentoNaArvore);
+                    }
                 } catch (erro) {
                     atualizarEstado('Não foi possível abrir o arquivo');
                 }
@@ -2094,6 +2157,10 @@
                         documento.manipulador = manipulador;
                         documento.ehSemTitulo = false;
                         marcarDocumentoSalvo(documento, 'Arquivo salvo');
+                        // Salvo dentro da pasta aberta: aparece na árvore.
+                        if (pastas.permitida) {
+                            associarDocumentoPasta(documento).then(atualizarArvorePastas);
+                        }
                         return;
                     }
 
@@ -2217,6 +2284,9 @@
                         registro.id
                     );
                     documento.modificacoesPendentes = Boolean(registro.modificacoesPendentes);
+                    if (registro.manipulador && typeof registro.caminhoPasta === 'string') {
+                        documento.caminhoPasta = registro.caminhoPasta;
+                    }
                     documentos.push(documento);
                 });
 
@@ -2557,6 +2627,1188 @@
                 });
             }
 
+            // Painel de pastas (Edge e Chrome): uma pasta do computador numa árvore à esquerda, para abrir,
+            // criar, renomear e excluir arquivos. Cada pasta é lida só quando é expandida, para não travar
+            // com pastas grandes.
+            function lerPreferenciasPastas() {
+                try {
+                    const salvas = JSON.parse(localStorage.getItem(chavePainelPastas) || '{}');
+                    return {
+                        painelAberto: salvas.aberto === true,
+                        largura: Number.isFinite(salvas.largura) ? limitarLarguraPastas(salvas.largura) : 240
+                    };
+                } catch (erro) {
+                    return { painelAberto: false, largura: 240 };
+                }
+            }
+
+            function gravarPreferenciasPastas() {
+                try {
+                    localStorage.setItem(chavePainelPastas, JSON.stringify({ aberto: pastas.painelAberto, largura: pastas.largura }));
+                } catch (erro) {
+                    return;
+                }
+            }
+
+            function limitarLarguraPastas(largura) {
+                return Math.round(Math.min(Math.max(largura, 160), 480));
+            }
+
+            function aplicarPainelPastas() {
+                painelPastas.hidden = !pastas.painelAberto;
+                alcaPainelPastas.hidden = !pastas.painelAberto;
+                botaoTrilhoPastas.setAttribute('aria-pressed', pastas.painelAberto ? 'true' : 'false');
+                painelPastas.style.width = `${pastas.largura}px`;
+                alcaPainelPastas.setAttribute('aria-valuenow', String(pastas.largura));
+                renderizarArvorePastas();
+            }
+
+            function alternarPainelPastas(abrir) {
+                pastas.painelAberto = typeof abrir === 'boolean' ? abrir : !pastas.painelAberto;
+                gravarPreferenciasPastas();
+                aplicarPainelPastas();
+                if (pastas.painelAberto) {
+                    focarPainelPastas();
+                    return;
+                }
+                fecharMenuPastas(false);
+                if (visualizacaoAtual === 'editor') {
+                    focarTexto();
+                } else {
+                    botaoTrilhoPastas.focus();
+                }
+            }
+
+            function focarPainelPastas() {
+                if (!arvorePastas.hidden && arvorePastas.querySelector('[role="treeitem"]')) {
+                    focarItemArvorePastas(pastas.focado);
+                    return;
+                }
+                const botao = [botaoAbrirPasta(), document.getElementById('pastas-permitir'), document.getElementById('pastas-novo-arquivo')].find(function (elemento) {
+                    return !elemento.closest('[hidden]');
+                });
+                (botao || botaoTrilhoPastas).focus();
+            }
+
+            function botaoAbrirPasta() {
+                return document.getElementById('pastas-abrir');
+            }
+
+            function juntarCaminhoPasta(pai, nome) {
+                return pai ? `${pai}/${nome}` : nome;
+            }
+
+            function paiDoCaminhoPasta(caminho) {
+                const indice = caminho.lastIndexOf('/');
+                return indice < 0 ? '' : caminho.slice(0, indice);
+            }
+
+            function estaDentroDoCaminhoPasta(caminho, base) {
+                return caminho === base || caminho.startsWith(`${base}/`);
+            }
+
+            function ehArquivoBinario(nome) {
+                const extensao = nome.includes('.') ? nome.split('.').pop().toLowerCase() : '';
+                return extensoesBinarias.includes(extensao);
+            }
+
+            function mostrarErroPasta(mensagem) {
+                erroPastas.textContent = mensagem || '';
+                erroPastas.hidden = !mensagem;
+                if (mensagem) {
+                    atualizarEstado(mensagem);
+                }
+            }
+
+            function tratarErroPasta(erro, mensagem) {
+                if (erro && (erro.name === 'NotAllowedError' || erro.name === 'SecurityError')) {
+                    pastas.permitida = false;
+                    renderizarArvorePastas();
+                }
+                const detalhe = erro && erro.name === 'NotFoundError'
+                    ? 'o item não existe mais. Clique em Atualizar.'
+                    : (erro && erro.message ? erro.message : 'erro desconhecido');
+                mostrarErroPasta(`${mensagem}: ${detalhe}`);
+            }
+
+            function compararItensPasta(itemA, itemB) {
+                if (itemA.tipo !== itemB.tipo) {
+                    return itemA.tipo === 'directory' ? -1 : 1;
+                }
+                return itemA.nome.localeCompare(itemB.nome, 'pt-BR', { numeric: true, sensitivity: 'base' });
+            }
+
+            function removerNosPasta(caminho) {
+                Array.from(pastas.nos.keys()).forEach(function (chave) {
+                    if (estaDentroDoCaminhoPasta(chave, caminho)) {
+                        pastas.nos.delete(chave);
+                    }
+                });
+                Array.from(pastas.expandidas).forEach(function (chave) {
+                    if (estaDentroDoCaminhoPasta(chave, caminho)) {
+                        pastas.expandidas.delete(chave);
+                    }
+                });
+            }
+
+            async function lerFilhosPasta(caminho) {
+                const no = pastas.nos.get(caminho);
+                const itens = [];
+                for await (const [nome, manipulador] of no.manipulador.entries()) {
+                    if (manipulador.kind === 'directory' && pastasIgnoradas.includes(nome)) {
+                        continue;
+                    }
+                    itens.push({ nome: nome, tipo: manipulador.kind, manipulador: manipulador });
+                }
+                itens.sort(compararItensPasta);
+                const caminhos = itens.map(function (item) {
+                    return juntarCaminhoPasta(caminho, item.nome);
+                });
+                (no.filhos || []).forEach(function (filho) {
+                    if (!caminhos.includes(filho)) {
+                        removerNosPasta(filho);
+                    }
+                });
+                itens.forEach(function (item, indice) {
+                    const existente = pastas.nos.get(caminhos[indice]);
+                    if (existente && existente.tipo === item.tipo) {
+                        existente.manipulador = item.manipulador;
+                        return;
+                    }
+                    if (existente) {
+                        removerNosPasta(caminhos[indice]);
+                    }
+                    pastas.nos.set(caminhos[indice], {
+                        caminho: caminhos[indice],
+                        nome: item.nome,
+                        tipo: item.tipo,
+                        manipulador: item.manipulador,
+                        filhos: undefined
+                    });
+                });
+                no.filhos = caminhos;
+            }
+
+            // Relê a pasta aberta e as pastas expandidas, para mostrar o que mudou no computador.
+            async function atualizarArvorePastas() {
+                if (!pastas.raiz || !pastas.permitida) {
+                    return;
+                }
+                try {
+                    await lerFilhosPasta('');
+                    const expandidas = Array.from(pastas.expandidas).sort(function (caminhoA, caminhoB) {
+                        return caminhoA.split('/').length - caminhoB.split('/').length;
+                    });
+                    for (const caminho of expandidas) {
+                        const no = pastas.nos.get(caminho);
+                        if (!no || no.tipo !== 'directory') {
+                            pastas.expandidas.delete(caminho);
+                            continue;
+                        }
+                        await lerFilhosPasta(caminho);
+                    }
+                } catch (erro) {
+                    tratarErroPasta(erro, 'Não foi possível ler a pasta');
+                }
+                renderizarArvorePastas();
+            }
+
+            async function verificarPermissaoPasta(manipulador, pedir) {
+                if (typeof manipulador.queryPermission !== 'function') {
+                    return true;
+                }
+                let permissao = await manipulador.queryPermission({ mode: 'readwrite' });
+                if (permissao !== 'granted' && pedir && typeof manipulador.requestPermission === 'function') {
+                    permissao = await manipulador.requestPermission({ mode: 'readwrite' });
+                }
+                return permissao === 'granted';
+            }
+
+            // Descobre quais abas abertas são arquivos de dentro da pasta, para destacá-las na árvore.
+            async function associarDocumentoPasta(documento) {
+                let caminho;
+                if (pastas.raiz && documento.manipulador && typeof pastas.raiz.resolve === 'function') {
+                    try {
+                        const partes = await pastas.raiz.resolve(documento.manipulador);
+                        caminho = partes && partes.length ? partes.join('/') : undefined;
+                    } catch (erro) {
+                        caminho = undefined;
+                    }
+                }
+                documento.caminhoPasta = caminho;
+            }
+
+            async function associarDocumentosPasta() {
+                for (const documento of documentos) {
+                    await associarDocumentoPasta(documento);
+                }
+                destacarDocumentoNaArvore();
+                agendarPersistenciaSessao();
+            }
+
+            async function usarPastaRaiz(manipulador, expandidas, pedirPermissao) {
+                pastas.raiz = manipulador;
+                pastas.nos = new Map([['', { caminho: '', nome: manipulador.name, tipo: 'directory', manipulador: manipulador, filhos: undefined }]]);
+                pastas.expandidas = new Set(expandidas || []);
+                pastas.focado = undefined;
+                pastas.escolhido = false;
+                pastas.edicao = undefined;
+                mostrarErroPasta('');
+                try {
+                    pastas.permitida = await verificarPermissaoPasta(manipulador, pedirPermissao);
+                } catch (erro) {
+                    pastas.permitida = false;
+                }
+                renderizarArvorePastas();
+                agendarPersistenciaSessao();
+                if (pastas.permitida) {
+                    await atualizarArvorePastas();
+                    await associarDocumentosPasta();
+                }
+            }
+
+            async function escolherPasta() {
+                if (!aberturaPastaDisponivel) {
+                    return;
+                }
+                let manipulador;
+                try {
+                    manipulador = await window.showDirectoryPicker({ id: 'editor-portable', mode: 'readwrite' });
+                } catch (erro) {
+                    if (!erro || erro.name !== 'AbortError') {
+                        tratarErroPasta(erro, 'Não foi possível abrir a pasta');
+                    }
+                    return;
+                }
+                if (!pastas.painelAberto) {
+                    alternarPainelPastas(true);
+                }
+                await usarPastaRaiz(manipulador, [], true);
+                if (!pastas.permitida) {
+                    mostrarErroPasta('O navegador não liberou o acesso à pasta.');
+                    return;
+                }
+                atualizarEstado(`Pasta aberta: ${manipulador.name}`);
+                focarPainelPastas();
+            }
+
+            // Depois de recarregar a página, o navegador só devolve o acesso com um clique da pessoa.
+            async function permitirAcessoPasta() {
+                if (!pastas.raiz) {
+                    return;
+                }
+                try {
+                    pastas.permitida = await verificarPermissaoPasta(pastas.raiz, true);
+                } catch (erro) {
+                    pastas.permitida = false;
+                }
+                if (!pastas.permitida) {
+                    renderizarArvorePastas();
+                    mostrarErroPasta('O navegador não liberou o acesso à pasta.');
+                    return;
+                }
+                mostrarErroPasta('');
+                await atualizarArvorePastas();
+                await associarDocumentosPasta();
+                atualizarEstado(`Pasta aberta: ${pastas.raiz.name}`);
+                focarPainelPastas();
+            }
+
+            function restaurarPastaDaSessao(sessao) {
+                const pasta = sessao && sessao.pasta;
+                if (!aberturaPastaDisponivel || !pasta || !pasta.aberta || !pasta.manipulador || pasta.manipulador.kind !== 'directory') {
+                    return;
+                }
+                usarPastaRaiz(pasta.manipulador, Array.isArray(pasta.expandidas) ? pasta.expandidas : [], false);
+            }
+
+            // Fecha só o painel: os arquivos continuam no computador e as abas continuam abertas.
+            function fecharPastaRaiz() {
+                pastas.raiz = undefined;
+                pastas.permitida = false;
+                pastas.nos = new Map();
+                pastas.expandidas = new Set();
+                pastas.focado = undefined;
+                pastas.escolhido = false;
+                pastas.edicao = undefined;
+                documentos.forEach(function (documento) {
+                    documento.caminhoPasta = undefined;
+                });
+                fecharMenuPastas(false);
+                mostrarErroPasta('');
+                renderizarArvorePastas();
+                agendarPersistenciaSessao();
+                atualizarEstado('Pasta fechada');
+                botaoAbrirPasta().focus();
+            }
+
+            function criarIconeArvorePastas(no, expandida) {
+                const icone = document.createElement('span');
+                icone.className = 'arvore-icone';
+                icone.setAttribute('aria-hidden', 'true');
+                if (no.tipo === 'directory') {
+                    icone.classList.add('pasta');
+                    icone.innerHTML = expandida ? iconesPastas.pastaAberta : iconesPastas.pasta;
+                    return icone;
+                }
+                const linguagemArquivo = obterLinguagemDoArquivo(no.nome);
+                if (linguagemArquivo !== 'plaintext' || /\.txt$/i.test(no.nome)) {
+                    icone.classList.add('aba-linguagem', linguagemArquivo);
+                    icone.textContent = siglasLinguagem[linguagemArquivo];
+                } else {
+                    icone.innerHTML = iconesPastas.arquivo;
+                }
+                return icone;
+            }
+
+            function criarEntradaArvorePastas(edicao) {
+                const entrada = document.createElement('input');
+                const rotulos = {
+                    'novo-arquivo': 'Nome do novo arquivo',
+                    'nova-pasta': 'Nome da nova pasta',
+                    renomear: 'Novo nome'
+                };
+                entrada.className = 'arvore-entrada';
+                entrada.type = 'text';
+                entrada.value = edicao.valor;
+                entrada.spellcheck = false;
+                entrada.autocomplete = 'off';
+                entrada.setAttribute('aria-label', rotulos[edicao.tipo]);
+                entrada.addEventListener('keydown', function (evento) {
+                    evento.stopPropagation();
+                    if (evento.key === 'Enter') {
+                        evento.preventDefault();
+                        confirmarEdicaoPasta(entrada.value);
+                    } else if (evento.key === 'Escape') {
+                        evento.preventDefault();
+                        cancelarEdicaoPasta();
+                    }
+                });
+                entrada.addEventListener('input', function () {
+                    edicao.valor = entrada.value;
+                    const erro = validarNomePasta(entrada.value, edicao);
+                    entrada.setAttribute('aria-invalid', erro ? 'true' : 'false');
+                    mostrarErroPasta(erro && entrada.value.trim() ? erro : '');
+                });
+                // Clicar fora confirma, como no VS Code; com um nome inválido, desiste.
+                entrada.addEventListener('blur', function () {
+                    if (pastas.edicao !== edicao || edicao.confirmando || !entrada.isConnected) {
+                        return;
+                    }
+                    if (validarNomePasta(entrada.value, edicao) || (edicao.tipo === 'renomear' && entrada.value.trim() === edicao.nomeAtual)) {
+                        cancelarEdicaoPasta(true);
+                    } else {
+                        confirmarEdicaoPasta(entrada.value);
+                    }
+                });
+                entrada.addEventListener('click', function (evento) {
+                    evento.stopPropagation();
+                });
+                return entrada;
+            }
+
+            function criarLinhaArvorePastas(nivel) {
+                const linha = document.createElement('div');
+                linha.className = 'arvore-linha';
+                linha.style.paddingLeft = `${4 + (nivel - 1) * 14}px`;
+                return linha;
+            }
+
+            function montarItensArvorePastas(lista, caminhoPasta, nivel) {
+                const no = pastas.nos.get(caminhoPasta);
+                const edicao = pastas.edicao;
+                if (edicao && edicao.tipo !== 'renomear' && edicao.pasta === caminhoPasta) {
+                    const itemNovo = document.createElement('li');
+                    const linhaNova = criarLinhaArvorePastas(nivel);
+                    const seta = document.createElement('span');
+                    seta.className = 'arvore-seta';
+                    itemNovo.setAttribute('role', 'none');
+                    itemNovo.className = 'arvore-item arvore-novo';
+                    linhaNova.appendChild(seta);
+                    linhaNova.appendChild(criarIconeArvorePastas({ tipo: edicao.tipo === 'nova-pasta' ? 'directory' : 'file', nome: edicao.valor }, false));
+                    linhaNova.appendChild(criarEntradaArvorePastas(edicao));
+                    itemNovo.appendChild(linhaNova);
+                    lista.appendChild(itemNovo);
+                } else if (no.filhos && !no.filhos.length) {
+                    const vazio = document.createElement('li');
+                    vazio.setAttribute('role', 'none');
+                    vazio.className = 'arvore-vazia';
+                    vazio.style.paddingLeft = `${4 + (nivel - 1) * 14 + 46}px`;
+                    vazio.textContent = 'Pasta vazia';
+                    lista.appendChild(vazio);
+                }
+                (no.filhos || []).forEach(function (caminho) {
+                    const filho = pastas.nos.get(caminho);
+                    if (!filho) {
+                        return;
+                    }
+                    const ehPasta = filho.tipo === 'directory';
+                    const expandida = ehPasta && pastas.expandidas.has(caminho);
+                    const item = document.createElement('li');
+                    const linha = criarLinhaArvorePastas(nivel);
+                    const seta = document.createElement('span');
+                    item.setAttribute('role', 'treeitem');
+                    item.setAttribute('aria-level', String(nivel));
+                    item.setAttribute('aria-selected', 'false');
+                    item.className = `arvore-item ${ehPasta ? 'eh-pasta' : 'eh-arquivo'}`;
+                    item.dataset.caminho = caminho;
+                    item.tabIndex = -1;
+                    if (ehPasta) {
+                        item.setAttribute('aria-expanded', expandida ? 'true' : 'false');
+                    }
+                    seta.className = 'arvore-seta';
+                    seta.setAttribute('aria-hidden', 'true');
+                    if (ehPasta) {
+                        seta.innerHTML = iconesPastas.seta;
+                    }
+                    linha.appendChild(seta);
+                    linha.appendChild(criarIconeArvorePastas(filho, expandida));
+                    if (edicao && edicao.tipo === 'renomear' && edicao.caminho === caminho) {
+                        linha.appendChild(criarEntradaArvorePastas(edicao));
+                    } else {
+                        const nome = document.createElement('span');
+                        const botaoMais = document.createElement('button');
+                        nome.className = 'arvore-nome';
+                        nome.textContent = filho.nome;
+                        linha.title = caminho;
+                        botaoMais.className = 'arvore-mais';
+                        botaoMais.type = 'button';
+                        botaoMais.tabIndex = -1;
+                        botaoMais.innerHTML = iconesPastas.mais;
+                        botaoMais.title = 'Ações';
+                        botaoMais.setAttribute('aria-label', `Ações de ${filho.nome}`);
+                        linha.appendChild(nome);
+                        linha.appendChild(botaoMais);
+                    }
+                    item.appendChild(linha);
+                    lista.appendChild(item);
+                    if (expandida && filho.filhos) {
+                        const grupo = document.createElement('ul');
+                        grupo.setAttribute('role', 'group');
+                        item.appendChild(grupo);
+                        montarItensArvorePastas(grupo, caminho, nivel + 1);
+                    }
+                });
+            }
+
+            function renderizarArvorePastas() {
+                const comPasta = Boolean(pastas.raiz);
+                const tinhaFoco = painelPastas.contains(document.activeElement) && document.activeElement !== erroPastas;
+                semSuportePastas.hidden = aberturaPastaDisponivel;
+                vazioPastas.hidden = !aberturaPastaDisponivel || comPasta;
+                permissaoPastas.hidden = !comPasta || pastas.permitida;
+                arvorePastas.hidden = !comPasta || !pastas.permitida;
+                acoesPastas.hidden = !comPasta;
+                acoesPastas.querySelectorAll('button:not(#pastas-fechar)').forEach(function (botao) {
+                    botao.disabled = !pastas.permitida;
+                });
+                tituloPastas.textContent = comPasta ? pastas.raiz.name : 'Pastas';
+                tituloPastas.title = comPasta ? `Pasta aberta: ${pastas.raiz.name}` : '';
+                if (comPasta && !pastas.permitida) {
+                    textoPermissaoPastas.textContent = `Para mostrar os arquivos de "${pastas.raiz.name}", o navegador precisa da sua confirmação.`;
+                }
+                arvorePastas.textContent = '';
+                if (!comPasta || !pastas.permitida || !pastas.nos.get('').filhos) {
+                    return;
+                }
+                montarItensArvorePastas(arvorePastas, '', 1);
+                const visiveis = itensVisiveisArvorePastas();
+                if (!visiveis.includes(pastas.focado)) {
+                    pastas.focado = visiveis[0];
+                }
+                arvorePastas.querySelectorAll('[role="treeitem"]').forEach(function (item) {
+                    item.tabIndex = item.dataset.caminho === pastas.focado ? 0 : -1;
+                });
+                destacarDocumentoNaArvore();
+                const entrada = arvorePastas.querySelector('.arvore-entrada');
+                if (entrada) {
+                    entrada.focus();
+                } else if (tinhaFoco && pastas.focado !== undefined) {
+                    focarItemArvorePastas(pastas.focado);
+                }
+            }
+
+            function destacarDocumentoNaArvore() {
+                const caminho = documentoAtual ? documentoAtual.caminhoPasta : undefined;
+                arvorePastas.querySelectorAll('[role="treeitem"]').forEach(function (item) {
+                    const atual = caminho !== undefined && item.dataset.caminho === caminho;
+                    item.classList.toggle('atual', atual);
+                    item.setAttribute('aria-selected', atual ? 'true' : 'false');
+                });
+            }
+
+            function itensVisiveisArvorePastas() {
+                return Array.from(arvorePastas.querySelectorAll('[role="treeitem"]')).map(function (item) {
+                    return item.dataset.caminho;
+                });
+            }
+
+            function itemArvorePastas(caminho) {
+                return Array.from(arvorePastas.querySelectorAll('[role="treeitem"]')).find(function (item) {
+                    return item.dataset.caminho === caminho;
+                });
+            }
+
+            function focarItemArvorePastas(caminho) {
+                const visiveis = itensVisiveisArvorePastas();
+                const alvo = visiveis.includes(caminho) ? caminho : visiveis[0];
+                pastas.focado = alvo;
+                arvorePastas.querySelectorAll('[role="treeitem"]').forEach(function (item) {
+                    item.tabIndex = item.dataset.caminho === alvo ? 0 : -1;
+                });
+                const item = itemArvorePastas(alvo);
+                if (item) {
+                    item.focus();
+                } else {
+                    focarPainelPastas();
+                }
+            }
+
+            async function alternarPastaArvore(caminho, expandir) {
+                const no = pastas.nos.get(caminho);
+                if (!no || no.tipo !== 'directory') {
+                    return;
+                }
+                const deveExpandir = typeof expandir === 'boolean' ? expandir : !pastas.expandidas.has(caminho);
+                pastas.focado = caminho;
+                if (deveExpandir) {
+                    pastas.expandidas.add(caminho);
+                    try {
+                        await lerFilhosPasta(caminho);
+                    } catch (erro) {
+                        pastas.expandidas.delete(caminho);
+                        tratarErroPasta(erro, `Não foi possível ler "${no.nome}"`);
+                    }
+                } else {
+                    pastas.expandidas.delete(caminho);
+                }
+                renderizarArvorePastas();
+                agendarPersistenciaSessao();
+            }
+
+            function recolherPastasArvore() {
+                pastas.expandidas.clear();
+                const visiveis = (pastas.nos.get('') || {}).filhos || [];
+                if (!visiveis.includes(pastas.focado)) {
+                    pastas.focado = pastas.focado ? pastas.focado.split('/')[0] : undefined;
+                }
+                renderizarArvorePastas();
+                agendarPersistenciaSessao();
+                focarItemArvorePastas(pastas.focado);
+            }
+
+            async function abrirArquivoDaPasta(caminho) {
+                const no = pastas.nos.get(caminho);
+                if (!no || no.tipo !== 'file') {
+                    return;
+                }
+                pastas.focado = caminho;
+                if (ehArquivoBinario(no.nome)) {
+                    mostrarErroPasta(`"${no.nome}" não é um arquivo de texto e não abre no editor.`);
+                    return;
+                }
+                let documento = documentos.find(function (item) {
+                    return item.caminhoPasta === caminho;
+                });
+                if (!documento) {
+                    for (const item of documentos) {
+                        if (!item.manipulador || typeof item.manipulador.isSameEntry !== 'function') {
+                            continue;
+                        }
+                        try {
+                            if (await item.manipulador.isSameEntry(no.manipulador)) {
+                                documento = item;
+                                item.caminhoPasta = caminho;
+                                break;
+                            }
+                        } catch (erro) {
+                            continue;
+                        }
+                    }
+                }
+                if (documento) {
+                    mostrarErroPasta('');
+                    ativarDocumento(documento);
+                    return;
+                }
+                let conteudo;
+                try {
+                    conteudo = await (await no.manipulador.getFile()).text();
+                } catch (erro) {
+                    tratarErroPasta(erro, `Não foi possível abrir "${no.nome}"`);
+                    return;
+                }
+                // Dois cliques rápidos não abrem o arquivo duas vezes.
+                documento = documentos.find(function (item) {
+                    return item.caminhoPasta === caminho;
+                });
+                if (!documento) {
+                    documento = criarDocumento(no.nome, conteudo, no.manipulador, false);
+                    documento.caminhoPasta = caminho;
+                    documentos.push(documento);
+                }
+                mostrarErroPasta('');
+                ativarDocumento(documento, 'Arquivo aberto');
+            }
+
+            async function existeItemNaPasta(manipuladorPasta, nome) {
+                for (const metodo of ['getFileHandle', 'getDirectoryHandle']) {
+                    try {
+                        await manipuladorPasta[metodo](nome);
+                        return true;
+                    } catch (erro) {
+                        if (erro && erro.name === 'TypeMismatchError') {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+
+            function obterNomeLivrePasta(pasta, nomeBase) {
+                const no = pastas.nos.get(pasta);
+                const usados = new Set((no.filhos || []).map(function (caminho) {
+                    return pastas.nos.get(caminho).nome.toLowerCase();
+                }));
+                const ponto = nomeBase.lastIndexOf('.');
+                const raiz = ponto > 0 ? nomeBase.slice(0, ponto) : nomeBase;
+                const extensao = ponto > 0 ? nomeBase.slice(ponto) : '';
+                let nome = nomeBase;
+                for (let indice = 2; usados.has(nome.toLowerCase()); indice += 1) {
+                    nome = `${raiz}-${indice}${extensao}`;
+                }
+                return nome;
+            }
+
+            // As regras do Windows, que são as mais restritas, valem em qualquer sistema.
+            function validarNomePasta(valor, edicao) {
+                const nome = valor.trim();
+                if (!nome) {
+                    return 'Digite um nome.';
+                }
+                if (/[\\/:*?"<>|]/.test(nome)) {
+                    return 'O nome não pode ter \\ / : * ? " < > |';
+                }
+                if (nome === '.' || nome === '..' || nome.endsWith('.')) {
+                    return 'O nome não pode terminar com ponto.';
+                }
+                if (/^(con|prn|aux|nul|com\d|lpt\d)(\..*)?$/i.test(nome)) {
+                    return 'Esse nome é reservado pelo Windows.';
+                }
+                const no = pastas.nos.get(edicao.pasta);
+                const repetido = (no && no.filhos ? no.filhos : []).some(function (caminho) {
+                    const nomeExistente = pastas.nos.get(caminho).nome;
+                    return nomeExistente.toLowerCase() === nome.toLowerCase() && nomeExistente !== edicao.nomeAtual;
+                });
+                return repetido ? `Já existe "${nome}" nesta pasta.` : '';
+            }
+
+            async function iniciarEdicaoPasta(tipo, caminho) {
+                if (!pastas.permitida) {
+                    return;
+                }
+                fecharMenuPastas(false);
+                if (tipo === 'renomear') {
+                    const no = pastas.nos.get(caminho);
+                    if (!no || !caminho) {
+                        return;
+                    }
+                    pastas.edicao = { tipo: tipo, caminho: caminho, pasta: paiDoCaminhoPasta(caminho), nomeAtual: no.nome, valor: no.nome };
+                } else {
+                    // Num arquivo, cria ao lado dele; numa pasta, dentro dela.
+                    const alvo = pastas.nos.get(caminho || '');
+                    const pasta = !alvo ? '' : (alvo.tipo === 'directory' ? alvo.caminho : paiDoCaminhoPasta(alvo.caminho));
+                    try {
+                        await lerFilhosPasta(pasta);
+                    } catch (erro) {
+                        tratarErroPasta(erro, 'Não foi possível ler a pasta');
+                        return;
+                    }
+                    if (pasta) {
+                        pastas.expandidas.add(pasta);
+                    }
+                    pastas.edicao = { tipo: tipo, pasta: pasta, valor: obterNomeLivrePasta(pasta, tipo === 'nova-pasta' ? 'nova-pasta' : 'novo-arquivo.md') };
+                }
+                mostrarErroPasta('');
+                renderizarArvorePastas();
+                const entrada = arvorePastas.querySelector('.arvore-entrada');
+                if (entrada) {
+                    const ponto = entrada.value.lastIndexOf('.');
+                    const ehArquivo = tipo === 'novo-arquivo' || (tipo === 'renomear' && pastas.nos.get(caminho).tipo === 'file');
+                    entrada.focus();
+                    entrada.setSelectionRange(0, ehArquivo && ponto > 0 ? ponto : entrada.value.length);
+                }
+            }
+
+            function cancelarEdicaoPasta(semFoco) {
+                const edicao = pastas.edicao;
+                if (!edicao) {
+                    return;
+                }
+                pastas.edicao = undefined;
+                mostrarErroPasta('');
+                renderizarArvorePastas();
+                if (!semFoco) {
+                    focarItemArvorePastas(edicao.caminho || pastas.focado);
+                }
+            }
+
+            async function confirmarEdicaoPasta(valor) {
+                const edicao = pastas.edicao;
+                if (!edicao || edicao.confirmando) {
+                    return;
+                }
+                const nome = valor.trim();
+                if (edicao.tipo === 'renomear' && nome === edicao.nomeAtual) {
+                    cancelarEdicaoPasta();
+                    return;
+                }
+                const erroNome = validarNomePasta(nome, edicao);
+                if (erroNome) {
+                    const entrada = arvorePastas.querySelector('.arvore-entrada');
+                    if (entrada) {
+                        entrada.setAttribute('aria-invalid', 'true');
+                    }
+                    mostrarErroPasta(erroNome);
+                    return;
+                }
+                edicao.confirmando = true;
+                const mensagens = {
+                    'novo-arquivo': 'Não foi possível criar o arquivo',
+                    'nova-pasta': 'Não foi possível criar a pasta',
+                    renomear: 'Não foi possível renomear'
+                };
+                let caminhoNovo;
+                try {
+                    if (edicao.tipo === 'novo-arquivo') {
+                        caminhoNovo = await criarItemNaPasta(edicao.pasta, nome, 'file');
+                    } else if (edicao.tipo === 'nova-pasta') {
+                        caminhoNovo = await criarItemNaPasta(edicao.pasta, nome, 'directory');
+                    } else {
+                        caminhoNovo = await renomearItemPasta(edicao.caminho, nome);
+                    }
+                } catch (erro) {
+                    pastas.edicao = undefined;
+                    renderizarArvorePastas();
+                    tratarErroPasta(erro, mensagens[edicao.tipo]);
+                    focarItemArvorePastas(edicao.caminho || pastas.focado);
+                    return;
+                }
+                pastas.edicao = undefined;
+                pastas.focado = caminhoNovo;
+                await atualizarArvorePastas();
+                agendarPersistenciaSessao();
+                if (edicao.tipo === 'novo-arquivo') {
+                    // Arquivo novo abre pronto para escrever; em Markdown, no modo Visual, como o botão Novo.
+                    if (obterLinguagemDoArquivo(nome) === 'markdown') {
+                        definirModoPreview('visual');
+                    }
+                    await abrirArquivoDaPasta(caminhoNovo);
+                    atualizarEstado(`Arquivo criado: ${nome}`);
+                    return;
+                }
+                focarItemArvorePastas(caminhoNovo);
+                atualizarEstado(edicao.tipo === 'nova-pasta' ? `Pasta criada: ${nome}` : `Renomeado para ${nome}`);
+            }
+
+            async function criarItemNaPasta(pasta, nome, tipo) {
+                const manipuladorPasta = pastas.nos.get(pasta).manipulador;
+                if (await existeItemNaPasta(manipuladorPasta, nome)) {
+                    throw new DOMException(`já existe "${nome}" nesta pasta.`, 'InvalidModificationError');
+                }
+                if (tipo === 'directory') {
+                    await manipuladorPasta.getDirectoryHandle(nome, { create: true });
+                } else {
+                    await manipuladorPasta.getFileHandle(nome, { create: true });
+                }
+                if (pasta) {
+                    pastas.expandidas.add(pasta);
+                }
+                return juntarCaminhoPasta(pasta, nome);
+            }
+
+            async function copiarArquivoParaPasta(origem, destino, nome) {
+                const arquivo = await origem.getFile();
+                const novo = await destino.getFileHandle(nome, { create: true });
+                const gravavel = await novo.createWritable();
+                await gravavel.write(arquivo);
+                await gravavel.close();
+            }
+
+            async function copiarPastaParaPasta(origem, destino, nome) {
+                const nova = await destino.getDirectoryHandle(nome, { create: true });
+                for await (const [nomeFilho, filho] of origem.entries()) {
+                    if (filho.kind === 'directory') {
+                        await copiarPastaParaPasta(filho, nova, nomeFilho);
+                    } else {
+                        await copiarArquivoParaPasta(filho, nova, nomeFilho);
+                    }
+                }
+            }
+
+            async function obterManipuladorArquivoPasta(caminho) {
+                const partes = caminho.split('/');
+                let atual = pastas.raiz;
+                for (const parte of partes.slice(0, -1)) {
+                    atual = await atual.getDirectoryHandle(parte);
+                }
+                return atual.getFileHandle(partes[partes.length - 1]);
+            }
+
+            // Nem todo navegador renomeia direto (move). Nesse caso, copia com o nome novo e apaga o antigo.
+            async function renomearItemPasta(caminho, novoNome) {
+                const no = pastas.nos.get(caminho);
+                const pasta = paiDoCaminhoPasta(caminho);
+                const manipuladorPai = pastas.nos.get(pasta).manipulador;
+                const soMaiusculas = no.nome.toLowerCase() === novoNome.toLowerCase();
+                if (!soMaiusculas && await existeItemNaPasta(manipuladorPai, novoNome)) {
+                    throw new DOMException(`já existe "${novoNome}" nesta pasta.`, 'InvalidModificationError');
+                }
+                let moveu = false;
+                if (typeof no.manipulador.move === 'function') {
+                    try {
+                        await no.manipulador.move(novoNome);
+                        moveu = true;
+                    } catch (erro) {
+                        if (soMaiusculas || (erro && erro.name === 'NotAllowedError')) {
+                            throw erro;
+                        }
+                    }
+                }
+                if (!moveu) {
+                    if (soMaiusculas) {
+                        throw new DOMException('este navegador não troca só maiúsculas e minúsculas. Renomeie para outro nome e depois para o nome final.', 'NotSupportedError');
+                    }
+                    if (no.tipo === 'directory') {
+                        await copiarPastaParaPasta(no.manipulador, manipuladorPai, novoNome);
+                    } else {
+                        await copiarArquivoParaPasta(no.manipulador, manipuladorPai, novoNome);
+                    }
+                    await manipuladorPai.removeEntry(no.nome, { recursive: no.tipo === 'directory' });
+                }
+                const caminhoNovo = juntarCaminhoPasta(pasta, novoNome);
+                const expandidas = Array.from(pastas.expandidas).filter(function (item) {
+                    return estaDentroDoCaminhoPasta(item, caminho);
+                }).map(function (item) {
+                    return caminhoNovo + item.slice(caminho.length);
+                });
+                removerNosPasta(caminho);
+                expandidas.forEach(function (item) {
+                    pastas.expandidas.add(item);
+                });
+                await lerFilhosPasta(pasta);
+                await renomearDocumentosDaPasta(caminho, caminhoNovo);
+                return caminhoNovo;
+            }
+
+            // As abas dos arquivos renomeados acompanham o nome novo (e a linguagem, se a extensão mudou).
+            async function renomearDocumentosDaPasta(caminhoAntigo, caminhoNovo) {
+                for (const documento of documentos) {
+                    if (!documento.caminhoPasta || !estaDentroDoCaminhoPasta(documento.caminhoPasta, caminhoAntigo)) {
+                        continue;
+                    }
+                    const caminhoDocumento = caminhoNovo + documento.caminhoPasta.slice(caminhoAntigo.length);
+                    try {
+                        documento.manipulador = await obterManipuladorArquivoPasta(caminhoDocumento);
+                    } catch (erro) {
+                        documento.manipulador = undefined;
+                    }
+                    documento.caminhoPasta = caminhoDocumento;
+                    const nomeNovo = caminhoDocumento.split('/').pop();
+                    if (nomeNovo === documento.nome) {
+                        continue;
+                    }
+                    const linguagemAntiga = obterLinguagemDisponivel(obterLinguagemDoArquivo(documento.nome));
+                    const linguagemNova = obterLinguagemDisponivel(obterLinguagemDoArquivo(nomeNovo));
+                    documento.nome = nomeNovo;
+                    if (linguagemNova !== linguagemAntiga && documento.modelo.getLanguageId() === linguagemAntiga) {
+                        monaco.editor.setModelLanguage(documento.modelo, linguagemNova);
+                        if (documento === documentoAtual) {
+                            linguagem.value = linguagemNova;
+                        }
+                    }
+                }
+                atualizarInterfaceDocumento();
+                agendarPersistenciaSessao();
+            }
+
+            // Excluir pela API do navegador é definitivo (não vai para a Lixeira), por isso sempre pergunta.
+            async function excluirItemPasta(caminho) {
+                fecharMenuPastas(false);
+                const no = pastas.nos.get(caminho);
+                if (!no || !caminho || !pastas.permitida) {
+                    return;
+                }
+                const ehPasta = no.tipo === 'directory';
+                const abertos = documentos.filter(function (documento) {
+                    return documento.caminhoPasta && estaDentroDoCaminhoPasta(documento.caminhoPasta, caminho);
+                });
+                const comAlteracoes = abertos.filter(function (documento) {
+                    return documento.modificacoesPendentes;
+                });
+                let mensagem = ehPasta
+                    ? `Excluir a pasta "${no.nome}" e tudo o que está dentro dela? Ela é apagada do computador e não vai para a Lixeira.`
+                    : `Excluir "${no.nome}"? O arquivo é apagado do computador e não vai para a Lixeira.`;
+                if (comAlteracoes.length) {
+                    const nomes = comAlteracoes.map(function (documento) {
+                        return documento.nome;
+                    }).join(', ');
+                    mensagem += ` Atenção: ${nomes} ${comAlteracoes.length === 1 ? 'está aberto' : 'estão abertos'} com alterações não salvas. A aba continua aberta com o texto, mas sem arquivo.`;
+                }
+                if (!await confirmar(mensagem, 'Excluir')) {
+                    focarItemArvorePastas(caminho);
+                    return;
+                }
+                const visiveis = itensVisiveisArvorePastas().filter(function (item) {
+                    return item === caminho || !estaDentroDoCaminhoPasta(item, caminho);
+                });
+                const indice = visiveis.indexOf(caminho);
+                const proximo = visiveis[indice + 1] || visiveis[indice - 1];
+                try {
+                    await pastas.nos.get(paiDoCaminhoPasta(caminho)).manipulador.removeEntry(no.nome, { recursive: ehPasta });
+                } catch (erro) {
+                    tratarErroPasta(erro, `Não foi possível excluir "${no.nome}"`);
+                    return;
+                }
+                for (const documento of abertos) {
+                    if (documento.modificacoesPendentes) {
+                        documento.manipulador = undefined;
+                        documento.caminhoPasta = undefined;
+                    } else {
+                        await fecharDocumento(documento);
+                    }
+                }
+                removerNosPasta(caminho);
+                pastas.focado = proximo;
+                await atualizarArvorePastas();
+                atualizarInterfaceDocumento();
+                agendarPersistenciaSessao();
+                atualizarEstado(ehPasta ? `Pasta excluída: ${no.nome}` : `Arquivo excluído: ${no.nome}`);
+                focarItemArvorePastas(proximo);
+            }
+
+            function abrirMenuPastas(caminho, x, y) {
+                if (!pastas.permitida) {
+                    return;
+                }
+                pastas.menu = caminho;
+                if (caminho) {
+                    pastas.focado = caminho;
+                }
+                menuPastas.querySelectorAll('[data-acao="renomear"], [data-acao="excluir"]').forEach(function (botao) {
+                    botao.hidden = !caminho;
+                });
+                menuPastas.hidden = false;
+                menuPastas.style.left = `${Math.max(4, Math.min(x, window.innerWidth - menuPastas.offsetWidth - 4))}px`;
+                menuPastas.style.top = `${Math.max(4, Math.min(y, window.innerHeight - menuPastas.offsetHeight - 4))}px`;
+                menuPastas.querySelector('button:not([hidden])').focus();
+            }
+
+            function fecharMenuPastas(devolverFoco) {
+                if (menuPastas.hidden) {
+                    return;
+                }
+                const caminho = pastas.menu;
+                menuPastas.hidden = true;
+                pastas.menu = undefined;
+                if (devolverFoco) {
+                    focarItemArvorePastas(caminho || pastas.focado);
+                }
+            }
+
+            function abrirMenuPastasNoItem(caminho) {
+                const item = itemArvorePastas(caminho);
+                const retangulo = (item ? item.querySelector('.arvore-linha') : arvorePastas).getBoundingClientRect();
+                abrirMenuPastas(caminho, retangulo.left + 24, retangulo.bottom);
+            }
+
+            function tratarTecladoArvorePastas(evento) {
+                const item = evento.target.closest('[role="treeitem"]');
+                if (!item || evento.target.closest('.arvore-entrada')) {
+                    return;
+                }
+                const caminho = item.dataset.caminho;
+                const no = pastas.nos.get(caminho);
+                const visiveis = itensVisiveisArvorePastas();
+                const indice = visiveis.indexOf(caminho);
+                const ehPasta = no && no.tipo === 'directory';
+                const expandida = pastas.expandidas.has(caminho);
+                if (evento.key === 'ArrowDown') {
+                    focarItemArvorePastas(visiveis[Math.min(indice + 1, visiveis.length - 1)]);
+                } else if (evento.key === 'ArrowUp') {
+                    focarItemArvorePastas(visiveis[Math.max(indice - 1, 0)]);
+                } else if (evento.key === 'Home') {
+                    focarItemArvorePastas(visiveis[0]);
+                } else if (evento.key === 'End') {
+                    focarItemArvorePastas(visiveis[visiveis.length - 1]);
+                } else if (evento.key === 'ArrowRight') {
+                    if (ehPasta && !expandida) {
+                        alternarPastaArvore(caminho, true);
+                    } else if (ehPasta && no.filhos && no.filhos.length) {
+                        focarItemArvorePastas(no.filhos[0]);
+                    }
+                } else if (evento.key === 'ArrowLeft') {
+                    if (ehPasta && expandida) {
+                        alternarPastaArvore(caminho, false);
+                    } else if (paiDoCaminhoPasta(caminho)) {
+                        focarItemArvorePastas(paiDoCaminhoPasta(caminho));
+                    }
+                } else if (evento.key === 'Enter' || evento.key === ' ') {
+                    if (ehPasta) {
+                        alternarPastaArvore(caminho);
+                    } else {
+                        abrirArquivoDaPasta(caminho);
+                    }
+                } else if (evento.key === 'F2') {
+                    iniciarEdicaoPasta('renomear', caminho);
+                } else if (evento.key === 'Delete') {
+                    excluirItemPasta(caminho);
+                } else if (evento.key === 'ContextMenu' || (evento.key === 'F10' && evento.shiftKey)) {
+                    abrirMenuPastasNoItem(caminho);
+                } else {
+                    return;
+                }
+                pastas.escolhido = true;
+                evento.preventDefault();
+                evento.stopPropagation();
+            }
+
+            function tratarTecladoMenuPastas(evento) {
+                const botoes = Array.from(menuPastas.querySelectorAll('button:not([hidden])'));
+                const indice = botoes.indexOf(document.activeElement);
+                if (evento.key === 'Escape') {
+                    fecharMenuPastas(true);
+                } else if (evento.key === 'ArrowDown') {
+                    botoes[(indice + 1) % botoes.length].focus();
+                } else if (evento.key === 'ArrowUp') {
+                    botoes[(indice - 1 + botoes.length) % botoes.length].focus();
+                } else if (evento.key === 'Tab') {
+                    fecharMenuPastas(true);
+                } else {
+                    return;
+                }
+                evento.preventDefault();
+                evento.stopPropagation();
+            }
+
+            function executarAcaoMenuPastas(acao) {
+                const caminho = pastas.menu;
+                fecharMenuPastas(false);
+                if (acao === 'novo-arquivo' || acao === 'nova-pasta') {
+                    iniciarEdicaoPasta(acao, caminho);
+                } else if (acao === 'renomear') {
+                    iniciarEdicaoPasta('renomear', caminho);
+                } else if (acao === 'excluir') {
+                    excluirItemPasta(caminho);
+                }
+            }
+
+            function iniciarArrastoAlcaPastas(evento) {
+                if (evento.button !== 0) {
+                    return;
+                }
+                evento.preventDefault();
+                alcaPainelPastas.setPointerCapture(evento.pointerId);
+                alcaPainelPastas.classList.add('arrastando');
+                pastas.arrasto = { x: evento.clientX, largura: pastas.largura };
+            }
+
+            function moverArrastoAlcaPastas(evento) {
+                if (!pastas.arrasto) {
+                    return;
+                }
+                pastas.largura = limitarLarguraPastas(pastas.arrasto.largura + evento.clientX - pastas.arrasto.x);
+                painelPastas.style.width = `${pastas.largura}px`;
+                alcaPainelPastas.setAttribute('aria-valuenow', String(pastas.largura));
+            }
+
+            function terminarArrastoAlcaPastas() {
+                if (!pastas.arrasto) {
+                    return;
+                }
+                pastas.arrasto = undefined;
+                alcaPainelPastas.classList.remove('arrastando');
+                gravarPreferenciasPastas();
+            }
+
+            function registrarPainelPastas() {
+                botaoTrilhoPastas.addEventListener('click', function () {
+                    alternarPainelPastas();
+                });
+                botaoAbrirPasta().addEventListener('click', escolherPasta);
+                document.getElementById('pastas-abrir-outra').addEventListener('click', escolherPasta);
+                document.getElementById('pastas-permitir').addEventListener('click', permitirAcessoPasta);
+                document.getElementById('pastas-novo-arquivo').addEventListener('click', function () {
+                    iniciarEdicaoPasta('novo-arquivo', pastas.escolhido ? pastas.focado : '');
+                });
+                document.getElementById('pastas-nova-pasta').addEventListener('click', function () {
+                    iniciarEdicaoPasta('nova-pasta', pastas.escolhido ? pastas.focado : '');
+                });
+                document.getElementById('pastas-atualizar').addEventListener('click', async function () {
+                    await atualizarArvorePastas();
+                    if (erroPastas.hidden) {
+                        atualizarEstado('Pasta atualizada');
+                    }
+                });
+                document.getElementById('pastas-recolher').addEventListener('click', recolherPastasArvore);
+                document.getElementById('pastas-fechar').addEventListener('click', fecharPastaRaiz);
+                arvorePastas.addEventListener('keydown', tratarTecladoArvorePastas);
+                arvorePastas.addEventListener('click', function (evento) {
+                    const item = evento.target.closest('[role="treeitem"]');
+                    if (!item || evento.target.closest('.arvore-entrada')) {
+                        return;
+                    }
+                    const caminho = item.dataset.caminho;
+                    pastas.escolhido = true;
+                    if (evento.target.closest('.arvore-mais')) {
+                        const retangulo = evento.target.closest('.arvore-mais').getBoundingClientRect();
+                        abrirMenuPastas(caminho, retangulo.left, retangulo.bottom);
+                        return;
+                    }
+                    if (pastas.nos.get(caminho) && pastas.nos.get(caminho).tipo === 'directory') {
+                        alternarPastaArvore(caminho);
+                    } else {
+                        abrirArquivoDaPasta(caminho);
+                    }
+                });
+                // Botão direito num item abre as ações dele; no espaço vazio, as da pasta aberta.
+                document.getElementById('pastas-conteudo').addEventListener('contextmenu', function (evento) {
+                    if (!pastas.permitida || evento.target.closest('.arvore-entrada')) {
+                        return;
+                    }
+                    evento.preventDefault();
+                    const item = evento.target.closest('[role="treeitem"]');
+                    abrirMenuPastas(item ? item.dataset.caminho : '', evento.clientX, evento.clientY);
+                });
+                menuPastas.addEventListener('click', function (evento) {
+                    const botao = evento.target.closest('[data-acao]');
+                    if (botao) {
+                        executarAcaoMenuPastas(botao.dataset.acao);
+                    }
+                });
+                menuPastas.addEventListener('keydown', tratarTecladoMenuPastas);
+                document.addEventListener('pointerdown', function (evento) {
+                    if (!menuPastas.hidden && !menuPastas.contains(evento.target)) {
+                        fecharMenuPastas(false);
+                    }
+                }, true);
+                alcaPainelPastas.addEventListener('pointerdown', iniciarArrastoAlcaPastas);
+                alcaPainelPastas.addEventListener('pointermove', moverArrastoAlcaPastas);
+                alcaPainelPastas.addEventListener('pointerup', terminarArrastoAlcaPastas);
+                alcaPainelPastas.addEventListener('pointercancel', terminarArrastoAlcaPastas);
+                alcaPainelPastas.addEventListener('keydown', function (evento) {
+                    const passo = { ArrowLeft: -16, ArrowRight: 16 }[evento.key];
+                    if (!passo) {
+                        return;
+                    }
+                    evento.preventDefault();
+                    pastas.largura = limitarLarguraPastas(pastas.largura + passo);
+                    aplicarPainelPastas();
+                    gravarPreferenciasPastas();
+                });
+                aplicarPainelPastas();
+            }
+
             function mostrarAvisoArquivos() {
                 let jaDispensado = false;
                 try {
@@ -2690,6 +3942,20 @@
                     run: abrirArquivo
                 });
                 editor.addAction({
+                    id: 'mostrar-painel-pastas',
+                    label: 'Pastas: mostrar ou esconder o painel',
+                    run: function () {
+                        alternarPainelPastas();
+                    }
+                });
+                if (aberturaPastaDisponivel) {
+                    editor.addAction({
+                        id: 'abrir-pasta',
+                        label: 'Pastas: abrir pasta',
+                        run: escolherPasta
+                    });
+                }
+                editor.addAction({
                     id: 'novo-conteudo',
                     label: 'Criar novo documento',
                     keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyN],
@@ -2767,6 +4033,8 @@
                         evento.preventDefault();
                     }
                 }, true);
+                registrarPainelPastas();
+                restaurarPastaDaSessao(sessao);
                 aplicarMapa();
                 botaoMapa.addEventListener('click', alternarMapa);
                 telaEstreita.addEventListener('change', aplicarMapa);

@@ -89,6 +89,9 @@
             <button id="trilho-documentos" class="trilho-botao ativo" type="button" title="Documentos" aria-label="Documentos" aria-current="page">
                 <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg>
             </button>
+            <button id="trilho-pastas" class="trilho-botao" type="button" title="Pastas: mostrar ou esconder a árvore de arquivos de uma pasta" aria-label="Pastas" aria-pressed="false" aria-controls="painel-pastas">
+                <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M7 11h6M7 15h9"/></svg>
+            </button>
             <button id="trilho-json" class="trilho-botao" type="button" title="Formatador JSON (Ctrl+Alt+J)" aria-label="Formatador JSON">
                 <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H7a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2 2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h1"/><path d="M16 3h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2 2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-1"/></svg>
             </button>
@@ -96,6 +99,53 @@
                 <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>
             </button>
         </nav>
+
+        <aside id="painel-pastas" aria-labelledby="pastas-titulo" hidden>
+            <div id="pastas-cabecalho">
+                <span id="pastas-titulo">Pastas</span>
+                <div id="pastas-acoes" hidden>
+                    <button id="pastas-novo-arquivo" class="pastas-acao" type="button" title="Novo arquivo" aria-label="Novo arquivo">
+                        <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M12 12v6M9 15h6"/></svg>
+                    </button>
+                    <button id="pastas-nova-pasta" class="pastas-acao" type="button" title="Nova pasta" aria-label="Nova pasta">
+                        <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 10v6M9 13h6"/></svg>
+                    </button>
+                    <button id="pastas-atualizar" class="pastas-acao" type="button" title="Atualizar a árvore" aria-label="Atualizar a árvore">
+                        <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v5h-5"/></svg>
+                    </button>
+                    <button id="pastas-recolher" class="pastas-acao" type="button" title="Recolher todas as pastas" aria-label="Recolher todas as pastas">
+                        <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 12h8"/></svg>
+                    </button>
+                    <button id="pastas-fechar" class="pastas-acao" type="button" title="Fechar a pasta (os arquivos não são alterados)" aria-label="Fechar a pasta">
+                        <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="pastas-conteudo">
+                <div id="pastas-sem-suporte" class="pastas-estado" hidden>
+                    <p><strong>Este navegador não abre pastas do computador.</strong></p>
+                    <p>Use o Edge ou o Chrome no computador. No Zen e no Firefox, a árvore vai precisar do ajudante local, que ainda está em planejamento.</p>
+                </div>
+                <div id="pastas-vazio" class="pastas-estado" hidden>
+                    <p>Abra uma pasta do computador para ver e editar os arquivos dela aqui.</p>
+                    <button id="pastas-abrir" class="destaque" type="button">Abrir pasta</button>
+                </div>
+                <div id="pastas-permissao" class="pastas-estado" hidden>
+                    <p id="pastas-permissao-texto"></p>
+                    <button id="pastas-permitir" class="destaque" type="button">Permitir acesso</button>
+                    <button id="pastas-abrir-outra" class="botao-link" type="button">Abrir outra pasta</button>
+                </div>
+                <ul id="arvore-pastas" role="tree" aria-label="Arquivos da pasta" hidden></ul>
+            </div>
+            <p id="pastas-erro" role="alert" hidden></p>
+        </aside>
+        <div id="painel-pastas-alca" role="separator" aria-orientation="vertical" aria-label="Largura do painel de pastas" aria-valuemin="160" aria-valuemax="480" tabindex="0" title="Arraste para mudar a largura" hidden></div>
+        <div id="menu-pastas" role="menu" aria-label="Ações do item" hidden>
+            <button type="button" role="menuitem" data-acao="novo-arquivo">Novo arquivo aqui</button>
+            <button type="button" role="menuitem" data-acao="nova-pasta">Nova pasta aqui</button>
+            <button type="button" role="menuitem" data-acao="renomear">Renomear <kbd>F2</kbd></button>
+            <button type="button" role="menuitem" data-acao="excluir" class="perigo-texto">Excluir <kbd>Del</kbd></button>
+        </div>
 
         <main id="principal">
             <div id="area-documentos">
