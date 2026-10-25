@@ -8,7 +8,7 @@ Lista do que falta fazer no editor, em ordem sugerida, com as decisões que prec
 
 - [Visão geral](#visão-geral)
 - [Etapa 0: terminar a publicação pelo GitHub](#etapa-0-terminar-a-publicação-pelo-github)
-- [Etapa 1: listas com letras](#etapa-1-listas-com-letras)
+- [Etapa 1: listas com letras (cancelada)](#etapa-1-listas-com-letras-cancelada)
 - [Etapa 2: árvore de pastas no Edge e no Chrome](#etapa-2-árvore-de-pastas-no-edge-e-no-chrome)
 - [Etapa 3: ajudante local](#etapa-3-ajudante-local)
 - [Etapa 4: banco de dados na nuvem](#etapa-4-banco-de-dados-na-nuvem)
@@ -20,7 +20,7 @@ Lista do que falta fazer no editor, em ordem sugerida, com as decisões que prec
 | Etapa | O que é | Depende de | Tamanho |
 | --- | --- | --- | --- |
 | 0 | Terminar a publicação pelo GitHub Actions | Ações no GitHub e no Cloudflare | Pequeno |
-| 1 | Sublistas numeradas aparecendo com letras | Nada | Pequeno |
+| 1 | ~~Listas com letras~~ (cancelada) | — | — |
 | 2 | Painel com a árvore de uma pasta do computador (Edge e Chrome) | Nada | Grande |
 | 3 | Ajudante local, para a árvore e o salvar funcionarem no Zen | Etapa 2 (reaproveita o painel) | Grande |
 | 4 | Guardar documentos num banco de dados na nuvem | Decisão sobre o objetivo e a política da empresa | Médio |
@@ -40,27 +40,11 @@ Os testes já rodam no GitHub a cada push, mas a publicação no Cloudflare falh
 | 0.5 | Atualizar as versões das ações do workflow, para tirar o aviso "Node.js 20 is deprecated" | Claude |
 | 0.6 | Fazer o push dos commits que estão só no computador e conferir que o site atualiza | Claude |
 
-## Etapa 1: listas com letras
+## Etapa 1: listas com letras (cancelada)
 
-**Pedido:** listas com letras (a., b., c.) estilizadas no modo Visual.
+**Pedido:** listas com letras (a., b., c.) no modo Visual, como mais uma opção além da numerada.
 
-**Limitação:** o Markdown padrão só tem listas com números. Uma linha começando com `a.` é texto comum. No GitHub, linhas seguidas assim se juntam num parágrafo só.
-
-**Proposta, que mantém o arquivo no padrão:** mostrar as sublistas numeradas com letras, como no Word e no Google Docs. O arquivo continua com números.
-
-| Nível | No arquivo | Na tela (Visual e Preview) |
-| --- | --- | --- |
-| 1º | `1.` `2.` | 1. 2. |
-| 2º | `   1.` `   2.` | a. b. |
-| 3º | `      1.` | i. ii. |
-
-Tarefas:
-
-1. CSS para `ol ol` (letras minúsculas) e `ol ol ol` (romanos minúsculos), no Visual e no Preview.
-2. Conferir que a numeração do Milkdown, que desenha o marcador no próprio item, também troca para letras.
-3. Testes: sublista numerada aparece com "a." no Visual e no Preview, e o Markdown continua com `1.`.
-
-**Decisão:** essa alternativa serve, ou a ideia era ter letras também no primeiro nível?
+**Decisão do usuário (25/10/2026):** cancelada. O Markdown padrão não tem lista com letras, e todas as formas de gravar isso no arquivo (letras no texto, comentário oculto ou HTML) bagunçam o Markdown ou quebram em outros programas. As listas continuam só com números, em todos os níveis.
 
 ## Etapa 2: árvore de pastas no Edge e no Chrome
 
@@ -182,7 +166,6 @@ Resumo do que precisa ser respondido antes de começar:
 | Etapa | Pergunta |
 | --- | --- |
 | Ordem | Fazer a árvore no Edge e no Chrome primeiro (etapa 2) ou o ajudante primeiro (etapa 3)? |
-| 1 | Sublistas com letras servem, ou a ideia era letras no primeiro nível? |
 | 3 | `.exe` ou script? Iniciar com o Windows ou por atalho? Uma pasta ou várias? Guardar `.bak`? |
 | 4 | Qual o objetivo do banco? A S.I. permite conteúdo de trabalho? Usar domínio próprio? |
 
