@@ -10,7 +10,7 @@ Lista do que falta fazer no editor, em ordem sugerida, com as decisões que prec
 - [Etapa 0: terminar a publicação pelo GitHub](#etapa-0-terminar-a-publicação-pelo-github)
 - [Etapa 1: listas com letras (cancelada)](#etapa-1-listas-com-letras-cancelada)
 - [Etapa 2: árvore de pastas no Edge e no Chrome](#etapa-2-árvore-de-pastas-no-edge-e-no-chrome)
-- [Etapa 3: ajudante local](#etapa-3-ajudante-local)
+- [Etapa 3: versão homelab (Docker)](#etapa-3-versão-homelab-docker)
 - [Etapa 4: banco de dados na nuvem (cancelada)](#etapa-4-banco-de-dados-na-nuvem-cancelada)
 - [Decisões em aberto](#decisões-em-aberto)
 - [Já concluído](#já-concluído)
@@ -22,10 +22,8 @@ Lista do que falta fazer no editor, em ordem sugerida, com as decisões que prec
 | 0 | ✅ Terminar a publicação pelo GitHub Actions, concluído | — | — |
 | 1 | ~~Listas com letras~~ (cancelada) | — | — |
 | 2 | ✅ Painel com a árvore de uma pasta do computador (Edge e Chrome), concluído | — | — |
-| 3 | Ajudante local, para a árvore e o salvar funcionarem no Zen | Etapa 2 (reaproveita o painel) | Grande |
+| 3 | Versão homelab em Docker, com a árvore de pastas funcionando no Zen | Etapa 2 (reaproveita o painel) | Grande |
 | 4 | ~~Banco de dados na nuvem~~ (cancelada) | — | — |
-
-A ordem 2 → 3 constrói o painel primeiro onde o navegador já ajuda (Edge e Chrome) e depois leva o mesmo painel para o Zen. Também dá para inverter: fazer o ajudante primeiro, se usar a árvore no Zen for o mais urgente.
 
 ## Etapa 0: terminar a publicação pelo GitHub
 
@@ -91,45 +89,59 @@ No Edge e no Chrome, o próprio navegador permite isso (`showDirectoryPicker`), 
 - **Excluir é definitivo nesta API:** não vai para a lixeira do Windows. Por isso a confirmação é obrigatória.
 - **Pastas muito grandes** (milhares de arquivos): por isso a leitura é sob demanda.
 
-## Etapa 3: ajudante local
+## Etapa 3: versão homelab (Docker)
 
-**Pedido:** implementar o ajudante, depois de analisá-lo melhor. Ele é necessário para a árvore de pastas funcionar no Zen, porque o Firefox não deixa um site abrir pastas do computador.
+**Pedido:** usar a árvore de pastas no Zen. Em 25/10/2026 o usuário trocou o "ajudante no Windows" por uma **versão do editor no homelab**, num container Docker. A versão online (`workers.dev`) continua igual, sem ajudante, e é a usada no trabalho.
 
-O desenho de segurança está em [PROPOSTA-AJUDANTE-LOCAL.md](PROPOSTA-AJUDANTE-LOCAL.md). Ele precisa de três mudanças para servir à árvore:
+**Decisões já tomadas (25/10/2026):**
 
-| Mudança | Por quê |
+| Pergunta | Resposta |
 | --- | --- |
-| Novas operações: criar pasta, renomear e excluir | A proposta original só listava, lia e gravava |
-| Excluir **move para uma pasta `.lixeira`** dentro da pasta liberada, em vez de apagar | Diminui o estrago de um erro ou de um uso indevido |
-| O painel da etapa 2 passa a ter duas fontes de arquivos: o navegador (Edge e Chrome) ou o ajudante (qualquer navegador) | A interface é a mesma; só muda quem lê e grava |
+| Onde usar | Só em casa (e de fora, pela VPN) |
+| Onde ficam os arquivos | No servidor do homelab, numa pasta montada no container |
+| Quantas pastas | Uma |
+| Como acessa o homelab | IP e porta direto (sem HTTPS), e VPN de fora de casa |
+| Como gerencia containers | Portainer ou CasaOS |
+
+### Como funciona
+
+- **Um container, um servidor Node pequeno, sem dependências.** Ele serve os mesmos arquivos de `public/` e uma rota `/api` que lista, lê, grava, cria, renomeia e exclui dentro da pasta montada em `/arquivos`.
+- **O mesmo editor.** Quando a página percebe que existe `/api`, o painel de pastas passa a usar o servidor como fonte, em qualquer navegador (Zen, Edge, celular). Na versão online não existe `/api`, e tudo fica como hoje.
+- **Por dentro do editor**, o servidor é apresentado com a mesma "cara" das pastas do Edge (as mesmas operações), então a árvore da etapa 2 é reaproveitada quase sem mudanças.
+
+### Segurança
+
+O servidor fica na rede de casa, então qualquer aparelho da rede chega até ele. Por isso:
+
+- **Senha**, definida no `docker-compose` (`SENHA=`). O editor pede uma vez; o servidor responde com um cookie de sessão (`HttpOnly`, `SameSite=Strict`). Tentativas erradas seguidas são atrasadas.
+- **Conferência de origem** em toda gravação, contra outro site da sua rede tentar mandar pedidos ao editor.
+- **Caminhos presos à pasta montada**: `..`, caminhos absolutos e links simbólicos para fora são recusados.
+- **Excluir move para `.editor/lixeira`** e **gravar por cima guarda uma cópia em `.editor/copias`**, dentro da pasta montada. A pasta `.editor` não aparece na árvore. Limpeza automática: proposta de 30 dias na lixeira e 10 cópias por arquivo.
+- **Conflito:** se o arquivo mudou no disco depois de aberto (por outro aparelho), o servidor recusa a gravação e o editor pergunta o que fazer.
+- **Sem HTTPS:** na rede de casa a senha e os textos passam sem criptografia. Pela VPN, o túnel já é criptografado. Não expor a porta na internet.
+- O container roda sem ser root, com usuário e grupo configuráveis (`PUID`/`PGID`), para gravar com o mesmo dono dos arquivos.
+
+### Como instalar e atualizar
+
+- O GitHub Actions passa a gerar a imagem `ghcr.io/felipefm/editorportable` a cada publicação, depois dos testes.
+- No Portainer ou no CasaOS, cola-se um `docker-compose.yml` pronto (imagem, porta, pasta, senha).
+- Atualizar: "Pull and redeploy" no Portainer (ou reiniciar com a imagem nova no CasaOS).
+- Como hoje, o Monaco e o Milkdown vêm da internet (CDN); sem internet o editor não carrega.
 
 ### Tarefas
 
-1. **Ajudante:**
-   - servidor só em `127.0.0.1`, com conferência de origem e senha
-   - caminhos presos à pasta liberada
-   - operações listar, ler, gravar (com conflito por `If-Match`), criar, renomear e mover para `.lixeira`
-2. **Configuração inicial:** escolher a pasta liberada e gerar a senha.
-3. **Forma de iniciar:** conforme a decisão abaixo.
-4. **Editor:** detectar o ajudante, pedir a senha na primeira conexão e usá-lo como fonte do painel de arquivos e do salvar.
-5. **Testes do ajudante:**
-   - origem errada, senha errada e caminhos fora da pasta (`..`, absolutos, links simbólicos)
-   - limite de tamanho, conflito e lixeira
-6. **Testes do editor:** a área `pastas` roda também com o ajudante, apontado para uma pasta temporária.
-7. **Empacotamento** e documentação.
+1. **Servidor** (`servidor/`): arquivos estáticos, login, `/api` (listar, ler, gravar com conflito, criar arquivo e pasta, renomear, mover para a lixeira), cópias e limpeza.
+2. **Editor:** detectar `/api`, tela de senha, fonte "servidor" no painel de pastas, sessão lembrando a pasta do servidor.
+3. **Docker:** `Dockerfile`, `docker-compose.yml` de exemplo e publicação da imagem no GitHub Actions.
+4. **Testes:**
+   - do servidor: senha, origem, caminhos fora da pasta, links simbólicos, limite de tamanho, conflito, lixeira e cópias;
+   - do editor: a área `pastas` roda também contra o servidor, numa pasta temporária, inclusive no Firefox.
+5. **Documentação:** README (seção "Versão homelab") e `docs/TESTES.md`.
 
-### Decisões
+### Ainda a decidir
 
-1. **Formato:** um `ajudante.exe` único, que não precisa de Node.js e cabe num pendrive, ou um script `ajudante.js`, que precisa do Node.js mas é mais simples de manter?
-2. **Início:** com o Windows, sem janela, ou por atalho, que inicia o ajudante e abre o editor?
-3. **Pastas:** uma pasta liberada ou várias?
-4. **Cópia de segurança:** guardar uma `.bak` antes de sobrescrever?
-
-### Pontos de atenção
-
-- **É um programa rodando no computador:** em 21/10 essa foi a objeção principal. O editor continua funcionando sem ele.
-- **Antivírus:** pode questionar um `.exe` novo sem assinatura digital.
-- **Computador do trabalho:** instalar programas pode exigir autorização da S.I.
+1. **Imagem:** pública no GitHub (`ghcr.io`, recomendado; o código já é público) ou construída no próprio servidor a partir do repositório?
+2. **Retenção:** 30 dias na lixeira e 10 cópias por arquivo servem?
 
 ## Etapa 4: banco de dados na nuvem (cancelada)
 
@@ -171,8 +183,7 @@ Resumo do que precisa ser respondido antes de começar:
 
 | Etapa | Pergunta |
 | --- | --- |
-| Ordem | Fazer a árvore no Edge e no Chrome primeiro (etapa 2) ou o ajudante primeiro (etapa 3)? |
-| 3 | `.exe` ou script? Iniciar com o Windows ou por atalho? Uma pasta ou várias? Guardar `.bak`? |
+| 3 | Imagem pública no GitHub ou construída no servidor? 30 dias de lixeira e 10 cópias por arquivo servem? |
 
 ## Já concluído
 
