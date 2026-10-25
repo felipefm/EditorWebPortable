@@ -117,32 +117,26 @@ O servidor fica na rede de casa, então qualquer aparelho da rede (ou da VPN) ch
 - **Conferência de origem** em toda gravação: um site qualquer aberto no navegador não consegue mandar pedidos escondidos ao servidor (CSRF).
 - **Conferência do endereço (`Host`)**, contra um site se passar por um endereço da rede de casa (DNS rebinding).
 - **Caminhos presos à pasta montada**: `..`, caminhos absolutos e links simbólicos para fora são recusados.
-- **Excluir move para `.editor/lixeira`** e **gravar por cima guarda uma cópia em `.editor/copias`**, dentro da pasta montada. A pasta `.editor` não aparece na árvore. Limpeza automática: proposta de 30 dias na lixeira e 10 cópias por arquivo.
+- **Excluir move para `.editor/lixeira`** e **gravar por cima guarda uma cópia em `.editor/copias`**, dentro da pasta montada. A pasta `.editor` não aparece na árvore. Limpeza automática: 30 dias na lixeira e as últimas 10 cópias por arquivo.
 - **Conflito:** se o arquivo mudou no disco depois de aberto (por outro aparelho), o servidor recusa a gravação e o editor pergunta o que fazer.
 - **Sem HTTPS:** na rede de casa a senha e os textos passam sem criptografia. Pela VPN, o túnel já é criptografado. Não expor a porta na internet.
 - O container roda sem ser root, com usuário e grupo configuráveis (`PUID`/`PGID`), para gravar com o mesmo dono dos arquivos.
 
 ### Como instalar e atualizar
 
-- O GitHub Actions passa a gerar a imagem `ghcr.io/felipefm/editorportable` a cada publicação, depois dos testes.
-- No Portainer ou no CasaOS, cola-se um `docker-compose.yml` pronto (imagem, porta, pasta, senha).
-- Atualizar: "Pull and redeploy" no Portainer (ou reiniciar com a imagem nova no CasaOS).
+- **Sem imagem própria:** o `docker-compose.yml` usa a imagem oficial `node:22-alpine` e monta a pasta do projeto (clonada no servidor) e a pasta de arquivos. O servidor não tem dependências além do próprio Node.
+- Atualizar: `git pull` na pasta do projeto e reiniciar o container.
 - Como hoje, o Monaco e o Milkdown vêm da internet (CDN); sem internet o editor não carrega.
 
 ### Tarefas
 
 1. **Servidor** (`servidor/`): arquivos estáticos, senha opcional, `/api` (listar, ler, gravar com conflito, criar arquivo e pasta, renomear, mover para a lixeira), cópias e limpeza.
 2. **Editor:** detectar `/api`, tela de senha (só se estiver ligada), fonte "servidor" no painel de pastas, sessão lembrando a pasta do servidor.
-3. **Docker:** `Dockerfile`, `docker-compose.yml` de exemplo e publicação da imagem no GitHub Actions.
+3. **Docker:** `docker-compose.yml` com a imagem oficial do Node.
 4. **Testes:**
    - do servidor: com e sem senha, origem, endereço, caminhos fora da pasta, links simbólicos, limite de tamanho, conflito, lixeira e cópias;
    - do editor: a área `pastas` roda também contra o servidor, numa pasta temporária, inclusive no Firefox.
 5. **Documentação:** README (seção "Versão homelab") e `docs/TESTES.md`.
-
-### Ainda a decidir
-
-1. **Imagem:** pública no GitHub (`ghcr.io`, recomendado; o código já é público) ou construída no próprio servidor a partir do repositório?
-2. **Retenção:** 30 dias na lixeira e 10 cópias por arquivo servem?
 
 ## Etapa 4: banco de dados na nuvem (cancelada)
 
@@ -184,7 +178,6 @@ Resumo do que precisa ser respondido antes de começar:
 
 | Etapa | Pergunta |
 | --- | --- |
-| 3 | Imagem pública no GitHub ou construída no servidor? 30 dias de lixeira e 10 cópias por arquivo servem? |
 
 ## Já concluído
 
