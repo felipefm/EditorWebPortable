@@ -53,7 +53,13 @@ function removerAcessoArquivos() {
  */
 async function abrirEditor(page, opcoes = {}) {
     const erros = [];
-    page.on('pageerror', (erro) => erros.push(erro.message));
+    page.on('pageerror', (erro) => {
+        // Cancelamento interno do Monaco ao trocar de aba rápido: esperado e inofensivo. O editor já o
+        // silencia no Edge, mas o Playwright no Firefox o informa mesmo assim.
+        if (erro.message !== 'Canceled') {
+            erros.push(erro.message);
+        }
+    });
     page.on('dialog', async (dialogo) => {
         if (dialogo.type() === 'beforeunload') {
             await dialogo.accept();

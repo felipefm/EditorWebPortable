@@ -395,6 +395,9 @@ test.describe('Modo Visual: listas no Markdown padrão', () => {
         await digitar(page, '- um');
         await page.keyboard.press('Enter');
         await page.keyboard.press('Tab');
+        // Teclas logo depois do Tab, antes de a sublista existir, saem embaralhadas no Milkdown
+        // (limitação conhecida, só acontece abaixo de ~20 ms). Num computador lento, espera a sublista.
+        await expect(editorVisual(page).locator('li li')).toHaveCount(1);
         await digitar(page, 'sub');
         await expect.poll(() => textoNormalizado(page)).toBe('Início\n\n- um\n  - sub');
     });

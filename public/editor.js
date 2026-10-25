@@ -4222,6 +4222,14 @@
 
             configurarModoArquivos();
 
+            // O Monaco cancela por dentro tarefas da aba anterior (realce, links) quando se troca de aba
+            // rápido, e o cancelamento aparece como erro não tratado. É esperado e não afeta nada.
+            window.addEventListener('unhandledrejection', function (evento) {
+                if (evento.reason && evento.reason.name === 'Canceled') {
+                    evento.preventDefault();
+                }
+            });
+
             if (typeof require !== 'function') {
                 mostrarFalha('Não foi possível carregar o Monaco.\nVerifique a conexão com a internet e recarregue a página.');
                 return;
