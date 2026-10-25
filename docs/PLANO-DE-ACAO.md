@@ -1,6 +1,6 @@
 # Plano de ação
 
-> **Criado em:** 24/10/2026. **Status:** etapa 2 concluída em 25/10/2026; etapas 0 e 2 concluídas; etapa 1 cancelada; etapas 3 e 4 pendentes.
+> **Criado em:** 24/10/2026. **Status (25/10/2026):** etapas 0 e 2 concluídas; etapas 1 e 4 canceladas; etapa 3 pendente.
 
 Lista do que falta fazer no editor, em ordem sugerida, com as decisões que precisam ser tomadas antes de cada etapa.
 
@@ -11,7 +11,7 @@ Lista do que falta fazer no editor, em ordem sugerida, com as decisões que prec
 - [Etapa 1: listas com letras (cancelada)](#etapa-1-listas-com-letras-cancelada)
 - [Etapa 2: árvore de pastas no Edge e no Chrome](#etapa-2-árvore-de-pastas-no-edge-e-no-chrome)
 - [Etapa 3: ajudante local](#etapa-3-ajudante-local)
-- [Etapa 4: banco de dados na nuvem](#etapa-4-banco-de-dados-na-nuvem)
+- [Etapa 4: banco de dados na nuvem (cancelada)](#etapa-4-banco-de-dados-na-nuvem-cancelada)
 - [Decisões em aberto](#decisões-em-aberto)
 - [Já concluído](#já-concluído)
 
@@ -23,7 +23,7 @@ Lista do que falta fazer no editor, em ordem sugerida, com as decisões que prec
 | 1 | ~~Listas com letras~~ (cancelada) | — | — |
 | 2 | ✅ Painel com a árvore de uma pasta do computador (Edge e Chrome), concluído | — | — |
 | 3 | Ajudante local, para a árvore e o salvar funcionarem no Zen | Etapa 2 (reaproveita o painel) | Grande |
-| 4 | Guardar documentos num banco de dados na nuvem | Decisão sobre o objetivo e a política da empresa | Médio |
+| 4 | ~~Banco de dados na nuvem~~ (cancelada) | — | — |
 
 A ordem 2 → 3 constrói o painel primeiro onde o navegador já ajuda (Edge e Chrome) e depois leva o mesmo painel para o Zen. Também dá para inverter: fazer o ajudante primeiro, se usar a árvore no Zen for o mais urgente.
 
@@ -131,7 +131,9 @@ O desenho de segurança está em [PROPOSTA-AJUDANTE-LOCAL.md](PROPOSTA-AJUDANTE-
 - **Antivírus:** pode questionar um `.exe` novo sem assinatura digital.
 - **Computador do trabalho:** instalar programas pode exigir autorização da S.I.
 
-## Etapa 4: banco de dados na nuvem
+## Etapa 4: banco de dados na nuvem (cancelada)
+
+> **Decisão do usuário (25/10/2026):** cancelada. O editor é usado no trabalho, e guardar texto numa nuvem pessoal arrisca o `workers.dev` ser bloqueado pela S.I. (o domínio próprio do usuário já é bloqueado lá). Também exigiria pensar em criptografia. A avaliação abaixo fica como registro.
 
 **Pedido:** verificar se dá para guardar os documentos num banco de dados, como a Vercel oferece, sem sofrer bloqueio da S.I. Se for complicado, deixar para lá.
 
@@ -171,7 +173,6 @@ Resumo do que precisa ser respondido antes de começar:
 | --- | --- |
 | Ordem | Fazer a árvore no Edge e no Chrome primeiro (etapa 2) ou o ajudante primeiro (etapa 3)? |
 | 3 | `.exe` ou script? Iniciar com o Windows ou por atalho? Uma pasta ou várias? Guardar `.bak`? |
-| 4 | Qual o objetivo do banco? A S.I. permite conteúdo de trabalho? Usar domínio próprio? |
 
 ## Já concluído
 
