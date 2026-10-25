@@ -48,6 +48,7 @@ function removerAcessoArquivos() {
  * opcoes.arquivos: 'simulados' (padrão), 'indisponivel' ou 'nativo'
  * opcoes.abrirArquivos: [{ nome, conteudo }] devolvidos pelo seletor simulado
  * opcoes.respostaPrompt: texto para responder a window.prompt
+ * opcoes.endereco: abre outro endereço em vez do servidor de testes (por exemplo, a versão homelab)
  * Retorna a lista de erros de JavaScript da página (deve terminar vazia).
  */
 async function abrirEditor(page, opcoes = {}) {
@@ -68,7 +69,7 @@ async function abrirEditor(page, opcoes = {}) {
     } else if (modo === 'indisponivel') {
         await page.addInitScript(removerAcessoArquivos);
     }
-    await page.goto('/');
+    await page.goto(opcoes.endereco || '/');
     await esperarCarregar(page);
     return erros;
 }

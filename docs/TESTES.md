@@ -21,7 +21,7 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **294 testes** em **12 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge, e os de pastas também (o Firefox não abre pastas; nele, só o aviso é testado). Ao todo são cerca de 548 execuções, e a suíte completa leva uns 6 minutos num computador de mesa.
+São **343 testes** em **13 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 621 execuções, e a suíte completa leva uns 6 minutos num computador de mesa.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
@@ -32,7 +32,8 @@ São **294 testes** em **12 áreas**, um arquivo por área. Eles rodam em dois n
 | visual | `visual.spec.js` | 82 | Modo Visual (Milkdown): edição formatada, **todos os atalhos**, cursor pronto para digitar, listas no Markdown padrão, fechamento automático de ( [ {, documento novo em Markdown e Visual, linha horizontal visível, envolver a seleção, botão + da margem sem a alça de arrastar, sincronia com o Markdown, preservação do estilo, salvar, abas, falta de internet |
 | imagens | `imagens.spec.js` | 17 | Imagens preservadas no modo Visual, diálogo "Inserir imagem" (link e arquivo), item Imagem do menu `/`, redução de tamanho |
 | mapa | `mapa.spec.js` | 13 | Minimapa do Monaco (Editor e Dividido) e o desenhado no modo Visual: botão Mapa, escolha lembrada, clicar e arrastar para rolar, atualização ao digitar |
-| pastas | `pastas.spec.js` | 33 | Painel de pastas: abrir pasta, árvore, abrir e salvar arquivos, criar, renomear e excluir, teclado, menu, permissão, restaurar ao recarregar, largura, aviso no Firefox |
+| pastas | `pastas.spec.js` | 71 | Painel de pastas, com a pasta do navegador (Edge) e com a do servidor homelab (Edge e Firefox): abrir pasta, árvore, abrir e salvar arquivos, criar, renomear e excluir, teclado, menu, permissão, restaurar ao recarregar, largura, aviso no Firefox; no homelab, também senha, documento novo, conflito e lixeira |
+| homelab | `homelab.spec.js` | 11 | API do servidor homelab: caminhos fora da pasta, links, origem, endereço (DNS rebinding), senha, tamanho, conflito, lixeira e cópias |
 | atalhos | `atalhos.spec.js` | 26 | Atalhos gerais (salvar, salvar como, abrir, nova aba, formatador JSON) em cada modo, com o foco dentro e fora do texto |
 | json | `json.spec.js` | 11 | Formatar, compactar, indentação, erros com linha e coluna, copiar, abrir em aba |
 | sessao | `sessao.spec.js` | 10 | Sessão restaurada, painel de backup, exportar e importar |
@@ -50,11 +51,13 @@ tests/
   imagens.spec.js      │
   mapa.spec.js         │
   pastas.spec.js       │
+  homelab.spec.js      │
   atalhos.spec.js      │
   json.spec.js         │
   sessao.spec.js       │
   celular.spec.js      ┘
   utilidades.js        funções compartilhadas pelos testes
+  homelab.js           liga o servidor homelab numa pasta temporária, para cada teste
   alterados.js         descobre o que mudou e roda só as áreas afetadas
   servidor.js          servidor local que serve public/ durante os testes
   playwright.config.js configuração (navegador, telas, relatório)
@@ -96,6 +99,7 @@ Todos são executados dentro da pasta `tests/`.
 | `npm run test:imagens` | Só imagens |
 | `npm run test:mapa` | Só o minimapa |
 | `npm run test:pastas` | Só o painel de pastas |
+| `npm run test:homelab` | Só a API do servidor homelab |
 | `npm run test:atalhos` | Só os atalhos gerais em todos os modos |
 | `npm run test:firefox` | Todos os testes, só no Firefox |
 | `npm run test:json` | Só o formatador JSON |
@@ -145,6 +149,7 @@ O que mudou:
 | `mapa`, `minimap` | mapa |
 | `markers` | abas |
 | `pasta`, `arvore`, `directory` | pastas |
+| `servidor` | pastas e homelab |
 | `atalho`, `keydown`, `keybinding` | atalhos |
 | `envolver` | markdown e visual |
 | `markdown`, `preview`, `modo`, `marcacao`, `citacao`, `tarefas`, `numerada`, `negrito`, `italico`, `tachado`, `horizontal` | markdown |
@@ -168,6 +173,8 @@ Uma função pode cair em mais de uma área, e então todas rodam. Funções aux
 Se a linha alterada estiver **fora de uma função** (por exemplo, no bloco de inicialização, onde os botões são ligados), a área é escolhida pelo **texto da linha**. Uma linha com `botaoFormatarJson.addEventListener` cai em json.
 
 **`public/index.html` e `public/editor.css`:** pelo texto da linha alterada, que normalmente contém ids e classes como `#json-erro`, `.aba`, `#painel-sessao` ou `data-md`. Mudanças no CSS dentro de um bloco `@media` também rodam os testes de **celular**.
+
+**`servidor/` e `tests/homelab.js`:** rodam as áreas **homelab** e **pastas**.
 
 **`tests/`:**
 - Um arquivo `*.spec.js` alterado roda a própria área.
@@ -379,9 +386,14 @@ Modo Visual (minimapa desenhado pelo editor):
 - o mapa se atualiza ao digitar
 - os botões do bloco de código ("js", "Copiar") não viram traços no mapa
 
-### pastas (33)
+### pastas (71)
 
-Rodam só no Edge, com uma pasta simulada (veja [Pasta simulada](#pasta-simulada)).
+Os 32 testes abaixo rodam duas vezes, uma com cada fonte de arquivos:
+
+- **navegador** (`Pastas`): a pasta do computador no Edge, simulada (veja [Pasta simulada](#pasta-simulada)). Não roda no Firefox, que não abre pastas.
+- **servidor** (`Pastas no homelab`): o servidor homelab ligado numa pasta temporária, no Edge e no Firefox. Os 7 testes que só existem no navegador (seletor de pasta, permissão, mover sem `move`, paleta e Edge sem acesso) ficam de fora.
+
+Mais 7: o aviso no Firefox e os 6 da versão homelab, listados no fim.
 
 Painel e pasta:
 
@@ -435,7 +447,32 @@ Sessão:
 Navegadores sem o recurso:
 
 - no Edge sem acesso a arquivos, o painel explica que não abre pastas
-- no Firefox (motor do Zen), o botão Pastas aparece e explica que é preciso o Edge, o Chrome ou o ajudante
+- no Firefox (motor do Zen), o botão Pastas aparece e explica que é preciso o Edge, o Chrome ou a versão homelab
+
+Só na versão homelab (Edge e Firefox):
+
+- a pasta do servidor já está no painel, o botão é Salvar e não há aviso de download; a pasta `.editor` não aparece
+- documento novo é salvo na pasta do servidor com o nome perguntado, na pasta escolhida na árvore
+- salvar com um nome que já existe avisa e não grava por cima
+- arquivo alterado em outro aparelho: o editor pergunta antes de gravar por cima; Cancelar mantém o do servidor, Gravar por cima guarda o do outro aparelho nas cópias
+- excluir manda para a lixeira do servidor
+- com senha, o painel pede a senha uma vez (senha errada avisa; depois de recarregar, não pede de novo)
+
+### homelab (11)
+
+Testam a API do servidor direto, sem abrir o editor. Cada teste liga o servidor numa pasta temporária (`tests/homelab.js`). Rodam só no projeto `desktop`.
+
+- serve o editor e diz que é a versão homelab; arquivos fora de `public/` não são servidos
+- lista, lê e grava; gravar com a versão antiga dá conflito; "só se for novo" não grava por cima
+- caminhos para fora da pasta (`..`, `\`, `C:`, caractere nulo) e a pasta `.editor` são recusados
+- um atalho (link) que leva para fora da pasta é recusado para listar, ler, gravar e excluir
+- alterações sem a origem da página do editor (ou de outro site) são recusadas
+- só responde pelo IP, localhost, nomes da rede local ou os de `ENDERECOS` (contra DNS rebinding)
+- arquivos maiores que 10 MB são recusados
+- criar pasta e renomear não sobrescrevem nada; trocar só maiúsculas funciona
+- excluir move para a lixeira; gravar por cima guarda as 10 últimas cópias
+- ao ligar, a lixeira apaga o que tem mais de 30 dias
+- com senha, nada de arquivos antes de entrar; senha errada é recusada; o cookie é `HttpOnly` e `SameSite=Strict`
 
 ### atalhos (26)
 

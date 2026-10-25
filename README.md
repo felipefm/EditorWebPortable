@@ -10,6 +10,7 @@ Editor de texto e código que roda direto no navegador, sem instalação e sem b
 - **Várias abas**: abra e edite vários arquivos ao mesmo tempo. Cada aba mostra a linguagem, e as que têm alterações não salvas ganham um ponto amarelo.
 - **Minimapa** ao lado da barra de rolagem, como no Sublime Text e no VS Code: uma miniatura do documento onde clicar ou arrastar rola o texto. Funciona nos modos Editor, Dividido e Visual, e o botão **Mapa** no rodapé liga e desliga. Veja [Minimapa](#minimapa).
 - **Painel de pastas** (Edge e Chrome): abra uma pasta do computador e veja os arquivos numa árvore à esquerda, como no VS Code e no Sublime Text. Pela árvore dá para abrir, criar, renomear e excluir arquivos e pastas. Veja [Painel de pastas](#painel-de-pastas).
+- **Versão homelab** (Docker): o mesmo editor num servidor da sua casa, com a pasta de arquivos do servidor no painel de pastas, em qualquer navegador, inclusive o Zen. Veja [Versão homelab](#versão-homelab).
 - **Paleta de comandos** (`F1`): busque e execute qualquer ação do editor pelo teclado.
 - **Abrir e salvar arquivos locais**: com a [File System Access API](https://developer.mozilla.org/docs/Web/API/File_System_API) (Chrome, Edge), o editor grava direto no arquivo original. Nos navegadores que não têm essa API (Firefox e derivados, como Zen e LibreWolf, Safari e navegadores de celular), o botão vira **Baixar** e um aviso explica o motivo. Veja [Compatibilidade](#compatibilidade).
 - **Detecção de linguagem** pela extensão do arquivo (`.js`, `.mjs`, `.cjs`, `.ts`, `.html`, `.htm`, `.css`, `.json`, `.md`, `.markdown`, `.txt`).
@@ -72,7 +73,40 @@ O botão de pasta na barra lateral mostra ou esconde o painel. Em **Abrir pasta*
 - **Outros botões do topo:** **Atualizar** mostra o que mudou na pasta por fora do editor, **Recolher** fecha todas as pastas e **Fechar a pasta** tira a pasta do painel, sem mexer nos arquivos nem nas abas.
 - **Ao reabrir o editor,** a pasta e as pastas expandidas voltam. Às vezes o navegador pede para confirmar a permissão de novo; nesse caso, basta clicar em **Permitir acesso**.
 - Arraste a borda direita do painel para mudar a largura. A escolha fica guardada.
-- No **Zen, no Firefox** e no celular, o navegador não deixa abrir pastas. No Zen e no Firefox, o painel explica isso; a árvore nesses navegadores depende do ajudante local, ainda em planejamento (veja `docs/PLANO-DE-ACAO.md`). No celular, o botão não aparece.
+- No **Zen, no Firefox** e no celular, o navegador não deixa abrir pastas. No Zen e no Firefox, o painel explica isso; nesses navegadores, a árvore funciona na [versão homelab](#versão-homelab). No celular, o botão não aparece.
+
+### Versão homelab
+
+A versão online não muda. A versão homelab é o mesmo editor rodando num container Docker num servidor da sua casa, junto com uma pasta de arquivos desse servidor. Ela serve para usar o painel de pastas no Zen (ou em qualquer navegador e aparelho da rede), sem instalar nada no computador.
+
+**Instalar (Portainer ou CasaOS):**
+
+1. No servidor, clone o projeto numa pasta: `git clone https://github.com/felipefm/EditorWebPortable.git`
+2. Copie o [`homelab/docker-compose.yml`](homelab/docker-compose.yml) para uma stack nova do Portainer (ou para "Instalar app personalizado" no CasaOS).
+3. Troque os dois caminhos em `volumes`: onde ficou a pasta do projeto e a pasta com os seus arquivos. Em `user`, use o dono dos arquivos (`1000:1000` é o mais comum).
+4. Suba o container e abra `http://IP-DO-SERVIDOR:8887`.
+
+**Atualizar:** `git pull` na pasta do projeto e reiniciar o container. A imagem é a oficial do Node (`node:22-alpine`); o servidor (`servidor/servidor.js`) usa só o que já vem com o Node.
+
+**Como fica no editor:**
+
+- O painel de pastas já mostra a pasta do servidor; não precisa clicar em Abrir pasta. Abrir, criar, renomear e excluir funcionam como no Edge.
+- O botão é **Salvar** em qualquer navegador. Um documento novo pergunta o nome e é gravado na pasta escolhida na árvore (ou na pasta do servidor).
+- **Excluir não apaga:** o item vai para `.editor/lixeira`, dentro da pasta de arquivos, e é apagado de vez depois de 30 dias.
+- **Gravar por cima guarda uma cópia** do conteúdo anterior em `.editor/copias` (as 10 mais recentes de cada arquivo).
+- **Conflito:** se o arquivo foi alterado em outro aparelho depois de aberto, o editor pergunta antes de gravar por cima. A versão do outro aparelho fica nas cópias.
+- A pasta `.editor` não aparece na árvore.
+
+**Segurança:**
+
+- **Sem senha por padrão**, porque é só a rede de casa. Para ligar, preencha `SENHA` no `docker-compose.yml`; o editor pede a senha uma vez e o navegador lembra.
+- O servidor só mexe dentro da pasta de arquivos: caminhos com `..`, caminhos absolutos e atalhos (links) para fora dela são recusados.
+- Só aceita alterações vindas da própria página do editor, para outro site aberto no navegador não conseguir mandar pedidos escondidos.
+- Só responde pelo IP, por `localhost` e por nomes da rede local (`homelab`, `servidor.lan`...). Outros nomes, como o do Tailscale, vão em `ENDERECOS`. Isso impede um site de fora de se passar por um endereço da sua rede.
+- **Não tem HTTPS:** na rede de casa, os textos passam sem criptografia; pela VPN, o túnel já protege. **Não abra a porta para a internet.**
+- Limite de 10 MB por arquivo.
+
+Como a versão online, o homelab precisa de internet para carregar o Monaco e o Milkdown (CDN).
 
 ### Imagens
 
@@ -139,7 +173,7 @@ Nenhum conteúdo é enviado para servidores. Tudo fica no seu navegador ou nos a
 | Sessão salva no navegador | ✅ | ✅ |
 | Salvar direto no arquivo original | ✅ | ⬇️ botão **Baixar** |
 | Backup automático em arquivo | ✅ | ❌ |
-| Painel de pastas (abrir uma pasta inteira) | ✅ | ❌ |
+| Painel de pastas (abrir uma pasta inteira) | ✅ | ❌ (✅ na [versão homelab](#versão-homelab)) |
 
 **Por que alguns navegadores só baixam?** Gravar num arquivo do computador exige a [File System Access API](https://developer.mozilla.org/docs/Web/API/Window/showSaveFilePicker), que só os navegadores baseados no Chromium oferecem. A Mozilla decidiu não implementá-la, por segurança, e não existe opção para ativá-la no Firefox nem nos navegadores derivados dele. No Brave, ela vem desligada e pode ser ativada em `brave://flags/#file-system-access-api`.
 
@@ -154,7 +188,7 @@ O navegador pode acrescentar um número ao nome (`notas (1).md`) quando o arquiv
 
 ## Testes automatizados
 
-O projeto tem **294 testes automatizados**, divididos em 12 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 548 execuções.
+O projeto tem **343 testes automatizados**, divididos em 13 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, homelab, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 621 execuções.
 
 📖 **Documentação completa: [docs/TESTES.md](docs/TESTES.md).** Explica como funcionam, a lista de todos os testes, como o projeto escolhe o que testar, como escrever testes novos e o que fazer quando algo falha.
 
@@ -184,6 +218,8 @@ public/
   index.html   Estrutura da página: barra de ações, abas, editor, preview, formatador JSON e atalhos
   editor.css   Estilos (tema escuro inspirado no VS Code)
   editor.js    Toda a lógica: Monaco, abas, arquivos, sessão, backup, Markdown e JSON
+servidor/     Servidor da versão homelab (só Node, sem dependências)
+homelab/      docker-compose.yml da versão homelab
 tests/        Testes automatizados (Playwright), um arquivo por área
 docs/         Documentação: testes (TESTES.md), plano de ação e propostas
 .github/      Testes e publicação no GitHub Actions

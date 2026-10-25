@@ -1,6 +1,6 @@
 # Plano de ação
 
-> **Criado em:** 24/10/2026. **Status (25/10/2026):** etapas 0 e 2 concluídas; etapas 1 e 4 canceladas; etapa 3 pendente.
+> **Criado em:** 24/10/2026. **Status (25/10/2026):** etapas 0, 2 e 3 concluídas; etapas 1 e 4 canceladas. O plano está encerrado.
 
 Lista do que falta fazer no editor, em ordem sugerida, com as decisões que precisam ser tomadas antes de cada etapa.
 
@@ -22,7 +22,7 @@ Lista do que falta fazer no editor, em ordem sugerida, com as decisões que prec
 | 0 | ✅ Terminar a publicação pelo GitHub Actions, concluído | — | — |
 | 1 | ~~Listas com letras~~ (cancelada) | — | — |
 | 2 | ✅ Painel com a árvore de uma pasta do computador (Edge e Chrome), concluído | — | — |
-| 3 | Versão homelab em Docker, com a árvore de pastas funcionando no Zen | Etapa 2 (reaproveita o painel) | Grande |
+| 3 | ✅ Versão homelab em Docker, com a árvore de pastas funcionando no Zen, concluído | — | — |
 | 4 | ~~Banco de dados na nuvem~~ (cancelada) | — | — |
 
 ## Etapa 0: terminar a publicação pelo GitHub
@@ -90,6 +90,8 @@ No Edge e no Chrome, o próprio navegador permite isso (`showDirectoryPicker`), 
 - **Pastas muito grandes** (milhares de arquivos): por isso a leitura é sob demanda.
 
 ## Etapa 3: versão homelab (Docker)
+
+> **Concluída em 25/10/2026.** Implementada como descrito abaixo: `servidor/servidor.js`, `homelab/docker-compose.yml`, a área de testes `homelab` (11) e os testes de `pastas` rodando também com o servidor. Instruções no README, em "Versão homelab". Ainda não foi testada num Docker de verdade, só com o mesmo servidor ligado direto pelo Node.
 
 **Pedido:** usar a árvore de pastas no Zen. Em 25/10/2026 o usuário trocou o "ajudante no Windows" por uma **versão do editor no homelab**, num container Docker. A versão online (`workers.dev`) continua igual, sem ajudante, e é a usada no trabalho.
 
@@ -174,13 +176,11 @@ O servidor fica na rede de casa, então qualquer aparelho da rede (ou da VPN) ch
 
 ## Decisões em aberto
 
-Resumo do que precisa ser respondido antes de começar:
-
-| Etapa | Pergunta |
-| --- | --- |
+Nenhuma. Todas as etapas foram concluídas ou canceladas.
 
 ## Já concluído
 
+- **Etapa 3, versão homelab** (25/10/2026): o editor e uma pasta do servidor num container Docker, com o painel de pastas em qualquer navegador, lixeira, cópias e conflito.
 - **Etapa 0, publicação pelo GitHub** (25/10/2026): os testes e a publicação no Cloudflare rodam no GitHub Actions a cada push.
 - **Etapa 2, painel de pastas** (25/10/2026): árvore no Edge e no Chrome, com abrir, criar, renomear, excluir, teclado, sessão e aviso no Zen e no Firefox.
 

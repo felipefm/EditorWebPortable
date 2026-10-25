@@ -124,7 +124,7 @@
             <div id="pastas-conteudo">
                 <div id="pastas-sem-suporte" class="pastas-estado" hidden>
                     <p><strong>Este navegador não abre pastas do computador.</strong></p>
-                    <p>Use o Edge ou o Chrome no computador. No Zen e no Firefox, a árvore vai precisar do ajudante local, que ainda está em planejamento.</p>
+                    <p>Use o Edge ou o Chrome no computador. No Zen e no Firefox, a árvore funciona na versão homelab do editor, instalada num servidor da sua casa (veja o README).</p>
                 </div>
                 <div id="pastas-vazio" class="pastas-estado" hidden>
                     <p>Abra uma pasta do computador para ver e editar os arquivos dela aqui.</p>
@@ -135,6 +135,11 @@
                     <button id="pastas-permitir" class="destaque" type="button">Permitir acesso</button>
                     <button id="pastas-abrir-outra" class="botao-link" type="button">Abrir outra pasta</button>
                 </div>
+                <form id="pastas-senha" class="pastas-estado" hidden>
+                    <label for="pastas-senha-campo">Senha do servidor</label>
+                    <input id="pastas-senha-campo" type="password" autocomplete="current-password">
+                    <button class="destaque" type="submit">Entrar</button>
+                </form>
                 <ul id="arvore-pastas" role="tree" aria-label="Arquivos da pasta" hidden></ul>
             </div>
             <p id="pastas-erro" role="alert" hidden></p>

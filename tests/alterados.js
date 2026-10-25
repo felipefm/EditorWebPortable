@@ -20,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 
 const raizRepositorio = path.resolve(__dirname, '..');
-const areasConhecidas = ['geral', 'atalhos', 'abas', 'arquivos', 'markdown', 'visual', 'imagens', 'mapa', 'pastas', 'json', 'sessao', 'celular'];
+const areasConhecidas = ['geral', 'atalhos', 'abas', 'arquivos', 'markdown', 'visual', 'imagens', 'mapa', 'pastas', 'homelab', 'json', 'sessao', 'celular'];
 
 // Palavras-chave no nome da função ou no texto da linha → área.
 const regras = [
@@ -29,7 +29,8 @@ const regras = [
     ['imagens', /imagem|imagens|image|img/i],
     ['mapa', /mapa|minimap/i],
     ['abas', /markers/i],
-    ['pastas', /pasta|arvore|directory/i],
+    ['pastas', /pasta|arvore|directory|servidor/i],
+    ['homelab', /servidor/i],
     ['atalhos', /atalho|keydown|keybinding/i],
     ['markdown', /envolver/i],
     ['visual', /envolver/i],
@@ -62,7 +63,7 @@ function git(argumentos) {
 // Lê o diff e devolve { arquivo: [números de linha no arquivo atual] }.
 function linhasAlteradas(base) {
     const intervalo = base.includes('..') ? base.split('..') : undefined;
-    const diff = git(['diff', '-U0', ...(intervalo || [base]), '--', 'public', 'tests']);
+    const diff = git(['diff', '-U0', ...(intervalo || [base]), '--', 'public', 'tests', 'servidor']);
     const resultado = {};
     let arquivoAtual;
     for (const linha of diff.split('\n')) {
@@ -87,7 +88,7 @@ function linhasAlteradas(base) {
         }
     }
     if (!intervalo) {
-        const novos = git(['ls-files', '--others', '--exclude-standard', '--', 'public', 'tests']).split('\n').filter(Boolean);
+        const novos = git(['ls-files', '--others', '--exclude-standard', '--', 'public', 'tests', 'servidor']).split('\n').filter(Boolean);
         for (const arquivo of novos) {
             resultado[arquivo] = [0];
         }
@@ -147,6 +148,12 @@ function analisar(alteracoes, versao) {
     for (const [arquivo, numeros] of Object.entries(alteracoes)) {
         const nomeBase = path.basename(arquivo);
         const linhas = lerArquivo(arquivo, versao);
+
+        // O servidor da versão homelab: os testes da API e os do painel de pastas usando o servidor.
+        if (arquivo.startsWith('servidor/') || arquivo === 'tests/homelab.js') {
+            marcar(['homelab', 'pastas'], arquivo);
+            continue;
+        }
 
         if (arquivo.startsWith('tests/')) {
             const area = nomeBase.replace('.spec.js', '');
@@ -239,7 +246,7 @@ function principal() {
         return apenasListar ? 0 : rodarTestes([]);
     }
     if (!Object.keys(alteracoes).length) {
-        console.log(`Nenhuma alteração em public/ ou tests/${prePush ? ' neste push' : ` desde ${base}`}. Nada para testar.`);
+        console.log(`Nenhuma alteração em public/, tests/ ou servidor/${prePush ? ' neste push' : ` desde ${base}`}. Nada para testar.`);
         return 0;
     }
 
@@ -252,7 +259,7 @@ function principal() {
     console.log(`\nÁreas a testar: ${listaAreas}\n`);
 
     if (prePush && git(['status', '--porcelain', '--', 'public', 'tests']).trim()) {
-        console.log('Atenção: há alterações não commitadas em public/ ou tests/. Os testes rodam sobre os arquivos da pasta, incluindo essas alterações.\n');
+        console.log('Atenção: há alterações não commitadas em public/, tests/ ou servidor/. Os testes rodam sobre os arquivos da pasta, incluindo essas alterações.\n');
     }
 
     if (apenasListar) {

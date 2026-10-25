@@ -93,6 +93,7 @@
             const vazioPastas = document.getElementById('pastas-vazio');
             const permissaoPastas = document.getElementById('pastas-permissao');
             const textoPermissaoPastas = document.getElementById('pastas-permissao-texto');
+            const senhaPastas = document.getElementById('pastas-senha');
             const arvorePastas = document.getElementById('arvore-pastas');
             const erroPastas = document.getElementById('pastas-erro');
             const menuPastas = document.getElementById('menu-pastas');
@@ -161,6 +162,8 @@
                 menu: undefined,
                 arrasto: undefined
             };
+            // Na versão homelab: { nome, senha, autenticado } da pasta do servidor. Na versão online, undefined.
+            let servidorPastas;
             let posicaoErroJson;
             let temporizadorSessao;
             let temporizadorJson;
@@ -444,7 +447,7 @@
             async function obterSessaoPersistida() {
                 let sessaoIndexedDb;
                 try {
-                    sessaoIndexedDb = await lerSessaoIndexedDb();
+                    sessaoIndexedDb = reviverSessaoServidor(await lerSessaoIndexedDb());
                 } catch (erro) {
                     sessaoIndexedDb = undefined;
                 }
@@ -2131,7 +2134,7 @@
 
             function atalhoSalvar() {
                 sincronizarEditorVisual();
-                if (gravacaoDiretaDisponivel || (documentoAtual && documentoAtual.manipulador)) {
+                if (gravacaoDiretaDisponivel || usandoPastaDoServidor() || (documentoAtual && documentoAtual.manipulador)) {
                     return salvarArquivo();
                 }
                 salvarNoNavegador();
@@ -2144,6 +2147,10 @@
                     return;
                 }
                 try {
+                    if (usandoPastaDoServidor()) {
+                        await salvarNoServidorComo(documento);
+                        return;
+                    }
                     if (gravacaoDiretaDisponivel) {
                         const nomeSugerido = obterNomeSugerido(documento);
                         const manipulador = await window.showSaveFilePicker({
@@ -2192,6 +2199,10 @@
                         marcarDocumentoSalvo(documento, 'Arquivo salvo');
                         return;
                     }
+                    if (usandoPastaDoServidor()) {
+                        await salvarNoServidorComo(documento);
+                        return;
+                    }
                     if (!gravacaoDiretaDisponivel) {
                         const nome = documento.ehSemTitulo ? pedirNomeDownload(documento) : documento.nome;
                         if (nome) {
@@ -2204,6 +2215,26 @@
                     if (erro && erro.name === 'AbortError') {
                         return;
                     }
+                    if (erro && erro.name === 'ConflitoServidor') {
+                        await resolverConflitoServidor(documento);
+                        return;
+                    }
+                    atualizarEstado(`Falha ao salvar: ${erro && erro.message ? erro.message : 'erro desconhecido'}`);
+                }
+            }
+
+            // O arquivo mudou no servidor (por outro aparelho) depois de aberto: pergunta antes de gravar por cima.
+            async function resolverConflitoServidor(documento) {
+                const gravarPorCima = await confirmar(`${documento.nome} foi alterado em outro aparelho depois que você abriu. Gravar a sua versão por cima? A versão do servidor fica guardada em .editor/copias.`, 'Gravar por cima');
+                if (!gravarPorCima) {
+                    atualizarEstado('Não salvo: o arquivo foi alterado em outro aparelho');
+                    return;
+                }
+                documento.manipulador.etag = undefined;
+                try {
+                    await gravarNoManipulador(documento.manipulador, documento.modelo.getValue());
+                    marcarDocumentoSalvo(documento, 'Arquivo salvo');
+                } catch (erro) {
                     atualizarEstado(`Falha ao salvar: ${erro && erro.message ? erro.message : 'erro desconhecido'}`);
                 }
             }
@@ -2627,6 +2658,313 @@
                 });
             }
 
+            // Versão homelab: o servidor (servidor/servidor.js) oferece uma pasta dele em /api. As classes
+            // abaixo imitam as pastas e os arquivos do navegador (File System Access API), para o painel de
+            // pastas usar o servidor sem mudar. Só guardam dados simples, para caberem no IndexedDB.
+            function erroDoServidor(status, mensagem) {
+                const nomes = { 401: 'NotAllowedError', 404: 'NotFoundError', 409: 'InvalidModificationError', 412: 'ConflitoServidor' };
+                const erro = new Error(mensagem || `o servidor respondeu ${status}`);
+                erro.name = nomes[status] || 'ErroServidor';
+                erro.status = status;
+                return erro;
+            }
+
+            async function pedirAoServidor(metodo, rota, parametros, opcoes) {
+                const consulta = parametros ? `?${new URLSearchParams(parametros)}` : '';
+                let resposta;
+                try {
+                    resposta = await fetch(`/api/${rota}${consulta}`, {
+                        method: metodo,
+                        credentials: 'same-origin',
+                        cache: 'no-store',
+                        ...opcoes
+                    });
+                } catch (erro) {
+                    throw erroDoServidor(0, 'o servidor não respondeu. Confira se o container está ligado.');
+                }
+                if (!resposta.ok) {
+                    let mensagem;
+                    try {
+                        mensagem = (await resposta.json()).erro;
+                    } catch (erro) {
+                        mensagem = undefined;
+                    }
+                    if (resposta.status === 401 && servidorPastas) {
+                        servidorPastas.autenticado = false;
+                    }
+                    throw erroDoServidor(resposta.status, mensagem);
+                }
+                return resposta;
+            }
+
+            function permissaoServidor() {
+                return servidorPastas && (!servidorPastas.senha || servidorPastas.autenticado) ? 'granted' : 'prompt';
+            }
+
+            class ArquivoServidor {
+                constructor(caminho, nome) {
+                    this.servidor = true;
+                    this.kind = 'file';
+                    this.caminho = caminho;
+                    this.name = nome;
+                    // Versão do arquivo lida do servidor; gravar por cima de outra versão dá conflito.
+                    this.etag = undefined;
+                }
+
+                async getFile() {
+                    const resposta = await pedirAoServidor('GET', 'arquivo', { caminho: this.caminho });
+                    this.etag = resposta.headers.get('ETag') || undefined;
+                    return new File([await resposta.blob()], this.name);
+                }
+
+                async createWritable() {
+                    const arquivo = this;
+                    const partes = [];
+                    return {
+                        write: async function (dados) {
+                            partes.push(dados);
+                        },
+                        close: async function () {
+                            const cabecalhos = arquivo.etag ? { 'If-Match': arquivo.etag } : {};
+                            const resposta = await pedirAoServidor('PUT', 'arquivo', { caminho: arquivo.caminho }, {
+                                headers: cabecalhos,
+                                body: new Blob(partes)
+                            });
+                            arquivo.etag = resposta.headers.get('ETag') || undefined;
+                        }
+                    };
+                }
+
+                async move(novoNome) {
+                    const destino = juntarCaminhoPasta(paiDoCaminhoPasta(this.caminho), novoNome);
+                    await pedirAoServidor('POST', 'mover', undefined, {
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ de: this.caminho, para: destino })
+                    });
+                    this.caminho = destino;
+                    this.name = novoNome;
+                }
+
+                async isSameEntry(outro) {
+                    return Boolean(outro && outro.servidor && outro.kind === this.kind && outro.caminho === this.caminho);
+                }
+
+                async queryPermission() {
+                    return permissaoServidor();
+                }
+
+                async requestPermission() {
+                    return permissaoServidor();
+                }
+            }
+
+            class PastaServidor {
+                constructor(caminho, nome) {
+                    this.servidor = true;
+                    this.kind = 'directory';
+                    this.caminho = caminho;
+                    this.name = nome;
+                }
+
+                async *entries() {
+                    const resposta = await pedirAoServidor('GET', 'listar', { caminho: this.caminho });
+                    for (const item of (await resposta.json()).itens) {
+                        const caminho = juntarCaminhoPasta(this.caminho, item.nome);
+                        yield [item.nome, item.tipo === 'directory' ? new PastaServidor(caminho, item.nome) : new ArquivoServidor(caminho, item.nome)];
+                    }
+                }
+
+                async tipoDoFilho(nome) {
+                    try {
+                        return (await (await pedirAoServidor('GET', 'info', { caminho: juntarCaminhoPasta(this.caminho, nome) })).json()).tipo;
+                    } catch (erro) {
+                        if (erro.status === 404) {
+                            return undefined;
+                        }
+                        throw erro;
+                    }
+                }
+
+                async getFileHandle(nome, opcoes) {
+                    const caminho = juntarCaminhoPasta(this.caminho, nome);
+                    const tipo = await this.tipoDoFilho(nome);
+                    if (tipo === 'directory') {
+                        throw new DOMException(`"${nome}" é uma pasta.`, 'TypeMismatchError');
+                    }
+                    const arquivo = new ArquivoServidor(caminho, nome);
+                    if (!tipo && !(opcoes && opcoes.create)) {
+                        throw new DOMException(`"${nome}" não existe.`, 'NotFoundError');
+                    }
+                    if (!tipo) {
+                        const resposta = await pedirAoServidor('PUT', 'arquivo', { caminho: caminho }, { headers: { 'If-None-Match': '*' }, body: '' });
+                        arquivo.etag = resposta.headers.get('ETag') || undefined;
+                    }
+                    return arquivo;
+                }
+
+                async getDirectoryHandle(nome, opcoes) {
+                    const caminho = juntarCaminhoPasta(this.caminho, nome);
+                    const tipo = await this.tipoDoFilho(nome);
+                    if (tipo === 'file') {
+                        throw new DOMException(`"${nome}" é um arquivo.`, 'TypeMismatchError');
+                    }
+                    if (!tipo && !(opcoes && opcoes.create)) {
+                        throw new DOMException(`"${nome}" não existe.`, 'NotFoundError');
+                    }
+                    if (!tipo) {
+                        await pedirAoServidor('POST', 'pasta', { caminho: caminho });
+                    }
+                    return new PastaServidor(caminho, nome);
+                }
+
+                // No servidor, excluir não apaga: o item vai para a lixeira da pasta (.editor/lixeira).
+                async removeEntry(nome) {
+                    await pedirAoServidor('DELETE', 'item', { caminho: juntarCaminhoPasta(this.caminho, nome) });
+                }
+
+                async resolve(outro) {
+                    if (!outro || !outro.servidor) {
+                        return null;
+                    }
+                    if (!this.caminho) {
+                        return outro.caminho.split('/');
+                    }
+                    return outro.caminho.startsWith(`${this.caminho}/`) ? outro.caminho.slice(this.caminho.length + 1).split('/') : null;
+                }
+
+                async isSameEntry(outro) {
+                    return Boolean(outro && outro.servidor && outro.kind === this.kind && outro.caminho === this.caminho);
+                }
+
+                async queryPermission() {
+                    return permissaoServidor();
+                }
+
+                async requestPermission() {
+                    return permissaoServidor();
+                }
+            }
+
+            // O IndexedDB guarda só os dados; ao ler a sessão, os objetos voltam a ter as funções.
+            function reviverManipuladorServidor(manipulador) {
+                if (!manipulador || !manipulador.servidor || manipulador instanceof ArquivoServidor || manipulador instanceof PastaServidor) {
+                    return manipulador;
+                }
+                const revivido = manipulador.kind === 'directory'
+                    ? new PastaServidor(manipulador.caminho, manipulador.name)
+                    : new ArquivoServidor(manipulador.caminho, manipulador.name);
+                if (manipulador.etag) {
+                    revivido.etag = manipulador.etag;
+                }
+                return revivido;
+            }
+
+            function reviverSessaoServidor(sessao) {
+                if (!sessao || !Array.isArray(sessao.documentos)) {
+                    return sessao;
+                }
+                sessao.documentos.forEach(function (registro) {
+                    if (registro) {
+                        registro.manipulador = reviverManipuladorServidor(registro.manipulador);
+                    }
+                });
+                if (sessao.pasta) {
+                    sessao.pasta.manipulador = reviverManipuladorServidor(sessao.pasta.manipulador);
+                }
+                return sessao;
+            }
+
+            // Na versão online (Cloudflare) /api não existe; no homelab, responde com o nome da pasta.
+            async function detectarServidorPastas() {
+                const controle = typeof AbortController === 'function' ? new AbortController() : undefined;
+                const temporizador = window.setTimeout(function () {
+                    if (controle) {
+                        controle.abort();
+                    }
+                }, 3000);
+                try {
+                    const resposta = await fetch('/api/estado', { cache: 'no-store', credentials: 'same-origin', signal: controle && controle.signal });
+                    const tipo = resposta.headers.get('Content-Type') || '';
+                    if (!resposta.ok || !tipo.includes('application/json')) {
+                        return undefined;
+                    }
+                    const dados = await resposta.json();
+                    return dados && dados.versao === 1 ? { nome: dados.nome, senha: Boolean(dados.senha), autenticado: Boolean(dados.autenticado) } : undefined;
+                } catch (erro) {
+                    return undefined;
+                } finally {
+                    window.clearTimeout(temporizador);
+                }
+            }
+
+            function podeAbrirPastas() {
+                return Boolean(servidorPastas) || aberturaPastaDisponivel;
+            }
+
+            function usandoPastaDoServidor() {
+                return Boolean(pastas.raiz && pastas.raiz.servidor && pastas.permitida);
+            }
+
+            async function entrarNoServidor(evento) {
+                evento.preventDefault();
+                const campo = document.getElementById('pastas-senha-campo');
+                try {
+                    await pedirAoServidor('POST', 'entrar', undefined, {
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ senha: campo.value })
+                    });
+                } catch (erro) {
+                    campo.select();
+                    mostrarErroPasta(erro.status === 401 ? 'Senha incorreta.' : `Não foi possível entrar: ${erro.message}`);
+                    return;
+                }
+                campo.value = '';
+                servidorPastas.autenticado = true;
+                await permitirAcessoPasta();
+            }
+
+            // No Zen o editor normalmente só baixa cópias; no homelab, salvar grava na pasta do servidor.
+            function configurarModoServidor() {
+                if (!servidorPastas || gravacaoDiretaDisponivel) {
+                    return;
+                }
+                botaoSalvar.querySelector('.rotulo').textContent = 'Salvar';
+                botaoSalvar.querySelector('.icone').innerHTML = '<path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-7h10v7"/>';
+                botaoSalvar.title = 'Salvar na pasta do servidor (Ctrl+S)';
+                botaoSalvarComo.title = 'Salvar como, na pasta do servidor (Ctrl+Shift+S)';
+                botaoSalvarComo.setAttribute('aria-label', 'Salvar como');
+                document.body.classList.remove('sem-gravacao-direta');
+                avisoArquivos.hidden = true;
+            }
+
+            // Documento novo (ou "Salvar como") no homelab: pergunta o nome e grava na pasta escolhida na
+            // árvore, ou na pasta do servidor.
+            async function salvarNoServidorComo(documento) {
+                const escolhido = pastas.escolhido && pastas.focado ? pastas.nos.get(pastas.focado) : undefined;
+                const pasta = !escolhido ? '' : (escolhido.tipo === 'directory' ? escolhido.caminho : paiDoCaminhoPasta(escolhido.caminho));
+                const nome = (window.prompt(`Nome do arquivo (na pasta ${pasta || pastas.raiz.name} do servidor):`, obterNomeSugerido(documento)) || '').trim();
+                if (!nome) {
+                    return;
+                }
+                await lerFilhosPasta(pasta);
+                const erroNome = validarNomePasta(nome, { pasta: pasta });
+                if (erroNome) {
+                    atualizarEstado(erroNome);
+                    return;
+                }
+                const manipulador = await pastas.nos.get(pasta).manipulador.getFileHandle(nome, { create: true });
+                await gravarNoManipulador(manipulador, documento.modelo.getValue());
+                documento.nome = nome;
+                documento.manipulador = manipulador;
+                documento.ehSemTitulo = false;
+                documento.caminhoPasta = juntarCaminhoPasta(pasta, nome);
+                if (pasta) {
+                    pastas.expandidas.add(pasta);
+                }
+                marcarDocumentoSalvo(documento, 'Arquivo salvo no servidor');
+                await atualizarArvorePastas();
+            }
+
             // Painel de pastas (Edge e Chrome): uma pasta do computador numa árvore à esquerda, para abrir,
             // criar, renomear e excluir arquivos. Cada pasta é lida só quando é expandida, para não travar
             // com pastas grandes.
@@ -2684,7 +3022,7 @@
                     focarItemArvorePastas(pastas.focado);
                     return;
                 }
-                const botao = [botaoAbrirPasta(), document.getElementById('pastas-permitir'), document.getElementById('pastas-novo-arquivo')].find(function (elemento) {
+                const botao = [document.getElementById('pastas-senha-campo'), botaoAbrirPasta(), document.getElementById('pastas-permitir'), document.getElementById('pastas-novo-arquivo')].find(function (elemento) {
                     return !elemento.closest('[hidden]');
                 });
                 (botao || botaoTrilhoPastas).focus();
@@ -2868,6 +3206,18 @@
             }
 
             async function escolherPasta() {
+                if (servidorPastas) {
+                    // No homelab, a pasta é sempre a do servidor.
+                    if (!pastas.painelAberto) {
+                        alternarPainelPastas(true);
+                    }
+                    await usarPastaRaiz(new PastaServidor('', servidorPastas.nome), [], false);
+                    if (pastas.permitida) {
+                        atualizarEstado(`Pasta aberta: ${servidorPastas.nome}`);
+                    }
+                    focarPainelPastas();
+                    return;
+                }
                 if (!aberturaPastaDisponivel) {
                     return;
                 }
@@ -2916,7 +3266,15 @@
 
             function restaurarPastaDaSessao(sessao) {
                 const pasta = sessao && sessao.pasta;
-                if (!aberturaPastaDisponivel || !pasta || !pasta.aberta || !pasta.manipulador || pasta.manipulador.kind !== 'directory') {
+                if (servidorPastas) {
+                    // No homelab a pasta do servidor abre sozinha, a não ser que a pessoa tenha fechado.
+                    if (!pasta || pasta.aberta) {
+                        const expandidas = pasta && pasta.manipulador && pasta.manipulador.servidor && Array.isArray(pasta.expandidas) ? pasta.expandidas : [];
+                        usarPastaRaiz(new PastaServidor('', servidorPastas.nome), expandidas, false);
+                    }
+                    return;
+                }
+                if (!aberturaPastaDisponivel || !pasta || !pasta.aberta || !pasta.manipulador || pasta.manipulador.kind !== 'directory' || pasta.manipulador.servidor) {
                     return;
                 }
                 usarPastaRaiz(pasta.manipulador, Array.isArray(pasta.expandidas) ? pasta.expandidas : [], false);
@@ -3094,9 +3452,12 @@
             function renderizarArvorePastas() {
                 const comPasta = Boolean(pastas.raiz);
                 const tinhaFoco = painelPastas.contains(document.activeElement) && document.activeElement !== erroPastas;
-                semSuportePastas.hidden = aberturaPastaDisponivel;
-                vazioPastas.hidden = !aberturaPastaDisponivel || comPasta;
-                permissaoPastas.hidden = !comPasta || pastas.permitida;
+                const pedeSenha = comPasta && !pastas.permitida && Boolean(pastas.raiz.servidor);
+                semSuportePastas.hidden = podeAbrirPastas();
+                vazioPastas.hidden = !podeAbrirPastas() || comPasta;
+                botaoAbrirPasta().textContent = servidorPastas ? 'Abrir a pasta do servidor' : 'Abrir pasta';
+                permissaoPastas.hidden = !comPasta || pastas.permitida || pedeSenha;
+                senhaPastas.hidden = !pedeSenha;
                 arvorePastas.hidden = !comPasta || !pastas.permitida;
                 acoesPastas.hidden = !comPasta;
                 acoesPastas.querySelectorAll('button:not(#pastas-fechar)').forEach(function (botao) {
@@ -3308,6 +3669,8 @@
                     return;
                 }
                 fecharMenuPastas(false);
+                // O modo Visual que ainda está carregando não pode tirar o foco do campo do nome.
+                visual.focarAoMontar = false;
                 if (tipo === 'renomear') {
                     const no = pastas.nos.get(caminho);
                     if (!no || !caminho) {
@@ -3318,11 +3681,15 @@
                     // Num arquivo, cria ao lado dele; numa pasta, dentro dela.
                     const alvo = pastas.nos.get(caminho || '');
                     const pasta = !alvo ? '' : (alvo.tipo === 'directory' ? alvo.caminho : paiDoCaminhoPasta(alvo.caminho));
-                    try {
-                        await lerFilhosPasta(pasta);
-                    } catch (erro) {
-                        tratarErroPasta(erro, 'Não foi possível ler a pasta');
-                        return;
+                    // Uma pasta já lida mostra o campo na hora (no servidor, ler de novo leva um instante);
+                    // se o nome já existir no disco, a criação avisa.
+                    if (!pastas.nos.get(pasta).filhos) {
+                        try {
+                            await lerFilhosPasta(pasta);
+                        } catch (erro) {
+                            tratarErroPasta(erro, 'Não foi possível ler a pasta');
+                            return;
+                        }
                     }
                     if (pasta) {
                         pastas.expandidas.add(pasta);
@@ -3508,8 +3875,13 @@
                         continue;
                     }
                     const caminhoDocumento = caminhoNovo + documento.caminhoPasta.slice(caminhoAntigo.length);
+                    const anterior = documento.manipulador;
                     try {
                         documento.manipulador = await obterManipuladorArquivoPasta(caminhoDocumento);
+                        // No servidor, a versão lida continua valendo para detectar conflitos.
+                        if (anterior && anterior.etag && documento.manipulador.servidor) {
+                            documento.manipulador.etag = anterior.etag;
+                        }
                     } catch (erro) {
                         documento.manipulador = undefined;
                     }
@@ -3540,6 +3912,7 @@
                     return;
                 }
                 const ehPasta = no.tipo === 'directory';
+                const vaiParaLixeira = Boolean(pastas.raiz.servidor);
                 const abertos = documentos.filter(function (documento) {
                     return documento.caminhoPasta && estaDentroDoCaminhoPasta(documento.caminhoPasta, caminho);
                 });
@@ -3547,8 +3920,13 @@
                     return documento.modificacoesPendentes;
                 });
                 let mensagem = ehPasta
-                    ? `Excluir a pasta "${no.nome}" e tudo o que está dentro dela? Ela é apagada do computador e não vai para a Lixeira.`
-                    : `Excluir "${no.nome}"? O arquivo é apagado do computador e não vai para a Lixeira.`;
+                    ? `Excluir a pasta "${no.nome}" e tudo o que está dentro dela?`
+                    : `Excluir "${no.nome}"?`;
+                if (vaiParaLixeira) {
+                    mensagem += ` ${ehPasta ? 'Ela vai' : 'O arquivo vai'} para a lixeira do servidor (.editor/lixeira) e fica lá por 30 dias.`;
+                } else {
+                    mensagem += ehPasta ? ' Ela é apagada do computador e não vai para a Lixeira.' : ' O arquivo é apagado do computador e não vai para a Lixeira.';
+                }
                 if (comAlteracoes.length) {
                     const nomes = comAlteracoes.map(function (documento) {
                         return documento.nome;
@@ -3738,6 +4116,7 @@
                 botaoAbrirPasta().addEventListener('click', escolherPasta);
                 document.getElementById('pastas-abrir-outra').addEventListener('click', escolherPasta);
                 document.getElementById('pastas-permitir').addEventListener('click', permitirAcessoPasta);
+                senhaPastas.addEventListener('submit', entrarNoServidor);
                 document.getElementById('pastas-novo-arquivo').addEventListener('click', function () {
                     iniciarEdicaoPasta('novo-arquivo', pastas.escolhido ? pastas.focado : '');
                 });
@@ -3858,7 +4237,9 @@
 
             require.config({ paths: { vs: caminhoBaseMonaco } });
             require(['vs/editor/editor.main'], async function () {
-                const sessao = await obterSessaoPersistida();
+                const [sessao, servidor] = await Promise.all([obterSessaoPersistida(), detectarServidorPastas()]);
+                servidorPastas = servidor;
+                configurarModoServidor();
                 manipuladorBackupSessao = sessao && sessao.manipuladorBackupSessao;
                 if (manipuladorBackupSessao) {
                     atualizarStatusBackup('Backup em arquivo configurado; verificando permissão.', 'neutro');
@@ -3948,7 +4329,7 @@
                         alternarPainelPastas();
                     }
                 });
-                if (aberturaPastaDisponivel) {
+                if (podeAbrirPastas()) {
                     editor.addAction({
                         id: 'abrir-pasta',
                         label: 'Pastas: abrir pasta',

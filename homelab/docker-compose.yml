@@ -1,0 +1,34 @@
+# Editor Portable, versão homelab: o editor e a pasta de arquivos do servidor, abertos por qualquer
+# navegador da rede (inclusive o Zen). Usa a imagem oficial do Node; não há nada para instalar.
+#
+# Antes de subir, troque os dois caminhos em "volumes":
+#   1. onde está esta pasta do projeto (o "git clone" do EditorWebPortable) no servidor;
+#   2. a pasta com os arquivos que você quer editar.
+# Depois, abra http://IP-DO-SERVIDOR:8887 no navegador.
+#
+# Atualizar: "git pull" na pasta do projeto e reiniciar o container.
+
+services:
+  editor:
+    image: node:22-alpine
+    container_name: editor-portable
+    restart: unless-stopped
+    # Dono dos arquivos (usuário:grupo). No Linux, "id" mostra os seus números; 1000:1000 é o mais comum.
+    user: "1000:1000"
+    working_dir: /app
+    command: ["node", "servidor/servidor.js"]
+    ports:
+      - "8887:8887"
+    environment:
+      PASTA: /arquivos
+      PORTA: "8887"
+      # Nome no topo do painel de pastas. Vazio: o nome da pasta.
+      NOME: ""
+      # Vazio: abre sem senha (só na rede de casa). Preenchida: o editor pede a senha uma vez.
+      SENHA: ""
+      # Nomes extras pelos quais você acessa o servidor, separados por vírgula (por exemplo, o nome
+      # do Tailscale). IP, localhost e nomes como "homelab" ou "servidor.lan" já funcionam.
+      ENDERECOS: ""
+    volumes:
+      - /caminho/do/EditorWebPortable:/app:ro
+      - /caminho/dos/seus/arquivos:/arquivos
