@@ -1,6 +1,6 @@
 # Plano de ação
 
-> **Criado em:** 24/10/2026. **Status:** etapa 2 concluída em 25/10/2026; etapa 1 cancelada; etapas 0, 3 e 4 pendentes.
+> **Criado em:** 24/10/2026. **Status:** etapa 2 concluída em 25/10/2026; etapas 0 e 2 concluídas; etapa 1 cancelada; etapas 3 e 4 pendentes.
 
 Lista do que falta fazer no editor, em ordem sugerida, com as decisões que precisam ser tomadas antes de cada etapa.
 
@@ -19,7 +19,7 @@ Lista do que falta fazer no editor, em ordem sugerida, com as decisões que prec
 
 | Etapa | O que é | Depende de | Tamanho |
 | --- | --- | --- | --- |
-| 0 | Terminar a publicação pelo GitHub Actions | Ações no GitHub e no Cloudflare | Pequeno |
+| 0 | ✅ Terminar a publicação pelo GitHub Actions, concluído | — | — |
 | 1 | ~~Listas com letras~~ (cancelada) | — | — |
 | 2 | ✅ Painel com a árvore de uma pasta do computador (Edge e Chrome), concluído | — | — |
 | 3 | Ajudante local, para a árvore e o salvar funcionarem no Zen | Etapa 2 (reaproveita o painel) | Grande |
@@ -28,6 +28,8 @@ Lista do que falta fazer no editor, em ordem sugerida, com as decisões que prec
 A ordem 2 → 3 constrói o painel primeiro onde o navegador já ajuda (Edge e Chrome) e depois leva o mesmo painel para o Zen. Também dá para inverter: fazer o ajudante primeiro, se usar a árvore no Zen for o mais urgente.
 
 ## Etapa 0: terminar a publicação pelo GitHub
+
+> **Concluída em 25/10/2026.** Token novo no segredo `CLOUDFLARE_API_TOKEN`, Builds do Cloudflare desconectado e a primeira publicação pelo GitHub Actions passou (commit `d00150b`).
 
 Os testes já rodam no GitHub a cada push, mas a publicação no Cloudflare falha. O site continua no ar com a última versão publicada antes da mudança.
 
@@ -173,6 +175,7 @@ Resumo do que precisa ser respondido antes de começar:
 
 ## Já concluído
 
+- **Etapa 0, publicação pelo GitHub** (25/10/2026): os testes e a publicação no Cloudflare rodam no GitHub Actions a cada push.
 - **Etapa 2, painel de pastas** (25/10/2026): árvore no Edge e no Chrome, com abrir, criar, renomear, excluir, teclado, sessão e aviso no Zen e no Firefox.
 
 Itens da mesma lista de pedidos, implementados e testados em 24/10/2026 (commit `b8fbca2`):
