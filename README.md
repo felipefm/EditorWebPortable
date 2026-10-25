@@ -168,7 +168,7 @@ public/
   editor.css   Estilos (tema escuro inspirado no VS Code)
   editor.js    Toda a lógica: Monaco, abas, arquivos, sessão, backup, Markdown e JSON
 tests/        Testes automatizados (Playwright), um arquivo por área
-docs/         Documentação (TESTES.md)
+docs/         Documentação: testes (TESTES.md), plano de ação e propostas
 .github/      Testes e publicação no GitHub Actions
 .githooks/    Verificação opcional antes do push, no próprio computador
 wrangler.jsonc Configuração de deploy no Cloudflare
