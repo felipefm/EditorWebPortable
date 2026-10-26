@@ -73,7 +73,7 @@ O botão de pasta na barra lateral mostra ou esconde o painel. Em **Abrir pasta*
 - **Outros botões do topo:** **Atualizar** mostra o que mudou na pasta por fora do editor, **Recolher** fecha todas as pastas e **Fechar a pasta** tira a pasta do painel, sem mexer nos arquivos nem nas abas.
 - **Ao reabrir o editor,** a pasta e as pastas expandidas voltam. Às vezes o navegador pede para confirmar a permissão de novo; nesse caso, basta clicar em **Permitir acesso**.
 - Arraste a borda direita do painel para mudar a largura. A escolha fica guardada.
-- No **Zen, no Firefox** e no celular, o navegador não deixa abrir pastas. No Zen e no Firefox, o painel explica isso; nesses navegadores, a árvore funciona na [versão homelab](#versão-homelab). No celular, o botão não aparece.
+- No **Zen, no Firefox** e no celular, o navegador não deixa abrir pastas. No Zen e no Firefox, o painel explica isso; nesses navegadores, a árvore funciona na [versão homelab](#versão-homelab). No celular, o botão só aparece na versão homelab: o painel abre por cima do editor, o botão ⋯ fica sempre visível e, ao tocar num arquivo, o painel fecha e o texto aparece.
 
 ### Versão homelab
 
@@ -188,7 +188,7 @@ O navegador pode acrescentar um número ao nome (`notas (1).md`) quando o arquiv
 
 ## Testes automatizados
 
-O projeto tem **343 testes automatizados**, divididos em 13 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, homelab, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 621 execuções.
+O projeto tem **346 testes automatizados**, divididos em 13 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, homelab, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 624 execuções.
 
 📖 **Documentação completa: [docs/TESTES.md](docs/TESTES.md).** Explica como funcionam, a lista de todos os testes, como o projeto escolhe o que testar, como escrever testes novos e o que fazer quando algo falha.
 
@@ -221,7 +221,7 @@ public/
 servidor/     Servidor da versão homelab (só Node, sem dependências)
 homelab/      docker-compose.yml da versão homelab
 tests/        Testes automatizados (Playwright), um arquivo por área
-docs/         Documentação: testes (TESTES.md), plano de ação e propostas
+docs/         Documentação dos testes (TESTES.md)
 .github/      Testes e publicação no GitHub Actions
 .githooks/    Verificação opcional antes do push, no próprio computador
 wrangler.jsonc Configuração de deploy no Cloudflare

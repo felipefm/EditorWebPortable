@@ -715,7 +715,9 @@
                     });
                     const base = `https://esm.sh/@milkdown/kit@${versaoMilkdown}`;
                     carregamentoMilkdown = Promise.all([
-                        import(`https://esm.sh/@milkdown/crepe@${versaoMilkdown}`),
+                        // CodeMirror fixo: em 26/10/2026 o esm.sh passou a entregar um "codemirror 6.65.7" que não
+                        // existe, sem a função basicSetup, e o modo Visual parou de carregar.
+                        import(`https://esm.sh/@milkdown/crepe@${versaoMilkdown}?deps=codemirror@6.0.2`),
                         import(`${base}/core`),
                         import(`${base}/preset/gfm`),
                         import(`${base}/preset/commonmark`),
@@ -3589,6 +3591,7 @@
                 }
                 if (documento) {
                     mostrarErroPasta('');
+                    fecharPainelPastasNoCelular();
                     ativarDocumento(documento);
                     return;
                 }
@@ -3609,7 +3612,18 @@
                     documentos.push(documento);
                 }
                 mostrarErroPasta('');
+                fecharPainelPastasNoCelular();
                 ativarDocumento(documento, 'Arquivo aberto');
+            }
+
+            // No celular o painel cobre o editor; ao abrir um arquivo, ele sai da frente.
+            function fecharPainelPastasNoCelular() {
+                if (!telaEstreita.matches || !pastas.painelAberto) {
+                    return;
+                }
+                pastas.painelAberto = false;
+                gravarPreferenciasPastas();
+                aplicarPainelPastas();
             }
 
             async function existeItemNaPasta(manipuladorPasta, nome) {
@@ -4248,6 +4262,8 @@
                 const [sessao, servidor] = await Promise.all([obterSessaoPersistida(), detectarServidorPastas()]);
                 servidorPastas = servidor;
                 configurarModoServidor();
+                // Sem pastas para abrir (celular na versão online), o botão Pastas some no celular.
+                document.body.classList.toggle('com-pastas', podeAbrirPastas());
                 manipuladorBackupSessao = sessao && sessao.manipuladorBackupSessao;
                 if (manipuladorBackupSessao) {
                     atualizarStatusBackup('Backup em arquivo configurado; verificando permissão.', 'neutro');

@@ -1,6 +1,7 @@
 // Área: layout no celular (roda só no projeto "celular", 390x844).
 const { test, expect } = require('@playwright/test');
 const { abrirEditor, definirConteudo } = require('./utilidades');
+const { iniciarServidor, criarNoDisco, lerDoDisco } = require('./homelab');
 
 test.describe('Celular', () => {
     test('topo fica visível e a barra de ferramentas vai para baixo', async ({ page }) => {
@@ -50,11 +51,13 @@ test.describe('Celular', () => {
         await expect(page.locator('#mapa-visual')).toBeHidden();
     });
 
-    test('o botão e o painel de pastas não aparecem', async ({ page }) => {
+    test('na versão online, o botão e o painel de pastas não aparecem', async ({ page }) => {
         await page.addInitScript(() => {
             localStorage.setItem('meu-editor-web-painel-pastas', JSON.stringify({ aberto: true, largura: 240 }));
         });
-        await abrirEditor(page);
+        // O "celular" dos testes é o Edge do computador numa tela estreita, que sabe abrir pastas.
+        // Um celular de verdade não sabe: os testes tiram esse recurso.
+        await abrirEditor(page, { arquivos: 'indisponivel' });
         await expect(page.locator('#trilho-pastas')).toBeHidden();
         await expect(page.locator('#painel-pastas')).toBeHidden();
         await expect(page.locator('#painel-pastas-alca')).toBeHidden();
@@ -66,5 +69,68 @@ test.describe('Celular', () => {
         const painel = await page.locator('#painel-sessao').boundingBox();
         expect(painel.x).toBeGreaterThanOrEqual(0);
         expect(painel.x + painel.width).toBeLessThanOrEqual(390);
+    });
+});
+
+// Na versão homelab o celular também usa a pasta do servidor.
+test.describe('Celular na versão homelab', () => {
+    let servidor;
+    test.afterEach(async () => {
+        if (servidor) {
+            await servidor.parar();
+            servidor = undefined;
+        }
+    });
+
+    async function abrirHomelab(page, arquivos) {
+        servidor = await iniciarServidor();
+        criarNoDisco(servidor.pasta, arquivos);
+        return abrirEditor(page, { endereco: servidor.endereco });
+    }
+
+    const item = (page, caminho) => page.locator(`#arvore-pastas [data-caminho="${caminho}"]`);
+
+    test('o botão Pastas aparece e o painel cobre a tela, sem passar da largura', async ({ page }) => {
+        const erros = await abrirHomelab(page, { 'notas.md': '# Notas', 'docs/guia.md': '# Guia' });
+        await expect(page.locator('#trilho-pastas')).toBeVisible();
+        await page.locator('#trilho-pastas').click();
+        await expect(item(page, 'notas.md')).toBeVisible();
+        const painel = await page.locator('#painel-pastas').boundingBox();
+        const trilho = await page.locator('#trilho').boundingBox();
+        expect(painel.x).toBe(0);
+        expect(Math.round(painel.width)).toBe(390);
+        // Termina onde começa a barra de ferramentas de baixo, sem cobri-la.
+        expect(Math.round(painel.y + painel.height)).toBeLessThanOrEqual(Math.round(trilho.y) + 1);
+        await expect(page.locator('#painel-pastas-alca')).toBeHidden();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+        // Linhas altas o bastante para o dedo.
+        expect((await item(page, 'notas.md').locator(':scope > .arvore-linha').boundingBox()).height).toBeGreaterThanOrEqual(40);
+        expect(erros).toEqual([]);
+    });
+
+    test('tocar num arquivo abre o texto e fecha o painel; o botão Pastas abre de novo', async ({ page }) => {
+        await abrirHomelab(page, { 'notas.md': '# Notas', 'docs/guia.md': '# Guia' });
+        await page.locator('#trilho-pastas').click();
+        await item(page, 'docs').locator(':scope > .arvore-linha').click();
+        await item(page, 'docs/guia.md').locator(':scope > .arvore-linha').click();
+        await expect(page.locator('#painel-pastas')).toBeHidden();
+        await expect(page.locator('.aba.ativa .aba-nome')).toHaveText('guia.md');
+        await page.locator('#trilho-pastas').click();
+        await expect(item(page, 'docs/guia.md')).toHaveClass(/atual/);
+    });
+
+    test('o botão ⋯ aparece sem passar o mouse e o menu renomeia', async ({ page }) => {
+        await abrirHomelab(page, { 'notas.md': '# Notas' });
+        await page.locator('#trilho-pastas').click();
+        const mais = item(page, 'notas.md').locator('.arvore-mais');
+        await expect(mais).toBeVisible();
+        expect((await mais.boundingBox()).width).toBeGreaterThanOrEqual(36);
+        await mais.click();
+        await page.locator('#menu-pastas [data-acao="renomear"]').click();
+        await expect(page.locator('#arvore-pastas .arvore-entrada')).toBeFocused();
+        await page.keyboard.type('ideias');
+        await page.keyboard.press('Enter');
+        await expect(item(page, 'ideias.md')).toBeVisible();
+        expect(lerDoDisco(servidor.pasta)).toEqual({ 'ideias.md': '# Notas' });
     });
 });

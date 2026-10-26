@@ -21,7 +21,7 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **343 testes** em **13 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 621 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
+São **346 testes** em **13 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 624 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
@@ -37,7 +37,7 @@ São **343 testes** em **13 áreas**, um arquivo por área. Eles rodam em dois n
 | atalhos | `atalhos.spec.js` | 26 | Atalhos gerais (salvar, salvar como, abrir, nova aba, formatador JSON) em cada modo, com o foco dentro e fora do texto |
 | json | `json.spec.js` | 11 | Formatar, compactar, indentação, erros com linha e coluna, copiar, abrir em aba |
 | sessao | `sessao.spec.js` | 10 | Sessão restaurada, painel de backup, exportar e importar |
-| celular | `celular.spec.js` | 7 | Layout em tela de 390 × 844 |
+| celular | `celular.spec.js` | 10 | Layout em tela de 390 × 844, inclusive o painel de pastas da versão homelab |
 
 Tudo fica na pasta `tests/`, separada do site. O Cloudflare publica só a pasta `public/`, então os testes nunca vão para o ar.
 
@@ -518,7 +518,7 @@ Também:
 - configurar backup em arquivo grava a sessão e mostra "Backup ativo"
 - navegador sem backup em arquivo explica e esconde o botão
 
-### celular (7)
+### celular (10)
 
 Estes rodam numa tela de 390 × 844 (projeto `celular` no `playwright.config.js`).
 
@@ -527,7 +527,10 @@ Estes rodam numa tela de 390 × 844 (projeto `celular` no `playwright.config.js`
 - nada ultrapassa a largura da tela
 - modo dividido empilha editor e preview
 - minimapa fica desligado e o botão Mapa não aparece
-- o botão e o painel de pastas não aparecem
+- na versão online, o botão e o painel de pastas não aparecem
+- na versão homelab, o botão Pastas aparece e o painel cobre a tela, sem passar da largura nem cobrir a barra de baixo, com linhas altas para o dedo
+- na versão homelab, tocar num arquivo abre o texto e fecha o painel; o botão Pastas abre de novo
+- na versão homelab, o botão ⋯ aparece sem passar o mouse e o menu renomeia
 - painel de sessão cabe na tela
 
 ## Como os testes funcionam por dentro

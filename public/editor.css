@@ -345,8 +345,16 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px soli
     #marca strong, #topo > .divisor, #abrir-paleta, .rotulo { display: none; }
     #editor-visual .milkdown .ProseMirror { padding: 20px 18px 96px; }
     #alternar-mapa { display: none; }
-    /* O celular não abre pastas do computador. */
-    #trilho-pastas, #painel-pastas, #painel-pastas-alca { display: none !important; }
+    /* O celular não abre pastas do computador; o painel só existe com a pasta do servidor (homelab).
+       Ele abre por cima do editor, na largura da tela, acima da barra de ferramentas (53 px). */
+    body:not(.com-pastas) #trilho-pastas, body:not(.com-pastas) #painel-pastas, #painel-pastas-alca { display: none !important; }
+    #corpo { position: relative; }
+    #painel-pastas { position: absolute; z-index: 20; top: 0; left: 0; right: 0; bottom: 53px; width: auto !important; border-right: 0; }
+    .arvore-linha { height: 40px; }
+    .arvore-mais { width: 36px; height: 36px; visibility: visible; }
+    .pastas-acao { width: 36px; height: 36px; }
+    .arvore-entrada { height: 32px; font-size: 16px; }
+    #menu-pastas button { height: 44px; font-size: 14px; }
     .segmentado button { padding: 0 9px; }
     #acoes-arquivo { flex: 1; }
     #acoes-arquivo button, #botao-sessao { min-width: 44px; height: 44px; padding: 0 10px; }
