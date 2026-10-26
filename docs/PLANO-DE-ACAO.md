@@ -69,7 +69,7 @@ No Edge e no Chrome, o próprio navegador permite isso (`showDirectoryPicker`), 
 - **Renomear:** atualiza o nome da aba se o arquivo estiver aberto.
 - **Reabrir o editor:** a pasta volta sozinha. O navegador pode pedir para confirmar a permissão com um clique.
 - **Celular:** o painel fica escondido. O celular não oferece esse recurso.
-- **Zen e Firefox:** o botão aparece com a explicação de que é preciso o ajudante (etapa 3).
+- **Zen e Firefox:** o botão aparece com a explicação de que é preciso o Edge, o Chrome ou a versão homelab (etapa 3).
 
 ### Tarefas
 

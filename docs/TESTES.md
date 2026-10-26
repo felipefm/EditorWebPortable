@@ -21,7 +21,7 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **343 testes** em **13 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 621 execuções, e a suíte completa leva uns 6 minutos num computador de mesa.
+São **343 testes** em **13 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 621 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
@@ -199,7 +199,7 @@ git push (main)
 Detalhes:
 
 - **Onde ver:** na aba **Actions** do repositório no GitHub. Cada push aparece com ✓ (publicado) ou ✗ (teste falhou, não publicado).
-- **Quanto demora:** a máquina do GitHub é mais lenta que um computador de mesa. Um push que muda uma área leva poucos minutos; um que roda tudo, uns 10 a 15 minutos. O site só muda depois disso.
+- **Quanto demora:** a máquina do GitHub é mais lenta que um computador de mesa. Um push que muda uma área leva poucos minutos; um que roda tudo, uns 15 minutos. O site só muda depois disso.
 - **Quando um teste falha:** o relatório completo, com prints e traces, fica em **Actions → (o push) → Artifacts → relatorio-dos-testes**, por 14 dias. Baixe, descompacte e abra com `npx playwright show-report relatorio` ou `npx playwright show-trace resultados/<pasta>/trace.zip`.
 - **Rodar tudo de novo:** em **Actions → Testes e publicação → Run workflow**, roda todos os testes e publica se passarem. Serve, por exemplo, para republicar depois de uma falha de rede.
 - **Uma publicação por vez:** pushes seguidos entram numa fila, na ordem em que chegaram.
@@ -670,7 +670,8 @@ Um defeito de verdade falha nas duas tentativas e continua bloqueando o push. Se
 
 ## Limitações
 
-- **Arquivos reais não são testados.** A gravação em disco usa a API simulada. O comportamento das janelas nativas do Windows e das permissões do navegador precisa ser conferido à mão.
+- **O navegador não grava arquivos reais nos testes.** A gravação pelo navegador usa a API simulada (ou o armazenamento privado do navegador, nos testes de pastas). Só o servidor homelab grava de verdade, numa pasta temporária. O comportamento das janelas nativas do Windows e das permissões do navegador precisa ser conferido à mão.
+- **O container Docker não é testado.** Os testes ligam o `servidor/servidor.js` direto pelo Node, que é o mesmo comando que o container roda.
 - **A aparência não é comparada pixel a pixel.** Os testes conferem estrutura, textos, posições e tamanhos, mas não pegam, por exemplo, uma cor errada.
 - **Edge e Firefox.** O Safari não é testado automaticamente. No Firefox, o teste de copiar para a área de transferência é pulado, porque o Firefox não deixa testes lerem a área de transferência.
 - **A escolha da área é por palavras-chave.** Funciona bem para o código atual. Se uma função nova tiver um nome que não diz a área, adicione-a em `funcoesConhecidas` no `alterados.js`.

@@ -198,7 +198,7 @@ O projeto tem **343 testes automatizados**, divididos em 13 áreas: geral, atalh
 cd tests
 npm install              # primeira vez: instala o Playwright e o Firefox de testes
 npm run test:alterado    # roda só os testes das áreas que você alterou
-npm test                 # roda todos, no Edge e no Firefox (cerca de 6 minutos)
+npm test                 # roda todos, no Edge e no Firefox (cerca de 8 minutos)
 ```
 
 Também dá para rodar uma área específica: `npm run test:geral`, `test:atalhos`, `test:abas`, `test:arquivos`, `test:markdown`, `test:visual`, `test:imagens`, `test:mapa`, `test:json`, `test:sessao` ou `test:celular`, ou só o Firefox: `npm run test:firefox`.

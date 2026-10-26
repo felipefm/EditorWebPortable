@@ -1,6 +1,6 @@
 # Proposta: ajudante local para salvar arquivos em qualquer navegador
 
-> **Status:** em avaliação. Nada foi implementado.
+> **Status:** substituída em 25/10/2026 pela **versão homelab** (veja "Versão homelab" no README e a etapa 3 do [plano de ação](PLANO-DE-ACAO.md)). Este ajudante nunca foi implementado; o documento fica como registro da análise.
 > **Ponto contra já levantado:** exige um programa rodando no computador enquanto o editor é usado.
 
 ## Sumário
