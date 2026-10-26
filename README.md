@@ -233,6 +233,20 @@ wrangler.jsonc Configuração de deploy no Cloudflare
 - [marked](https://github.com/markedjs/marked) 15.0.7
 - [DOMPurify](https://github.com/cure53/DOMPurify) 3.2.6
 - [Milkdown](https://github.com/Milkdown/milkdown) (Crepe) 7.22.2, carregado sob demanda no modo Visual
+- [CodeMirror](https://codemirror.net) 6.0.2, usado pelo Milkdown nos blocos de código (versão fixada à parte; veja abaixo)
+
+### Versões fixas e como atualizar
+
+**Por que as versões são fixas.** Todas as bibliotecas vêm com a versão exata no endereço do CDN, para nada mudar sozinho. Em 26/10/2026, o modo Visual parou de carregar, no site e no homelab, sem nenhuma mudança no editor: o esm.sh, de onde o Milkdown é baixado, passou a entregar para a dependência `codemirror@^6.0.1` um "codemirror 6.65.7" que não existe, sem a função `basicSetup`. O Milkdown 7.22.2 estava fixo, mas as dependências dele, não. A correção foi fixar também o CodeMirror, com `?deps=codemirror@6.0.2` no endereço do Milkdown, em `public/editor.js`.
+
+**O risco do outro lado.** Ficar preso numa versão antiga para sempre faz perder novidades e correções. Por isso as versões são atualizadas de propósito, não esquecidas:
+
+- **De tempos em tempos** (por exemplo, uma vez por mês), conferir se há versão nova de cada biblioteca.
+- **Esperar a versão nova assentar.** Uma versão lançada há poucos dias ainda pode ter defeitos que só aparecem com o uso. Prefira uma que já tenha algumas semanas, ou a primeira correção (`7.23.1` em vez de `7.23.0`).
+- **Ler o que mudou** (o *changelog*), principalmente quando o primeiro número muda (`7.x` para `8.0`), porque aí costuma haver mudanças que quebram.
+- **Trocar o número e deixar os testes decidirem.** Os números ficam em `public/editor.js` (`caminhoBaseMonaco`, `versaoMilkdown` e o `?deps=codemirror@...`) e em `public/index.html` (Monaco, marked e DOMPurify). No push, o GitHub Actions roda todos os testes antes de publicar; se a versão nova quebrar algo, o site não é atualizado.
+- **Ao atualizar o Milkdown,** confira também o CodeMirror: a versão nova pode precisar de outro.
+- **No homelab,** a atualização chega com o `git pull`, depois de passar pelos testes no GitHub.
 
 ## Licença
 
