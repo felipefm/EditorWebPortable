@@ -553,3 +553,96 @@ test('linha horizontal do modo Visual é sólida e bem visível', async ({ page 
     expect(estilo.cor).toMatch(/^rgb\(/);
     expect(estilo.espessura).toBeGreaterThanOrEqual(2);
 });
+
+// O cursor do Milkdown é um elemento dentro do texto. Sem o CSS dele, ficava no meio dos parágrafos e
+// empurrava tudo para cima e para baixo a cada clique e seleção. Aqui o texto tem de ficar parado.
+test.describe('Modo Visual: o texto não se mexe', () => {
+    const texto = '# Notas\n\nPrimeiro parágrafo com várias palavras.\n\nSegundo parágrafo aqui.\n\n- item um\n- item dois\n';
+
+    async function posicoes(page) {
+        return page.evaluate(() => {
+            const visual = document.querySelector('#editor-visual');
+            const blocos = document.querySelectorAll('#editor-visual .ProseMirror > :not(.prosemirror-virtual-cursor)');
+            return { rolagem: visual.scrollTop, topos: [...blocos].map((bloco) => Math.round(bloco.getBoundingClientRect().top)) };
+        });
+    }
+
+    async function prepararSemFoco(page) {
+        await abrirVisual(page, texto);
+        await page.evaluate(() => document.activeElement.blur());
+        await page.waitForTimeout(300);
+        return posicoes(page);
+    }
+
+    const paragrafo = (page, qual) => editorVisual(page).locator('p', { hasText: qual });
+
+    for (const [nome, acao] of [
+        ['clicar no texto para digitar', async (page) => {
+            await paragrafo(page, 'Segundo').click();
+        }],
+        ['clicar no fim do texto, abaixo do último item', async (page) => {
+            const caixa = await editorVisual(page).boundingBox();
+            const lista = await editorVisual(page).locator('ul').boundingBox();
+            await page.mouse.click(caixa.x + caixa.width / 2, lista.y + lista.height + 40);
+        }],
+        ['selecionar uma palavra com duplo clique', async (page) => {
+            await selecionarPrimeiraPalavra(page);
+        }],
+        ['selecionar arrastando o mouse', async (page) => {
+            const primeiro = await paragrafo(page, 'Primeiro').boundingBox();
+            const segundo = await paragrafo(page, 'Segundo').boundingBox();
+            await page.mouse.move(primeiro.x + 20, primeiro.y + primeiro.height / 2);
+            await page.mouse.down();
+            await page.mouse.move(segundo.x + 80, segundo.y + segundo.height / 2, { steps: 8 });
+            await page.mouse.up();
+        }],
+        ['selecionar com Shift e as setas', async (page) => {
+            await paragrafo(page, 'Primeiro').click();
+            await page.keyboard.press('Home');
+            await page.keyboard.press('Shift+ArrowDown');
+            await page.keyboard.press('Shift+End');
+        }],
+        ['selecionar tudo com Ctrl+A', async (page) => {
+            await paragrafo(page, 'Segundo').click();
+            await page.keyboard.press('Control+A');
+        }]
+    ]) {
+        test(`${nome} não move o texto`, async ({ page }) => {
+            const antes = await prepararSemFoco(page);
+            await acao(page);
+            await page.waitForTimeout(300);
+            expect(await posicoes(page)).toEqual(antes);
+        });
+    }
+
+    test('clicar em vários lugares e depois sair não move o texto', async ({ page }) => {
+        const antes = await prepararSemFoco(page);
+        for (const qual of ['Primeiro', 'Segundo', 'Notas', 'item dois']) {
+            await editorVisual(page).locator('h1, p, li', { hasText: qual }).last().click();
+            await page.waitForTimeout(150);
+            expect(await posicoes(page)).toEqual(antes);
+        }
+        await page.evaluate(() => document.activeElement.blur());
+        await page.waitForTimeout(150);
+        expect(await posicoes(page)).toEqual(antes);
+    });
+
+    test('o cursor flutua por cima do texto e aparece em cor clara', async ({ page }) => {
+        await prepararSemFoco(page);
+        await paragrafo(page, 'Segundo').click();
+        const cursor = editorVisual(page).locator('.prosemirror-virtual-cursor');
+        const estilo = await cursor.evaluate((elemento) => {
+            const calculado = getComputedStyle(elemento);
+            return { posicao: calculado.position, cor: calculado.borderLeftColor, largura: calculado.borderLeftWidth };
+        });
+        expect(estilo.posicao).toBe('absolute');
+        expect(estilo.largura).toBe('2px');
+        // Mesma cor do texto (#e4e6ea), não a cor das bordas, que some no fundo escuro.
+        expect(estilo.cor).toBe('rgb(228, 230, 234)');
+        // O cursor fica na altura do parágrafo clicado.
+        const caixaCursor = await cursor.boundingBox();
+        const caixaParagrafo = await paragrafo(page, 'Segundo').boundingBox();
+        expect(caixaCursor.y).toBeGreaterThanOrEqual(caixaParagrafo.y - 2);
+        expect(caixaCursor.y).toBeLessThan(caixaParagrafo.y + caixaParagrafo.height);
+    });
+});

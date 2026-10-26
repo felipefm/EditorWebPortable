@@ -707,10 +707,20 @@
             // O texto do Monaco continua sendo a fonte; o visual escreve nele a cada edição.
             function carregarMilkdown() {
                 if (!carregamentoMilkdown) {
-                    ['lib/theme/common/style.css', 'lib/theme/frame-dark.css'].forEach(function (arquivo) {
+                    // O tema do Crepe importa estes arquivos por nome de pacote (@import 'prosemirror-virtual-cursor/...'),
+                    // o que o navegador não resolve; sem eles o cursor do Milkdown ficava no meio do texto e o
+                    // empurrava para cima e para baixo a cada clique e seleção. Por isso vêm antes, direto do CDN.
+                    [
+                        `@milkdown/prose@${versaoMilkdown}/lib/style/prosemirror.css`,
+                        `@milkdown/prose@${versaoMilkdown}/lib/style/gapcursor.css`,
+                        `@milkdown/prose@${versaoMilkdown}/lib/style/tables.css`,
+                        'prosemirror-virtual-cursor@0.4.2/style/virtual-cursor.css',
+                        `@milkdown/crepe@${versaoMilkdown}/lib/theme/common/style.css`,
+                        `@milkdown/crepe@${versaoMilkdown}/lib/theme/frame-dark.css`
+                    ].forEach(function (arquivo) {
                         const link = document.createElement('link');
                         link.rel = 'stylesheet';
-                        link.href = `https://cdn.jsdelivr.net/npm/@milkdown/crepe@${versaoMilkdown}/${arquivo}`;
+                        link.href = `https://cdn.jsdelivr.net/npm/${arquivo}`;
                         document.head.appendChild(link);
                     });
                     const base = `https://esm.sh/@milkdown/kit@${versaoMilkdown}`;

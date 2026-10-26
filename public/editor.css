@@ -217,6 +217,8 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px soli
     --crepe-font-code: var(--fonte-mono);
     background: transparent;
 }
+/* O tema pinta o cursor com a cor das bordas, quase invisível no fundo escuro. */
+#editor-visual .milkdown .ProseMirror-focused { --prosemirror-virtual-cursor-color: var(--texto); }
 #editor-visual .milkdown .ProseMirror { max-width: 760px; margin: 0 auto; padding: 28px 36px 120px; font-size: 15px; line-height: 1.65; }
 #editor-visual .milkdown .ProseMirror h1, #editor-visual .milkdown .ProseMirror h2, #editor-visual .milkdown .ProseMirror h3 { color: #ffffff; font-weight: 600; line-height: 1.25; }
 #editor-visual .milkdown .ProseMirror h1 { font-size: 26px; }
