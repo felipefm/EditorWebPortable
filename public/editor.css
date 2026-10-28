@@ -130,6 +130,8 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px soli
 .arvore-linha:hover .arvore-mais, .arvore-item:focus > .arvore-linha .arvore-mais { visibility: visible; }
 .arvore-entrada { flex: 1; min-width: 0; height: 22px; padding: 0 6px; border: 1px solid var(--link); border-radius: 3px; background: var(--fundo); color: var(--texto); font: inherit; outline: none; }
 .arvore-entrada[aria-invalid="true"] { border-color: var(--erro); }
+.arvore-item.recortado > .arvore-linha { opacity: 0.5; }
+.arvore-item.alvo-soltar > .arvore-linha, #pastas-conteudo.alvo-soltar { background: var(--ativo-fundo); outline: 1px dashed var(--link); outline-offset: -1px; }
 .arvore-vazia { height: 24px; display: flex; align-items: center; color: var(--texto-apagado); font-size: 12px; font-style: italic; }
 #pastas-erro { flex-shrink: 0; margin: 0; padding: 8px 12px; border-top: 1px solid var(--erro-borda); background: var(--erro-fundo); color: #f6c1ba; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
 #painel-pastas-alca { width: 6px; flex-shrink: 0; margin: 0 -3px; position: relative; z-index: 5; cursor: col-resize; touch-action: none; }

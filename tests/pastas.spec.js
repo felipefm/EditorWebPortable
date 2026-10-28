@@ -523,6 +523,149 @@ for (const nomeFonte of ['navegador', 'servidor']) {
             expect(arquivos['docs/']).toBeUndefined();
         });
 
+        test('arrastar um arquivo para uma pasta move o arquivo, e a aba aberta continua salvando nele', async ({ page }) => {
+            await abrirComPasta(page);
+            await linha(page, 'notas.md').click();
+            await page.locator('[data-modo="editor"]').click();
+            await linha(page, 'notas.md').dragTo(linha(page, 'docs'));
+            await expect(item(page, 'docs/notas.md')).toBeFocused();
+            await expect(item(page, 'notas.md')).toHaveCount(0);
+            await expect(item(page, 'docs')).toHaveAttribute('aria-expanded', 'true');
+            await expect(item(page, 'docs/notas.md')).toHaveClass(/atual/);
+            await expect(page.locator('#estado')).toHaveText('"notas.md" movido para docs');
+            expect(await nomesDasAbas(page)).toEqual(['Sem título 1', 'notas.md']);
+            await page.locator('#container .view-lines').click();
+            await page.keyboard.press('Control+End');
+            await page.keyboard.type('mais');
+            await page.keyboard.press('Control+S');
+            await expect(page.locator('.aba.modificada')).toHaveCount(0);
+            const arquivos = await lerArquivos(page);
+            expect(arquivos['docs/notas.md']).toBe('# Notas\nmais');
+            expect(arquivos['notas.md']).toBeUndefined();
+        });
+
+        test('soltar num arquivo leva para a pasta dele; no espaço vazio, para a pasta aberta', async ({ page }) => {
+            await abrirComPasta(page);
+            await linha(page, 'docs').click();
+            await linha(page, 'app.js').dragTo(linha(page, 'docs/guia.md'));
+            await expect(item(page, 'docs/app.js')).toBeFocused();
+            const caixa = await page.locator('#pastas-conteudo').boundingBox();
+            await linha(page, 'docs/guia.md').dragTo(page.locator('#pastas-conteudo'), { targetPosition: { x: 40, y: caixa.height - 10 } });
+            await expect(item(page, 'guia.md')).toBeFocused();
+            const arquivos = await lerArquivos(page);
+            expect(arquivos['docs/app.js']).toBe('let a = 1;\n');
+            expect(arquivos['guia.md']).toBe('# Guia\n');
+            expect(arquivos['app.js']).toBeUndefined();
+            expect(arquivos['docs/guia.md']).toBeUndefined();
+        });
+
+        test('arrastar uma pasta leva tudo junto; parar sobre uma pasta fechada abre ela', async ({ page }) => {
+            await abrirComPasta(page);
+            await linha(page, 'docs').click();
+            await linha(page, 'docs/sub').click();
+            await linha(page, 'docs/sub/fundo.md').click();
+            await page.locator('[data-modo="editor"]').click();
+            await linha(page, 'docs').hover();
+            await page.mouse.down();
+            const caixa = await linha(page, 'vazia').boundingBox();
+            await page.mouse.move(caixa.x + 40, caixa.y + caixa.height / 2, { steps: 5 });
+            await expect(item(page, 'vazia')).toHaveAttribute('aria-expanded', 'true');
+            await expect(item(page, 'vazia')).toHaveClass(/alvo-soltar/);
+            await page.mouse.move(caixa.x + 42, caixa.y + caixa.height / 2);
+            await page.mouse.up();
+            // As pastas que estavam expandidas continuam expandidas no lugar novo.
+            await expect(item(page, 'vazia/docs/sub/fundo.md')).toHaveClass(/atual/);
+            await expect(page.locator('#arvore-pastas .alvo-soltar, #pastas-conteudo.alvo-soltar')).toHaveCount(0);
+            await page.locator('#container .view-lines').click();
+            await page.keyboard.press('Control+End');
+            await page.keyboard.type('mais');
+            await page.keyboard.press('Control+S');
+            await expect(page.locator('.aba.modificada')).toHaveCount(0);
+            const arquivos = await lerArquivos(page);
+            expect(arquivos['vazia/docs/guia.md']).toBe('# Guia\n');
+            expect(arquivos['vazia/docs/sub/fundo.md']).toBe('fundo\nmais');
+            expect(Object.keys(arquivos).filter((caminho) => caminho.startsWith('docs'))).toEqual([]);
+        });
+
+        test('uma pasta não vai para dentro dela mesma, e soltar na própria pasta não muda nada', async ({ page }) => {
+            await abrirComPasta(page);
+            const antes = await lerArquivos(page);
+            await linha(page, 'docs').click();
+            await linha(page, 'docs').dragTo(linha(page, 'docs/sub'));
+            await expect(page.locator('#pastas-erro')).toBeHidden();
+            await linha(page, 'docs/guia.md').dragTo(linha(page, 'docs'));
+            await expect(page.locator('#pastas-erro')).toBeHidden();
+            expect(await lerArquivos(page)).toEqual(antes);
+            await item(page, 'docs').focus();
+            await page.keyboard.press('Control+X');
+            await page.keyboard.press('ArrowDown');
+            await expect(item(page, 'docs/sub')).toBeFocused();
+            await page.keyboard.press('Control+V');
+            await expect(page.locator('#pastas-erro')).toHaveText('Uma pasta não pode ir para dentro dela mesma.');
+            await expect(item(page, 'docs')).not.toHaveClass(/recortado/);
+            expect(await lerArquivos(page)).toEqual(antes);
+        });
+
+        test('Recortar e Colar pelo menu e pelo teclado; Esc desiste', async ({ page }) => {
+            await abrirComPasta(page);
+            await linha(page, 'docs').click({ button: 'right' });
+            await expect(page.locator('#menu-pastas [data-acao="colar"]')).toBeHidden();
+            await page.keyboard.press('Escape');
+            await linha(page, 'app.js').click({ button: 'right' });
+            await page.locator('#menu-pastas [data-acao="recortar"]').click();
+            await expect(item(page, 'app.js')).toHaveClass(/recortado/);
+            await expect(item(page, 'app.js')).toBeFocused();
+            await linha(page, 'docs').click({ button: 'right' });
+            await page.locator('#menu-pastas [data-acao="colar"]').click();
+            await expect(item(page, 'docs/app.js')).toBeFocused();
+            await expect(item(page, 'docs/app.js')).not.toHaveClass(/recortado/);
+
+            await page.keyboard.press('Control+X');
+            await expect(item(page, 'docs/app.js')).toHaveClass(/recortado/);
+            await page.keyboard.press('Escape');
+            await expect(item(page, 'docs/app.js')).not.toHaveClass(/recortado/);
+            await expect(page.locator('#estado')).toHaveText('Recorte cancelado');
+            await page.keyboard.press('Control+V');
+            await expect(item(page, 'docs/app.js')).toBeFocused();
+
+            // Colar num arquivo cola na pasta dele.
+            await page.keyboard.press('Control+X');
+            await linha(page, 'src').click();
+            await item(page, 'src/index.js').focus();
+            await page.keyboard.press('Control+V');
+            await expect(item(page, 'src/app.js')).toBeFocused();
+            const arquivos = await lerArquivos(page);
+            expect(arquivos['src/app.js']).toBe('let a = 1;\n');
+            expect(arquivos['docs/app.js']).toBeUndefined();
+            expect(arquivos['app.js']).toBeUndefined();
+        });
+
+        test('mover para uma pasta que já tem um item com o mesmo nome avisa e não muda nada', async ({ page }) => {
+            await abrirComPasta(page, { ...estrutura, 'docs/notas.md': 'outra\n' });
+            await linha(page, 'notas.md').dragTo(linha(page, 'docs'));
+            await expect(page.locator('#pastas-erro')).toHaveText('Não foi possível mover "notas.md": já existe "notas.md" em "docs".');
+            await expect(item(page, 'notas.md')).toBeFocused();
+            const arquivos = await lerArquivos(page);
+            expect(arquivos['notas.md']).toBe('# Notas\n');
+            expect(arquivos['docs/notas.md']).toBe('outra\n');
+        });
+
+        test('mover funciona também quando o navegador não sabe mover (copia e apaga)', async ({ page }) => {
+            test.skip(fonte === 'servidor', 'Só com a pasta do navegador.');
+            await abrirComPasta(page);
+            await page.evaluate(() => { FileSystemHandle.prototype.move = undefined; });
+            await linha(page, 'docs').dragTo(linha(page, 'src'));
+            await expect(item(page, 'src/docs')).toBeFocused();
+            await linha(page, 'leia.txt').dragTo(linha(page, 'src/docs'));
+            await expect(item(page, 'src/docs/leia.txt')).toBeFocused();
+            const arquivos = await lerArquivos(page);
+            expect(arquivos['src/docs/guia.md']).toBe('# Guia\n');
+            expect(arquivos['src/docs/sub/fundo.md']).toBe('fundo\n');
+            expect(arquivos['src/docs/leia.txt']).toBe('texto\n');
+            expect(arquivos['docs/']).toBeUndefined();
+            expect(arquivos['leia.txt']).toBeUndefined();
+        });
+
         test('excluir pede confirmação; Cancelar mantém e Excluir apaga e fecha a aba', async ({ page }) => {
             await abrirComPasta(page);
             await linha(page, 'app.js').click();

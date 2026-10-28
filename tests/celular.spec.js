@@ -133,4 +133,17 @@ test.describe('Celular na versão homelab', () => {
         await expect(item(page, 'ideias.md')).toBeVisible();
         expect(lerDoDisco(servidor.pasta)).toEqual({ 'ideias.md': '# Notas' });
     });
+
+    test('o menu do botão ⋯ recorta e cola em outra pasta; os itens não se arrastam', async ({ page }) => {
+        await abrirHomelab(page, { 'notas.md': '# Notas', 'docs/guia.md': '# Guia' });
+        await page.locator('#trilho-pastas').click();
+        await expect(item(page, 'notas.md').locator(':scope > .arvore-linha')).toHaveAttribute('draggable', 'false');
+        await item(page, 'notas.md').locator('.arvore-mais').click();
+        await page.locator('#menu-pastas [data-acao="recortar"]').click();
+        await expect(item(page, 'notas.md')).toHaveClass(/recortado/);
+        await item(page, 'docs').locator('.arvore-mais').click();
+        await page.locator('#menu-pastas [data-acao="colar"]').click();
+        await expect(item(page, 'docs/notas.md')).toBeVisible();
+        expect(lerDoDisco(servidor.pasta)).toEqual({ 'docs/': null, 'docs/guia.md': '# Guia', 'docs/notas.md': '# Notas' });
+    });
 });

@@ -97,6 +97,7 @@
             const arvorePastas = document.getElementById('arvore-pastas');
             const erroPastas = document.getElementById('pastas-erro');
             const menuPastas = document.getElementById('menu-pastas');
+            const conteudoPastas = document.getElementById('pastas-conteudo');
             const chavePainelPastas = 'meu-editor-web-painel-pastas';
             // Abrir uma pasta inteira só existe no Chrome e no Edge do computador.
             const aberturaPastaDisponivel = typeof window.showDirectoryPicker === 'function';
@@ -160,7 +161,13 @@
                 escolhido: false,
                 edicao: undefined,
                 menu: undefined,
-                arrasto: undefined
+                arrasto: undefined,
+                // Caminho do item recortado (Ctrl+X), que o Colar move para outra pasta.
+                recorte: undefined,
+                // Caminho do item que está sendo arrastado com o mouse para outra pasta.
+                arrastandoItem: undefined,
+                // Pasta fechada sob o item arrastado, que abre depois de um instante: { caminho, temporizador }.
+                esperaExpandir: undefined
             };
             // Na versão homelab: { nome, senha, autenticado } da pasta do servidor. Na versão online, undefined.
             let servidorPastas;
@@ -2747,14 +2754,8 @@
                     };
                 }
 
-                async move(novoNome) {
-                    const destino = juntarCaminhoPasta(paiDoCaminhoPasta(this.caminho), novoNome);
-                    await pedirAoServidor('POST', 'mover', undefined, {
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ de: this.caminho, para: destino })
-                    });
-                    this.caminho = destino;
-                    this.name = novoNome;
+                async move(pastaOuNome, nome) {
+                    await moverNoServidor(this, pastaOuNome, nome);
                 }
 
                 async isSameEntry(outro) {
@@ -2768,6 +2769,19 @@
                 async requestPermission() {
                     return permissaoServidor();
                 }
+            }
+
+            // Como o move() do navegador: move(novoNome), move(pasta) ou move(pasta, novoNome).
+            async function moverNoServidor(manipulador, pastaOuNome, nome) {
+                const pasta = typeof pastaOuNome === 'string' ? paiDoCaminhoPasta(manipulador.caminho) : pastaOuNome.caminho;
+                const novoNome = typeof pastaOuNome === 'string' ? pastaOuNome : (nome || manipulador.name);
+                const destino = juntarCaminhoPasta(pasta, novoNome);
+                await pedirAoServidor('POST', 'mover', undefined, {
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ de: manipulador.caminho, para: destino })
+                });
+                manipulador.caminho = destino;
+                manipulador.name = novoNome;
             }
 
             class PastaServidor {
@@ -2827,6 +2841,10 @@
                         await pedirAoServidor('POST', 'pasta', { caminho: caminho });
                     }
                     return new PastaServidor(caminho, nome);
+                }
+
+                async move(pastaOuNome, nome) {
+                    await moverNoServidor(this, pastaOuNome, nome);
                 }
 
                 // No servidor, excluir não apaga: o item vai para a lixeira da pasta (.editor/lixeira).
@@ -3089,6 +3107,9 @@
             }
 
             function removerNosPasta(caminho) {
+                if (pastas.recorte !== undefined && estaDentroDoCaminhoPasta(pastas.recorte, caminho)) {
+                    pastas.recorte = undefined;
+                }
                 Array.from(pastas.nos.keys()).forEach(function (chave) {
                     if (estaDentroDoCaminhoPasta(chave, caminho)) {
                         pastas.nos.delete(chave);
@@ -3203,6 +3224,7 @@
                 pastas.focado = undefined;
                 pastas.escolhido = false;
                 pastas.edicao = undefined;
+                pastas.recorte = undefined;
                 mostrarErroPasta('');
                 try {
                     pastas.permitida = await verificarPermissaoPasta(manipulador, pedirPermissao);
@@ -3420,7 +3442,7 @@
                     item.setAttribute('role', 'treeitem');
                     item.setAttribute('aria-level', String(nivel));
                     item.setAttribute('aria-selected', 'false');
-                    item.className = `arvore-item ${ehPasta ? 'eh-pasta' : 'eh-arquivo'}`;
+                    item.className = `arvore-item ${ehPasta ? 'eh-pasta' : 'eh-arquivo'}${caminho === pastas.recorte ? ' recortado' : ''}`;
                     item.dataset.caminho = caminho;
                     item.tabIndex = -1;
                     if (ehPasta) {
@@ -3447,6 +3469,8 @@
                         botaoMais.innerHTML = iconesPastas.mais;
                         botaoMais.title = 'Ações';
                         botaoMais.setAttribute('aria-label', `Ações de ${filho.nome}`);
+                        // No celular, tocar e segurar já abre o menu de ações; mover é pelo Recortar.
+                        linha.draggable = !telaEstreita.matches;
                         linha.appendChild(nome);
                         linha.appendChild(botaoMais);
                     }
@@ -3776,7 +3800,7 @@
                     } else if (edicao.tipo === 'nova-pasta') {
                         caminhoNovo = await criarItemNaPasta(edicao.pasta, nome, 'directory');
                     } else {
-                        caminhoNovo = await renomearItemPasta(edicao.caminho, nome);
+                        caminhoNovo = await moverItemPasta(edicao.caminho, edicao.pasta, nome);
                     }
                 } catch (erro) {
                     pastas.edicao = undefined;
@@ -3846,19 +3870,27 @@
                 return atual.getFileHandle(partes[partes.length - 1]);
             }
 
-            // Nem todo navegador renomeia direto (move). Nesse caso, copia com o nome novo e apaga o antigo.
-            async function renomearItemPasta(caminho, novoNome) {
+            // Renomear (mesma pasta) e mover (outra pasta). Nem todo navegador move direto; nesse caso, copia
+            // para o lugar novo e apaga o antigo.
+            async function moverItemPasta(caminho, pastaDestino, novoNome) {
                 const no = pastas.nos.get(caminho);
                 const pasta = paiDoCaminhoPasta(caminho);
+                const mesmaPasta = pastaDestino === pasta;
                 const manipuladorPai = pastas.nos.get(pasta).manipulador;
-                const soMaiusculas = no.nome.toLowerCase() === novoNome.toLowerCase();
-                if (!soMaiusculas && await existeItemNaPasta(manipuladorPai, novoNome)) {
-                    throw new DOMException(`já existe "${novoNome}" nesta pasta.`, 'InvalidModificationError');
+                const manipuladorDestino = pastas.nos.get(pastaDestino).manipulador;
+                const soMaiusculas = mesmaPasta && no.nome.toLowerCase() === novoNome.toLowerCase();
+                if (!soMaiusculas && await existeItemNaPasta(manipuladorDestino, novoNome)) {
+                    const onde = mesmaPasta ? 'nesta pasta' : `em "${pastaDestino ? pastas.nos.get(pastaDestino).nome : pastas.raiz.name}"`;
+                    throw new DOMException(`já existe "${novoNome}" ${onde}.`, 'InvalidModificationError');
                 }
                 let moveu = false;
                 if (typeof no.manipulador.move === 'function') {
                     try {
-                        await no.manipulador.move(novoNome);
+                        if (mesmaPasta) {
+                            await no.manipulador.move(novoNome);
+                        } else {
+                            await no.manipulador.move(manipuladorDestino, novoNome);
+                        }
                         moveu = true;
                     } catch (erro) {
                         if (soMaiusculas || (erro && erro.name === 'NotAllowedError')) {
@@ -3871,13 +3903,13 @@
                         throw new DOMException('este navegador não troca só maiúsculas e minúsculas. Renomeie para outro nome e depois para o nome final.', 'NotSupportedError');
                     }
                     if (no.tipo === 'directory') {
-                        await copiarPastaParaPasta(no.manipulador, manipuladorPai, novoNome);
+                        await copiarPastaParaPasta(no.manipulador, manipuladorDestino, novoNome);
                     } else {
-                        await copiarArquivoParaPasta(no.manipulador, manipuladorPai, novoNome);
+                        await copiarArquivoParaPasta(no.manipulador, manipuladorDestino, novoNome);
                     }
                     await manipuladorPai.removeEntry(no.nome, { recursive: no.tipo === 'directory' });
                 }
-                const caminhoNovo = juntarCaminhoPasta(pasta, novoNome);
+                const caminhoNovo = juntarCaminhoPasta(pastaDestino, novoNome);
                 const expandidas = Array.from(pastas.expandidas).filter(function (item) {
                     return estaDentroDoCaminhoPasta(item, caminho);
                 }).map(function (item) {
@@ -3888,8 +3920,187 @@
                     pastas.expandidas.add(item);
                 });
                 await lerFilhosPasta(pasta);
+                if (!mesmaPasta) {
+                    await lerFilhosPasta(pastaDestino);
+                }
                 await renomearDocumentosDaPasta(caminho, caminhoNovo);
                 return caminhoNovo;
+            }
+
+            // Move o item para outra pasta com o mesmo nome (arrastando, ou com Recortar e Colar).
+            async function moverItemParaPasta(caminho, pastaDestino) {
+                const no = pastas.nos.get(caminho);
+                const destino = pastas.nos.get(pastaDestino);
+                pastas.recorte = undefined;
+                if (!no || !caminho || !destino || destino.tipo !== 'directory' || !pastas.permitida) {
+                    renderizarArvorePastas();
+                    return;
+                }
+                if (paiDoCaminhoPasta(caminho) === pastaDestino) {
+                    renderizarArvorePastas();
+                    focarItemArvorePastas(caminho);
+                    return;
+                }
+                if (estaDentroDoCaminhoPasta(pastaDestino, caminho)) {
+                    renderizarArvorePastas();
+                    mostrarErroPasta('Uma pasta não pode ir para dentro dela mesma.');
+                    focarItemArvorePastas(caminho);
+                    return;
+                }
+                let caminhoNovo;
+                try {
+                    caminhoNovo = await moverItemPasta(caminho, pastaDestino, no.nome);
+                } catch (erro) {
+                    renderizarArvorePastas();
+                    tratarErroPasta(erro, `Não foi possível mover "${no.nome}"`);
+                    focarItemArvorePastas(caminho);
+                    return;
+                }
+                if (pastaDestino) {
+                    pastas.expandidas.add(pastaDestino);
+                }
+                mostrarErroPasta('');
+                pastas.focado = caminhoNovo;
+                await atualizarArvorePastas();
+                agendarPersistenciaSessao();
+                focarItemArvorePastas(caminhoNovo);
+                atualizarEstado(`"${no.nome}" movido para ${pastaDestino ? destino.nome : pastas.raiz.name}`);
+            }
+
+            function recortarItemPasta(caminho) {
+                const no = pastas.nos.get(caminho);
+                if (!no || !caminho || !pastas.permitida) {
+                    return;
+                }
+                pastas.recorte = caminho;
+                mostrarErroPasta('');
+                renderizarArvorePastas();
+                atualizarEstado(`Recortado: ${no.nome}. Escolha a pasta e use Colar (Ctrl+V).`);
+            }
+
+            // Cola na pasta escolhida; num arquivo, na pasta dele.
+            function colarItemPasta(caminho) {
+                if (pastas.recorte === undefined) {
+                    return;
+                }
+                const alvo = pastas.nos.get(caminho || '');
+                const pasta = !alvo ? '' : (alvo.tipo === 'directory' ? alvo.caminho : paiDoCaminhoPasta(alvo.caminho));
+                moverItemParaPasta(pastas.recorte, pasta);
+            }
+
+            function cancelarRecortePasta() {
+                pastas.recorte = undefined;
+                renderizarArvorePastas();
+                atualizarEstado('Recorte cancelado');
+            }
+
+            // Arrastar com o mouse: a pasta sob o mouse recebe o item; num arquivo, a pasta dele; no espaço
+            // vazio, a pasta aberta. Parar sobre uma pasta fechada abre ela.
+            function pastaDestinoDoArrasto(evento) {
+                const item = evento.target.closest('#arvore-pastas [role="treeitem"]');
+                if (!item) {
+                    return '';
+                }
+                const no = pastas.nos.get(item.dataset.caminho);
+                if (!no) {
+                    return undefined;
+                }
+                return no.tipo === 'directory' ? no.caminho : paiDoCaminhoPasta(no.caminho);
+            }
+
+            function podeSoltarItemPasta(caminho, pasta) {
+                return caminho !== undefined && pasta !== undefined && pasta !== paiDoCaminhoPasta(caminho) && !estaDentroDoCaminhoPasta(pasta, caminho);
+            }
+
+            function marcarAlvoArrastoPasta(pasta) {
+                arvorePastas.querySelectorAll('.alvo-soltar').forEach(function (elemento) {
+                    elemento.classList.remove('alvo-soltar');
+                });
+                conteudoPastas.classList.toggle('alvo-soltar', pasta === '');
+                const item = pasta ? itemArvorePastas(pasta) : undefined;
+                if (item) {
+                    item.classList.add('alvo-soltar');
+                }
+            }
+
+            function esperarParaExpandirNoArrasto(pasta) {
+                const espera = pastas.esperaExpandir;
+                if (espera && espera.caminho === pasta) {
+                    return;
+                }
+                if (espera) {
+                    window.clearTimeout(espera.temporizador);
+                }
+                pastas.esperaExpandir = undefined;
+                if (!pasta || pastas.expandidas.has(pasta)) {
+                    return;
+                }
+                pastas.esperaExpandir = {
+                    caminho: pasta,
+                    temporizador: window.setTimeout(async function () {
+                        pastas.esperaExpandir = undefined;
+                        if (pastas.arrastandoItem === undefined) {
+                            return;
+                        }
+                        await alternarPastaArvore(pasta, true);
+                        marcarAlvoArrastoPasta(pasta);
+                    }, 700)
+                };
+            }
+
+            function iniciarArrastoItemPasta(evento) {
+                const item = evento.target.closest('[role="treeitem"]');
+                if (!item || !pastas.permitida || pastas.edicao) {
+                    evento.preventDefault();
+                    return;
+                }
+                fecharMenuPastas(false);
+                pastas.arrastandoItem = item.dataset.caminho;
+                evento.dataTransfer.effectAllowed = 'move';
+                // O Firefox só arrasta com algum dado. Um tipo próprio não vira texto se cair no editor.
+                evento.dataTransfer.setData('application/x-editor-web-item', item.dataset.caminho);
+            }
+
+            function passarArrastoItemPasta(evento) {
+                if (pastas.arrastandoItem === undefined) {
+                    return;
+                }
+                const pasta = pastaDestinoDoArrasto(evento);
+                const pode = podeSoltarItemPasta(pastas.arrastandoItem, pasta);
+                const sobrePasta = evento.target.closest('#arvore-pastas .eh-pasta[role="treeitem"]');
+                esperarParaExpandirNoArrasto(sobrePasta && pode ? pasta : undefined);
+                marcarAlvoArrastoPasta(pode ? pasta : undefined);
+                if (pode) {
+                    evento.preventDefault();
+                    evento.dataTransfer.dropEffect = 'move';
+                }
+            }
+
+            // O Chrome não diz para onde o mouse foi (relatedTarget vazio) nem ao passar de um item para
+            // outro; o próximo dragover marca o alvo de novo. A espera para abrir a pasta só acaba ao soltar.
+            function sairArrastoItemPasta(evento) {
+                if (pastas.arrastandoItem !== undefined && !conteudoPastas.contains(evento.relatedTarget)) {
+                    marcarAlvoArrastoPasta(undefined);
+                }
+            }
+
+            function soltarItemPasta(evento) {
+                const caminho = pastas.arrastandoItem;
+                if (caminho === undefined) {
+                    return;
+                }
+                evento.preventDefault();
+                const pasta = pastaDestinoDoArrasto(evento);
+                terminarArrastoItemPasta();
+                if (podeSoltarItemPasta(caminho, pasta)) {
+                    moverItemParaPasta(caminho, pasta);
+                }
+            }
+
+            function terminarArrastoItemPasta() {
+                pastas.arrastandoItem = undefined;
+                esperarParaExpandirNoArrasto(undefined);
+                marcarAlvoArrastoPasta(undefined);
             }
 
             // As abas dos arquivos renomeados acompanham o nome novo (e a linguagem, se a extensão mudou).
@@ -3997,9 +4208,10 @@
                 if (caminho) {
                     pastas.focado = caminho;
                 }
-                menuPastas.querySelectorAll('[data-acao="renomear"], [data-acao="excluir"]').forEach(function (botao) {
+                menuPastas.querySelectorAll('[data-acao="renomear"], [data-acao="excluir"], [data-acao="recortar"]').forEach(function (botao) {
                     botao.hidden = !caminho;
                 });
+                menuPastas.querySelector('[data-acao="colar"]').hidden = pastas.recorte === undefined;
                 menuPastas.hidden = false;
                 menuPastas.style.left = `${Math.max(4, Math.min(x, window.innerWidth - menuPastas.offsetWidth - 4))}px`;
                 menuPastas.style.top = `${Math.max(4, Math.min(y, window.innerHeight - menuPastas.offsetHeight - 4))}px`;
@@ -4061,6 +4273,12 @@
                     } else {
                         abrirArquivoDaPasta(caminho);
                     }
+                } else if ((evento.ctrlKey || evento.metaKey) && !evento.altKey && evento.key.toLowerCase() === 'x') {
+                    recortarItemPasta(caminho);
+                } else if ((evento.ctrlKey || evento.metaKey) && !evento.altKey && evento.key.toLowerCase() === 'v') {
+                    colarItemPasta(caminho);
+                } else if (evento.key === 'Escape' && pastas.recorte !== undefined) {
+                    cancelarRecortePasta();
                 } else if (evento.key === 'F2') {
                     iniciarEdicaoPasta('renomear', caminho);
                 } else if (evento.key === 'Delete') {
@@ -4102,6 +4320,11 @@
                     iniciarEdicaoPasta('renomear', caminho);
                 } else if (acao === 'excluir') {
                     excluirItemPasta(caminho);
+                } else if (acao === 'recortar') {
+                    recortarItemPasta(caminho);
+                    focarItemArvorePastas(caminho);
+                } else if (acao === 'colar') {
+                    colarItemPasta(caminho);
                 }
             }
 
@@ -4175,7 +4398,7 @@
                     }
                 });
                 // Botão direito num item abre as ações dele; no espaço vazio, as da pasta aberta.
-                document.getElementById('pastas-conteudo').addEventListener('contextmenu', function (evento) {
+                conteudoPastas.addEventListener('contextmenu', function (evento) {
                     if (!pastas.permitida || evento.target.closest('.arvore-entrada')) {
                         return;
                     }
@@ -4190,6 +4413,13 @@
                     }
                 });
                 menuPastas.addEventListener('keydown', tratarTecladoMenuPastas);
+                arvorePastas.addEventListener('dragstart', iniciarArrastoItemPasta);
+                arvorePastas.addEventListener('dragend', terminarArrastoItemPasta);
+                // O alvo aceita o item já ao entrar; sem isso, o Chrome nem manda os dragover seguintes.
+                conteudoPastas.addEventListener('dragenter', passarArrastoItemPasta);
+                conteudoPastas.addEventListener('dragover', passarArrastoItemPasta);
+                conteudoPastas.addEventListener('dragleave', sairArrastoItemPasta);
+                conteudoPastas.addEventListener('drop', soltarItemPasta);
                 document.addEventListener('pointerdown', function (evento) {
                     if (!menuPastas.hidden && !menuPastas.contains(evento.target)) {
                         fecharMenuPastas(false);

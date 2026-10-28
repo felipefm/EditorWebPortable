@@ -21,7 +21,7 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **354 testes** em **13 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 640 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
+São **369 testes** em **13 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 660 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
@@ -32,12 +32,12 @@ São **354 testes** em **13 áreas**, um arquivo por área. Eles rodam em dois n
 | visual | `visual.spec.js` | 90 | Modo Visual (Milkdown): edição formatada, texto parado ao clicar e selecionar, **todos os atalhos**, cursor pronto para digitar, listas no Markdown padrão, fechamento automático de ( [ {, documento novo em Markdown e Visual, linha horizontal visível, envolver a seleção, botão + da margem sem a alça de arrastar, sincronia com o Markdown, preservação do estilo, salvar, abas, falta de internet |
 | imagens | `imagens.spec.js` | 17 | Imagens preservadas no modo Visual, diálogo "Inserir imagem" (link e arquivo), item Imagem do menu `/`, redução de tamanho |
 | mapa | `mapa.spec.js` | 13 | Minimapa do Monaco (Editor e Dividido) e o desenhado no modo Visual: botão Mapa, escolha lembrada, clicar e arrastar para rolar, atualização ao digitar |
-| pastas | `pastas.spec.js` | 71 | Painel de pastas, com a pasta do navegador (Edge) e com a do servidor homelab (Edge e Firefox): abrir pasta, árvore, abrir e salvar arquivos, criar, renomear e excluir, teclado, menu, permissão, restaurar ao recarregar, largura, aviso no Firefox; no homelab, também senha, documento novo, conflito e lixeira |
+| pastas | `pastas.spec.js` | 85 | Painel de pastas, com a pasta do navegador (Edge) e com a do servidor homelab (Edge e Firefox): abrir pasta, árvore, abrir e salvar arquivos, criar, renomear, mover e excluir, teclado, menu, permissão, restaurar ao recarregar, largura, aviso no Firefox; no homelab, também senha, documento novo, conflito e lixeira |
 | homelab | `homelab.spec.js` | 11 | API do servidor homelab: caminhos fora da pasta, links, origem, endereço (DNS rebinding), senha, tamanho, conflito, lixeira e cópias |
 | atalhos | `atalhos.spec.js` | 26 | Atalhos gerais (salvar, salvar como, abrir, nova aba, formatador JSON) em cada modo, com o foco dentro e fora do texto |
 | json | `json.spec.js` | 11 | Formatar, compactar, indentação, erros com linha e coluna, copiar, abrir em aba |
 | sessao | `sessao.spec.js` | 10 | Sessão restaurada, painel de backup, exportar e importar |
-| celular | `celular.spec.js` | 10 | Layout em tela de 390 × 844, inclusive o painel de pastas da versão homelab |
+| celular | `celular.spec.js` | 11 | Layout em tela de 390 × 844, inclusive o painel de pastas da versão homelab |
 
 Tudo fica na pasta `tests/`, separada do site. O Cloudflare publica só a pasta `public/`, então os testes nunca vão para o ar.
 
@@ -388,12 +388,12 @@ Modo Visual (minimapa desenhado pelo editor):
 - o mapa se atualiza ao digitar
 - os botões do bloco de código ("js", "Copiar") não viram traços no mapa
 
-### pastas (71)
+### pastas (85)
 
-Os 32 testes abaixo rodam duas vezes, uma com cada fonte de arquivos:
+Os 39 testes abaixo rodam duas vezes, uma com cada fonte de arquivos:
 
 - **navegador** (`Pastas`): a pasta do computador no Edge, simulada (veja [Pasta simulada](#pasta-simulada)). Não roda no Firefox, que não abre pastas.
-- **servidor** (`Pastas no homelab`): o servidor homelab ligado numa pasta temporária, no Edge e no Firefox. Os 7 testes que só existem no navegador (seletor de pasta, permissão, mover sem `move`, paleta e Edge sem acesso) ficam de fora.
+- **servidor** (`Pastas no homelab`): o servidor homelab ligado numa pasta temporária, no Edge e no Firefox. Os 8 testes que só existem no navegador (seletor de pasta, permissão, renomear e mover sem `move`, paleta e Edge sem acesso) ficam de fora.
 
 Mais 7: o aviso no Firefox e os 6 da versão homelab, listados no fim.
 
@@ -434,6 +434,16 @@ Renomear e excluir:
 - excluir pede confirmação; Cancelar mantém e Excluir apaga, fecha a aba e passa o foco ao item seguinte
 - excluir um arquivo aberto com alterações avisa e mantém o texto na aba
 - excluir uma pasta apaga tudo dentro e fecha as abas sem alterações
+
+Mover:
+
+- arrastar um arquivo para uma pasta move o arquivo, expande a pasta, e a aba aberta continua salvando nele
+- soltar num arquivo leva para a pasta dele; no espaço vazio, para a pasta aberta
+- arrastar uma pasta leva tudo junto, com as pastas expandidas e a aba aberta; parar sobre uma pasta fechada abre ela
+- uma pasta não vai para dentro dela mesma, e soltar na própria pasta não muda nada
+- Recortar e Colar pelo menu e por Ctrl+X e Ctrl+V; colar num arquivo cola na pasta dele; Esc desiste
+- mover para uma pasta que já tem um item com o mesmo nome avisa e não muda nada
+- mover funciona também quando o navegador não sabe mover (copia e apaga), para arquivos e pastas
 
 Teclado e menu:
 
@@ -533,6 +543,7 @@ Estes rodam numa tela de 390 × 844 (projeto `celular` no `playwright.config.js`
 - na versão homelab, o botão Pastas aparece e o painel cobre a tela, sem passar da largura nem cobrir a barra de baixo, com linhas altas para o dedo
 - na versão homelab, tocar num arquivo abre o texto e fecha o painel; o botão Pastas abre de novo
 - na versão homelab, o botão ⋯ aparece sem passar o mouse e o menu renomeia
+- na versão homelab, o menu do botão ⋯ recorta e cola em outra pasta; os itens não se arrastam com o dedo
 - painel de sessão cabe na tela
 
 ## Como os testes funcionam por dentro
