@@ -21,7 +21,7 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **369 testes** em **13 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 660 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
+São **375 testes** em **13 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 670 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
@@ -30,7 +30,7 @@ São **369 testes** em **13 áreas**, um arquivo por área. Eles rodam em dois n
 | arquivos | `arquivos.spec.js` | 19 | Abrir, salvar, salvar como, detecção de linguagem, modo "Baixar" dos navegadores sem gravação direta |
 | markdown | `markdown.spec.js` | 58 | Barra e **todos os atalhos** de formatação, envolver a seleção com aspas e parênteses, linha horizontal, preview, segurança do preview, modos de visualização |
 | visual | `visual.spec.js` | 90 | Modo Visual (Milkdown): edição formatada, texto parado ao clicar e selecionar, **todos os atalhos**, cursor pronto para digitar, listas no Markdown padrão, fechamento automático de ( [ {, documento novo em Markdown e Visual, linha horizontal visível, envolver a seleção, botão + da margem sem a alça de arrastar, sincronia com o Markdown, preservação do estilo, salvar, abas, falta de internet |
-| imagens | `imagens.spec.js` | 17 | Imagens preservadas no modo Visual, diálogo "Inserir imagem" (link e arquivo), item Imagem do menu `/`, redução de tamanho |
+| imagens | `imagens.spec.js` | 23 | Imagens preservadas no modo Visual, diálogo "Inserir imagem" (link e arquivo), item Imagem do menu `/`, redução de tamanho, colar e soltar imagens |
 | mapa | `mapa.spec.js` | 13 | Minimapa do Monaco (Editor e Dividido) e o desenhado no modo Visual: botão Mapa, escolha lembrada, clicar e arrastar para rolar, atualização ao digitar |
 | pastas | `pastas.spec.js` | 85 | Painel de pastas, com a pasta do navegador (Edge) e com a do servidor homelab (Edge e Firefox): abrir pasta, árvore, abrir e salvar arquivos, criar, renomear, mover e excluir, teclado, menu, permissão, restaurar ao recarregar, largura, aviso no Firefox; no homelab, também senha, documento novo, conflito e lixeira |
 | homelab | `homelab.spec.js` | 11 | API do servidor homelab: caminhos fora da pasta, links, origem, endereço (DNS rebinding), senha, tamanho, conflito, lixeira e cópias |
@@ -351,7 +351,7 @@ Também:
 - o cursor flutua por cima do texto (não ocupa espaço), tem 2 px e a cor do texto
 - documento que não é Markdown não usa o modo Visual
 
-### imagens (17)
+### imagens (23)
 
 - imagem sozinha sem título (link e embutida), com título, no meio da frase e sem descrição continua no texto depois de editar outro trecho no modo Visual (5 testes)
 - a descrição da imagem é preservada (não vira "1.00")
@@ -366,6 +366,15 @@ Também:
 - arquivo que não é imagem mostra erro e não insere nada
 - no modo Visual, "/" + Imagem abre o diálogo e insere a imagem no lugar do "/"
 - imagem embutida aparece no preview
+
+Colar e soltar (colar só no Edge: no Firefox, um colar simulado chega vazio):
+
+- no modo Visual, colar um print embute a imagem reduzida no documento, sem endereço `blob:`
+- no modo Visual, "Copiar imagem" de um site (imagem, html e link) também é embutida
+- texto com imagem (do Word, por exemplo) cola como texto
+- no modo Editor, colar um print insere `![](data:...)` na posição do cursor
+- soltar um arquivo de imagem embute a imagem onde ela caiu, no Visual e no Editor (Edge e Firefox)
+- fora do Markdown, colar uma imagem não insere nada
 
 ### mapa (13)
 

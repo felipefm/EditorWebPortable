@@ -116,6 +116,8 @@ Nos documentos Markdown, o botão **Imagem** da barra (nos modos Editor e Visual
 - **Por link:** cole o endereço de uma imagem da internet. O documento guarda só o link.
 - **Por arquivo:** escolha uma imagem do computador. Como o editor não tem servidor, a imagem é guardada **dentro do próprio arquivo `.md`**, codificada como texto (data URI). Antes disso, ela é reduzida para no máximo 1600 px e comprimida (WebP), para o arquivo não crescer demais. O editor avisa quando a imagem passa de 700 KB.
 
+Também dá para **colar** uma imagem (`Ctrl+V`, por exemplo um print ou "Copiar imagem" no navegador) ou **arrastar** um arquivo de imagem para o texto, nos modos Editor e Visual. Ela é reduzida e guardada dentro do arquivo, como no botão **Imagem**, mas sem descrição. Texto copiado junto com imagens (do Word ou de um site) cola como texto.
+
 O campo **Descrição** vira o texto alternativo (`![descrição](imagem)`), usado por leitores de tela e mostrado quando a imagem não carrega.
 
 Imagens embutidas aparecem no preview e no modo Visual do editor, mas **o GitHub não mostra imagens embutidas** em arquivos `.md`. Para documentos que vão para o GitHub, prefira imagens por link.
@@ -189,7 +191,7 @@ O navegador pode acrescentar um número ao nome (`notas (1).md`) quando o arquiv
 
 ## Testes automatizados
 
-O projeto tem **354 testes automatizados**, divididos em 13 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, homelab, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 640 execuções.
+O projeto tem **375 testes automatizados**, divididos em 13 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, homelab, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 670 execuções.
 
 📖 **Documentação completa: [docs/TESTES.md](docs/TESTES.md).** Explica como funcionam, a lista de todos os testes, como o projeto escolhe o que testar, como escrever testes novos e o que fazer quando algo falha.
 

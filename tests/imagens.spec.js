@@ -200,3 +200,112 @@ test.describe('Inserir imagem', () => {
         await expect(page.locator('#preview-conteudo img')).toHaveAttribute('alt', 'Ponto');
     });
 });
+
+// Simula colar (Ctrl+V) ou soltar o que estaria na área de transferência: { png, html, texto }.
+// O Playwright não põe imagens na área de transferência de verdade.
+async function transferir(page, seletor, tipo, conteudo, ponto) {
+    await page.locator(seletor).first().evaluate((alvo, [tipoEvento, dados, coordenadas]) => {
+        const transferencia = new DataTransfer();
+        if (dados.png) {
+            const bytes = Uint8Array.from(atob(dados.png), (letra) => letra.charCodeAt(0));
+            transferencia.items.add(new File([bytes], 'image.png', { type: 'image/png' }));
+        }
+        if (dados.html) {
+            transferencia.setData('text/html', dados.html);
+        }
+        if (dados.texto) {
+            transferencia.setData('text/plain', dados.texto);
+        }
+        if (tipoEvento === 'paste') {
+            alvo.dispatchEvent(new ClipboardEvent('paste', { clipboardData: transferencia, bubbles: true, cancelable: true }));
+            return;
+        }
+        const opcoes = { dataTransfer: transferencia, bubbles: true, cancelable: true, clientX: coordenadas.x, clientY: coordenadas.y };
+        alvo.dispatchEvent(new DragEvent('dragover', opcoes));
+        alvo.dispatchEvent(new DragEvent('drop', opcoes));
+    }, [tipo, conteudo, ponto || { x: 0, y: 0 }]);
+}
+
+test.describe('Colar e soltar imagens', () => {
+    // No Firefox, um colar simulado chega sem nada (nem texto); soltar funciona.
+    const semColarSimulado = 'O Firefox ignora o conteúdo de um colar simulado.';
+
+    test('no modo Visual, colar um print embute a imagem reduzida no documento, sem endereço blob:', async ({ page, browserName }) => {
+        test.skip(browserName === 'firefox', semColarSimulado);
+        await abrirMarkdown(page, 'Texto');
+        await entrarNoVisual(page);
+        await editorVisual(page).locator('p').first().click();
+        await page.keyboard.press('End');
+        const png = (await gerarPng(page, 3000, 2000)).toString('base64');
+        await transferir(page, '#editor-visual .ProseMirror', 'paste', { png });
+        await expect(editorVisual(page).locator('img[src^="data:image/"]')).toHaveCount(1);
+        await expect.poll(() => textoNormalizado(page)).toMatch(/^Texto!\[\]\(data:image\//);
+        expect(await textoNormalizado(page)).not.toContain('blob:');
+        expect(await dimensoesDaImagemEmbutida(page)).toEqual({ largura: 1600, altura: 1067 });
+        await expect(page.locator('#estado')).toContainText('Imagem inserida no documento');
+    });
+
+    test('no modo Visual, "Copiar imagem" de um site (imagem, html e link) também é embutida', async ({ page, browserName }) => {
+        test.skip(browserName === 'firefox', semColarSimulado);
+        await abrirMarkdown(page, 'Texto');
+        await entrarNoVisual(page);
+        await editorVisual(page).locator('p').first().click();
+        await page.keyboard.press('End');
+        const png = (await gerarPng(page, 40, 30)).toString('base64');
+        await transferir(page, '#editor-visual .ProseMirror', 'paste', {
+            png,
+            html: '<meta charset="utf-8"><img src="https://example.com/foto.png" alt="foto">',
+            texto: 'https://example.com/foto.png'
+        });
+        await expect.poll(() => textoNormalizado(page)).toContain('](data:image/');
+        expect(await textoNormalizado(page)).not.toContain('example.com');
+    });
+
+    test('texto com imagem (do Word, por exemplo) cola como texto', async ({ page, browserName }) => {
+        test.skip(browserName === 'firefox', semColarSimulado);
+        await abrirMarkdown(page, 'Texto');
+        await entrarNoVisual(page);
+        await editorVisual(page).locator('p').first().click();
+        await page.keyboard.press('End');
+        await transferir(page, '#editor-visual .ProseMirror', 'paste', {
+            png: PNG_1PX.split(',')[1],
+            html: '<p> e mais um parágrafo</p>',
+            texto: ' e mais um parágrafo'
+        });
+        await expect.poll(() => textoNormalizado(page)).toContain('mais um parágrafo');
+        expect(await textoNormalizado(page)).not.toContain('data:image');
+    });
+
+    test('no modo Editor, colar um print insere ![](data:...) na posição do cursor', async ({ page, browserName }) => {
+        test.skip(browserName === 'firefox', semColarSimulado);
+        await abrirMarkdown(page, 'Antes  depois');
+        await page.locator('[data-modo="editor"]').click();
+        await selecionar(page, 1, 7, 1, 7);
+        await transferir(page, '#container textarea', 'paste', { png: PNG_1PX.split(',')[1] });
+        await expect.poll(() => textoNormalizado(page)).toMatch(/^Antes !\[\]\(data:image\/[^)]+\) depois$/);
+    });
+
+    test('soltar um arquivo de imagem embute a imagem onde ela caiu, no Visual e no Editor', async ({ page }) => {
+        await abrirMarkdown(page, 'Primeiro\n\nSegundo');
+        await entrarNoVisual(page);
+        await editorVisual(page).locator('p').first().click();
+        const segundo = await editorVisual(page).locator('p', { hasText: 'Segundo' }).boundingBox();
+        await transferir(page, '#editor-visual .ProseMirror p >> nth=1', 'drop', { png: PNG_1PX.split(',')[1] }, { x: segundo.x + segundo.width - 2, y: segundo.y + segundo.height / 2 });
+        await expect.poll(() => textoNormalizado(page)).toMatch(/^Primeiro\n\nSegundo!\[\]\(data:image\/[^)]+\)$/);
+
+        await page.locator('[data-modo="editor"]').click();
+        await definirConteudo(page, 'Linha um\nLinha dois');
+        const linha = await page.locator('#container .view-line').first().boundingBox();
+        await transferir(page, '#container .view-lines', 'drop', { png: PNG_1PX.split(',')[1] }, { x: linha.x + 2, y: linha.y + linha.height / 2 });
+        await expect.poll(() => textoNormalizado(page)).toMatch(/^!\[\]\(data:image\/[^)]+\)Linha um\nLinha dois$/);
+    });
+
+    test('fora do Markdown, colar uma imagem não insere nada', async ({ page, browserName }) => {
+        test.skip(browserName === 'firefox', semColarSimulado);
+        await abrirEditor(page);
+        await definirConteudo(page, 'texto');
+        await transferir(page, '#container textarea', 'paste', { png: PNG_1PX.split(',')[1] });
+        await page.waitForTimeout(500);
+        expect(await textoNormalizado(page)).toBe('texto');
+    });
+});

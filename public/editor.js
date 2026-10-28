@@ -1598,6 +1598,74 @@
                 }
             }
 
+            // Colar (Ctrl+V) ou soltar uma imagem num documento Markdown embute a imagem como o botão
+            // "Imagem". Sem isso, o modo Visual guardava um endereço blob:, que some ao recarregar a página.
+            // Texto com imagens (do Word ou de um site, por exemplo) continua colando como texto.
+            function imagemTransferida(dados) {
+                if (!dados || !documentoAtual || documentoAtual.modelo.getLanguageId() !== 'markdown') {
+                    return undefined;
+                }
+                const arquivo = Array.from(dados.files || []).find(function (item) {
+                    return /^image\//.test(item.type);
+                });
+                if (!arquivo) {
+                    return undefined;
+                }
+                const html = dados.getData('text/html');
+                const htmlSoComImagem = Boolean(html) && !new DOMParser().parseFromString(html, 'text/html').body.textContent.trim();
+                return !(dados.getData('text/plain') || '').trim() || htmlSoComImagem ? arquivo : undefined;
+            }
+
+            async function inserirImagemTransferida(arquivo) {
+                atualizarEstado('Inserindo a imagem...');
+                const src = await embutirImagem(arquivo);
+                if (src) {
+                    inserirImagem(src, '');
+                }
+            }
+
+            function colarImagem(evento) {
+                const arquivo = imagemTransferida(evento.clipboardData);
+                if (!arquivo) {
+                    return;
+                }
+                evento.preventDefault();
+                evento.stopPropagation();
+                inserirImagemTransferida(arquivo);
+            }
+
+            // Sem isso o navegador abriria a imagem solta no lugar do editor.
+            function aceitarArquivoArrastado(evento) {
+                if (documentoAtual && documentoAtual.modelo.getLanguageId() === 'markdown' && evento.dataTransfer && Array.from(evento.dataTransfer.types).includes('Files')) {
+                    evento.preventDefault();
+                    evento.dataTransfer.dropEffect = 'copy';
+                }
+            }
+
+            // A imagem solta entra onde o mouse está, não onde estava o cursor.
+            function soltarImagem(evento) {
+                const arquivo = imagemTransferida(evento.dataTransfer);
+                if (!arquivo) {
+                    return;
+                }
+                evento.preventDefault();
+                evento.stopPropagation();
+                if (modoPreview === 'visual' && visual.crepe && editorVisual.contains(evento.target)) {
+                    noVisual(function (ctx, visao, milkdown) {
+                        const posicao = visao.posAtCoords({ left: evento.clientX, top: evento.clientY });
+                        if (posicao) {
+                            visao.dispatch(visao.state.tr.setSelection(milkdown.estado.TextSelection.near(visao.state.doc.resolve(posicao.pos))));
+                        }
+                    });
+                } else {
+                    const alvo = editor.getTargetAtClientPoint(evento.clientX, evento.clientY);
+                    if (alvo && alvo.position) {
+                        editor.setPosition(alvo.position);
+                    }
+                }
+                inserirImagemTransferida(arquivo);
+            }
+
             async function confirmarDialogoImagem(evento) {
                 if (evento.submitter && evento.submitter.value === 'cancelar') {
                     return;
@@ -4695,6 +4763,15 @@
                 mapaVisual.addEventListener('pointercancel', terminarArrastoMapaVisual);
                 botaoInserirImagem.addEventListener('click', abrirDialogoImagem);
                 formularioImagem.addEventListener('submit', confirmarDialogoImagem);
+                // Na janela, na fase de captura: antes do Monaco e do Milkdown tratarem a imagem do jeito deles.
+                const areasDeTexto = [editorVisual, document.getElementById('container')];
+                [['paste', colarImagem], ['dragover', aceitarArquivoArrastado], ['drop', soltarImagem]].forEach(function ([tipo, tratar]) {
+                    window.addEventListener(tipo, function (evento) {
+                        if (areasDeTexto.some(function (area) { return area.contains(evento.target); })) {
+                            tratar(evento);
+                        }
+                    }, true);
+                });
                 dialogoImagem.addEventListener('close', function () {
                     if (dialogoImagem.returnValue !== 'inserir') {
                         if (modoPreview === 'visual' && visual.crepe) {
