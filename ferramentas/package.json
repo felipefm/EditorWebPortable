@@ -8,7 +8,7 @@
   "dependencies": {
     "@milkdown/crepe": "7.22.2",
     "@milkdown/kit": "7.22.2",
-    "dompurify": "3.2.6",
+    "dompurify": "3.4.17",
     "marked": "15.0.7",
     "monaco-editor": "0.52.2"
   },

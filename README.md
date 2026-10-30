@@ -262,7 +262,7 @@ Ficam em `public/vendor/`, junto com o editor, e não em CDN:
 
 - [Monaco Editor](https://github.com/microsoft/monaco-editor) 0.52.2
 - [marked](https://github.com/markedjs/marked) 15.0.7
-- [DOMPurify](https://github.com/cure53/DOMPurify) 3.2.6
+- [DOMPurify](https://github.com/cure53/DOMPurify) 3.4.17
 - [Milkdown](https://github.com/Milkdown/milkdown) (Crepe) 7.22.2, carregado só quando o modo Visual é usado
 - [CodeMirror](https://codemirror.net) 6.0.2, usado pelo Milkdown nos blocos de código (versão fixada à parte; veja abaixo)
 
