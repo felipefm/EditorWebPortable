@@ -13,6 +13,7 @@
 //   - public/index.html e public/editor.css: pelo texto da linha (ids e classes).
 //     Mudanças dentro de @media também rodam os testes de celular.
 //   - tests/*.spec.js: o próprio arquivo de teste.
+//   - public/vendor/ e ferramentas/ (as bibliotecas): roda tudo.
 //   - Se não der para identificar a área, roda tudo.
 // Os testes "geral" sempre rodam, porque são rápidos e pegam erros de carregamento.
 const { execFileSync, spawnSync } = require('child_process');
@@ -64,7 +65,9 @@ function git(argumentos) {
 // Lê o diff e devolve { arquivo: [números de linha no arquivo atual] }.
 function linhasAlteradas(base) {
     const intervalo = base.includes('..') ? base.split('..') : undefined;
-    const diff = git(['diff', '-U0', ...(intervalo || [base]), '--', 'public', 'tests', 'servidor']);
+    // As bibliotecas minificadas de public/vendor/ ficam fora do diff linha a linha (são enormes);
+    // basta saber que mudaram.
+    const diff = git(['diff', '-U0', ...(intervalo || [base]), '--', 'public', 'tests', 'servidor', ':(exclude)public/vendor']);
     const resultado = {};
     let arquivoAtual;
     for (const linha of diff.split('\n')) {
@@ -88,8 +91,12 @@ function linhasAlteradas(base) {
             }
         }
     }
+    const bibliotecas = git(['diff', '--name-only', ...(intervalo || [base]), '--', 'public/vendor', 'ferramentas']).split('\n').filter(Boolean);
+    for (const arquivoBiblioteca of bibliotecas) {
+        resultado[arquivoBiblioteca] = [0];
+    }
     if (!intervalo) {
-        const novos = git(['ls-files', '--others', '--exclude-standard', '--', 'public', 'tests', 'servidor']).split('\n').filter(Boolean);
+        const novos = git(['ls-files', '--others', '--exclude-standard', '--', 'public', 'tests', 'servidor', 'ferramentas']).split('\n').filter(Boolean);
         for (const arquivo of novos) {
             resultado[arquivo] = [0];
         }
@@ -149,6 +156,14 @@ function analisar(alteracoes, versao) {
     for (const [arquivo, numeros] of Object.entries(alteracoes)) {
         const nomeBase = path.basename(arquivo);
         const linhas = lerArquivo(arquivo, versao);
+
+        // As bibliotecas: qualquer área pode ser afetada.
+        if (arquivo.startsWith('public/vendor/') || arquivo.startsWith('ferramentas/')) {
+            if (!areas.has('todas')) {
+                marcar(['todas'], `${arquivo} (bibliotecas)`);
+            }
+            continue;
+        }
 
         // O servidor da versão homelab: os testes da API e os do painel de pastas usando o servidor.
         if (arquivo.startsWith('servidor/') || arquivo === 'tests/homelab.js') {

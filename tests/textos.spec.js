@@ -190,7 +190,7 @@ test.describe('Textos rápidos', () => {
         await criarTexto(page, { nome: 'Meio', texto: 'MEIO ' });
         await selecionar(page, 1, 8, 1, 8);
         await cartao(page, 'Meio').locator('[data-acao="inserir"]').click();
-        expect(await texto(page)).toBe('Início MEIO fim');
+        await expect.poll(() => texto(page)).toBe('Início MEIO fim');
         await expect(page.locator('#estado')).toHaveText('Texto rápido "Meio" inserido');
     });
 
@@ -200,7 +200,7 @@ test.describe('Textos rápidos', () => {
         await selecionar(page, 1, 9, 1, 15);
         await cartao(page, 'Nome').locator('[data-acao="inserir"]').click();
         await page.keyboard.type('X');
-        expect(await texto(page)).toBe('Prezado senhor XSilva,');
+        await expect.poll(() => texto(page)).toBe('Prezado senhor XSilva,');
     });
 
     test('Inserir com várias linhas e {cursor} funciona com quebras de linha do Windows', async ({ page }) => {
@@ -209,7 +209,7 @@ test.describe('Textos rápidos', () => {
         await cursorNoFim(page);
         await cartao(page, 'Linhas').locator('[data-acao="inserir"]').click();
         await page.keyboard.type('X');
-        expect(await texto(page)).toBe('a\nbum\ndois X\ntrês');
+        await expect.poll(() => texto(page)).toBe('a\nbum\ndois X\ntrês');
     });
 
     test('Inserir vindo do formatador JSON volta para o documento', async ({ page }) => {
@@ -218,7 +218,7 @@ test.describe('Textos rápidos', () => {
         await page.locator('#trilho-json').click();
         await cartao(page, 'Fim').locator('[data-acao="inserir"]').click();
         await expect(page.locator('#area-documentos')).toBeVisible();
-        expect(await texto(page)).toContain('final');
+        await expect.poll(() => texto(page)).toContain('final');
     });
 
     test('os cartões não mudam de lugar ao usar e os novos entram no topo', async ({ page }) => {
@@ -257,7 +257,7 @@ test.describe('Textos rápidos', () => {
         await cursorNoFim(page);
         await page.keyboard.type('Oi ;ola');
         await page.keyboard.press('Tab');
-        expect(await texto(page)).toBe('Oi Olá, tudo bem?');
+        await expect.poll(() => texto(page)).toBe('Oi Olá, tudo bem?');
         await expect(cartao(page, 'Saudação').locator('.texto-cartao-usos')).toHaveText('usado 1×');
     });
 
@@ -266,8 +266,11 @@ test.describe('Textos rápidos', () => {
         await criarTexto(page, { nome: 'Saudação', texto: 'Olá', abreviacao: ';ola' });
         await cursorNoFim(page);
         await page.keyboard.type(';outra');
+        // Digitando rápido como o teste, o Monaco às vezes ainda está preparando sugestões de palavras e o
+        // Tab vai para elas (acontece também sem textos rápidos). Esc cancela a sugestão pendente.
+        await page.keyboard.press('Escape');
         await page.keyboard.press('Tab');
-        expect(await texto(page)).toMatch(/^;outra(\t| +)$/);
+        await expect.poll(() => texto(page)).toMatch(/^;outra(\t| +)$/);
     });
 
     test('Ctrl+Z desfaz a troca da abreviação', async ({ page }) => {
@@ -276,9 +279,9 @@ test.describe('Textos rápidos', () => {
         await cursorNoFim(page);
         await page.keyboard.type(';ola');
         await page.keyboard.press('Tab');
-        expect(await texto(page)).toBe('Olá');
+        await expect.poll(() => texto(page)).toBe('Olá');
         await page.keyboard.press('Control+Z');
-        expect(await texto(page)).toBe(';ola');
+        await expect.poll(() => texto(page)).toBe(';ola');
     });
 
     test('Alt+número com o cursor no documento insere o texto', async ({ page }) => {
@@ -288,7 +291,7 @@ test.describe('Textos rápidos', () => {
         await cursorNoFim(page);
         await page.keyboard.press('Alt+1');
         await page.keyboard.press('Alt+9');
-        expect(await texto(page)).toBe('primeironono');
+        await expect.poll(() => texto(page)).toBe('primeironono');
         expect(await copias(page)).toEqual([]);
     });
 
@@ -298,14 +301,14 @@ test.describe('Textos rápidos', () => {
         await page.locator('#textos-busca').focus();
         await page.keyboard.press('Alt+2');
         expect(await copias(page)).toEqual(['segundo']);
-        expect(await texto(page)).toBe('');
+        await expect.poll(() => texto(page)).toBe('');
     });
 
     test('Alt+número sem texto ligado não faz nada', async ({ page }) => {
         await abrir(page, 'nada');
         await cursorNoFim(page);
         await page.keyboard.press('Alt+5');
-        expect(await texto(page)).toBe('nada');
+        await expect.poll(() => texto(page)).toBe('nada');
         expect(await copias(page)).toEqual([]);
     });
 
@@ -378,7 +381,7 @@ test.describe('Textos rápidos', () => {
             await fimDoParagrafo(page, 'Primeiro');
             await cartao(page, 'Frase').locator('[data-acao="inserir"]').click();
             await expect(editorVisual(page).locator('p').first()).toHaveText('Primeiro parágrafo e mais isto');
-            expect(await texto(page)).toBe('Primeiro parágrafo e mais isto\n');
+            await expect.poll(() => texto(page)).toBe('Primeiro parágrafo e mais isto\n');
             expect(erros).toEqual([]);
         });
 
@@ -389,8 +392,8 @@ test.describe('Textos rápidos', () => {
             await fimDoParagrafo(page, 'Olá');
             await page.keyboard.press('Enter');
             await cartao(page, 'Passos').locator('[data-acao="inserir"]').click();
-            await expect(editorVisual(page).locator('ol li')).toHaveText(['Feche o navegador.', 'Abra de novo.']);
-            expect(await texto(page)).toBe('Olá\n\nSiga os passos:\n\n1. Feche o navegador.\n2. Abra de novo.\n');
+            await expect(editorVisual(page).locator('ol li p')).toHaveText(['Feche o navegador.', 'Abra de novo.']);
+            await expect.poll(() => texto(page)).toBe('Olá\n\nSiga os passos:\n\n1. Feche o navegador.\n2. Abra de novo.\n');
         });
 
         test('{cursor} define onde o cursor fica', async ({ page }) => {
@@ -421,7 +424,7 @@ test.describe('Textos rápidos', () => {
             await page.keyboard.type(' ;ola');
             await page.keyboard.press('Tab');
             await expect(editorVisual(page).locator('p').first()).toHaveText('Início Olá, tudo bem?');
-            expect(await texto(page)).toBe('Início Olá, tudo bem?\n');
+            await expect.poll(() => texto(page)).toBe('Início Olá, tudo bem?\n');
         });
 
         test('Alt+número com o cursor no texto insere', async ({ page }) => {

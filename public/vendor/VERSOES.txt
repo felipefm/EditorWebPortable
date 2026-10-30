@@ -1,0 +1,8 @@
+Gerado por ferramentas/gerar.js. Não edite à mão.
+
+monaco-editor 0.52.2
+@milkdown/crepe 7.22.2
+@milkdown/kit 7.22.2
+codemirror 6.0.2
+marked 15.0.7
+dompurify 3.2.6

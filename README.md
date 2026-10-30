@@ -38,7 +38,7 @@ O projeto já vem configurado para o **Cloudflare Workers** (arquivos estáticos
 - **Automático, pelo GitHub (como está configurado):** a cada push na `main`, o GitHub Actions roda os testes e, se passarem, publica com `wrangler deploy`. Veja [Verificação automática no GitHub](#verificação-automática-no-github). Precisa dos segredos `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` no repositório.
 - **Pelo terminal:** `npx wrangler login` e depois `npx wrangler deploy`.
 
-> **Requer internet.** O Monaco Editor, o `marked` e o `DOMPurify` são carregados do CDN jsDelivr, e o Milkdown (modo Visual) do esm.sh. Sem conexão, o editor mostra uma mensagem de erro.
+> **Não depende de internet.** O Monaco Editor, o `marked`, o `DOMPurify` e o Milkdown ficam em `public/vendor/`, junto com o editor. Dá para abrir o `index.html` direto do disco. Veja [Bibliotecas](#bibliotecas).
 
 ### Modo Visual
 
@@ -50,7 +50,7 @@ Nos documentos Markdown, o seletor de visualização tem quatro opções: **Edit
 - **Listas no Markdown padrão:** listas digitadas no Visual saem como `- item`, `1. item` e `- [ ] tarefa`, e sublistas ficam coladas ao item de cima. Uma linha vazia fica marcada com `<br />`, como no Typora.
 - **Fechamento automático:** como no modo Editor, digitar `(`, `[` ou `{` já insere o fechamento, com o cursor no meio. Digitar o fechamento em cima dele não duplica, e Backspace entre um par vazio apaga os dois.
 - **Entrar e sair sem editar não muda nada.** Ao editar, o Markdown é reescrito no formato padrão, preservando o estilo que o documento já usa (`-` ou `*` nas listas, `1.` ou `1)` nas numeradas, `_` ou `*` no itálico, `---` ou `***` nas linhas). Algumas coisas podem mudar mesmo assim: linhas em branco extras somem, e HTML escrito dentro do Markdown pode se perder.
-- O Milkdown é carregado só na primeira vez que você usa o modo Visual. Sem internet, o editor avisa e volta para o modo Dividido.
+- O Milkdown é carregado só na primeira vez que você usa o modo Visual. Se ele não carregar, o editor avisa e volta para o modo Dividido.
 
 ### Minimapa
 
@@ -108,7 +108,7 @@ A versão online não muda. A versão homelab é o mesmo editor rodando num cont
 - **Não tem HTTPS:** na rede de casa, os textos passam sem criptografia; pela VPN, o túnel já protege. **Não abra a porta para a internet.**
 - Limite de 10 MB por arquivo.
 
-Como a versão online, o homelab precisa de internet para carregar o Monaco e o Milkdown (CDN).
+O homelab não precisa de internet: as bibliotecas vêm junto com o projeto, em `public/vendor/`.
 
 ### Textos rápidos
 
@@ -215,7 +215,7 @@ O navegador pode acrescentar um número ao nome (`notas (1).md`) quando o arquiv
 
 ## Testes automatizados
 
-O projeto tem **409 testes automatizados**, divididos em 14 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, textos rápidos, homelab, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 800 execuções.
+O projeto tem **410 testes automatizados**, divididos em 14 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, textos rápidos, homelab, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 800 execuções.
 
 📖 **Documentação completa: [docs/TESTES.md](docs/TESTES.md).** Explica como funcionam, a lista de todos os testes, como o projeto escolhe o que testar, como escrever testes novos e o que fazer quando algo falha.
 
@@ -245,7 +245,9 @@ public/
   index.html   Estrutura da página: barra de ações, abas, editor, preview, textos rápidos, formatador JSON e atalhos
   editor.css   Estilos (tema escuro inspirado no VS Code)
   editor.js    Toda a lógica: Monaco, abas, arquivos, sessão, backup, Markdown, textos rápidos e JSON
+  vendor/      Bibliotecas (Monaco, Milkdown, marked, DOMPurify), geradas por ferramentas/gerar.js
 servidor/     Servidor da versão homelab (só Node, sem dependências)
+ferramentas/  Script que gera public/vendor/ nas versões exatas do package-lock.json
 homelab/      docker-compose.yml da versão homelab
 tests/        Testes automatizados (Playwright), um arquivo por área
 docs/         Documentação dos testes (TESTES.md)
@@ -254,26 +256,52 @@ docs/         Documentação dos testes (TESTES.md)
 wrangler.jsonc Configuração de deploy no Cloudflare
 ```
 
-## Dependências (via CDN)
+## Bibliotecas
+
+Ficam em `public/vendor/`, junto com o editor, e não em CDN:
 
 - [Monaco Editor](https://github.com/microsoft/monaco-editor) 0.52.2
 - [marked](https://github.com/markedjs/marked) 15.0.7
 - [DOMPurify](https://github.com/cure53/DOMPurify) 3.2.6
-- [Milkdown](https://github.com/Milkdown/milkdown) (Crepe) 7.22.2, carregado sob demanda no modo Visual
+- [Milkdown](https://github.com/Milkdown/milkdown) (Crepe) 7.22.2, carregado só quando o modo Visual é usado
 - [CodeMirror](https://codemirror.net) 6.0.2, usado pelo Milkdown nos blocos de código (versão fixada à parte; veja abaixo)
+
+O arquivo `public/vendor/VERSOES.txt` mostra as versões que estão lá, e cada pasta traz a licença da biblioteca.
+
+### Por que não usar CDN
+
+Até 30/10/2026, as bibliotecas vinham de CDNs: o Monaco, o marked e o DOMPurify do jsDelivr, e o Milkdown do esm.sh. O esm.sh monta os pacotes na hora do pedido e escolhe sozinho as versões das dependências do Milkdown, e o modo Visual parou de abrir duas vezes, no site e no homelab, sem nenhuma mudança no editor:
+
+- **26/10/2026:** o esm.sh passou a entregar para `codemirror@^6.0.1` um "codemirror 6.65.7" que não existe, sem a função `basicSetup`.
+- **30/10/2026:** o esm.sh ficou sem espaço em disco e respondia com erro a dependências como `prosemirror-changeset` e `@lezer/common`.
+
+Com as bibliotecas dentro do projeto: se o site abre, o editor inteiro funciona; nada muda sem um commit; o homelab funciona sem internet; e dá para abrir o `index.html` direto do disco. O custo é o tamanho do repositório (cerca de 18 MB em `public/vendor/`).
 
 ### Versões fixas e como atualizar
 
-**Por que as versões são fixas.** Todas as bibliotecas vêm com a versão exata no endereço do CDN, para nada mudar sozinho. Em 26/10/2026, o modo Visual parou de carregar, no site e no homelab, sem nenhuma mudança no editor: o esm.sh, de onde o Milkdown é baixado, passou a entregar para a dependência `codemirror@^6.0.1` um "codemirror 6.65.7" que não existe, sem a função `basicSetup`. O Milkdown 7.22.2 estava fixo, mas as dependências dele, não. A correção foi fixar também o CodeMirror, com `?deps=codemirror@6.0.2` no endereço do Milkdown, em `public/editor.js`.
+As versões exatas, inclusive as das dependências das dependências, ficam no `ferramentas/package-lock.json`. O script `ferramentas/gerar.js` monta `public/vendor/` a partir delas: copia o Monaco, o marked e o DOMPurify e junta o Milkdown, com tudo de que ele precisa, num script só (`vendor/milkdown/milkdown.js`) e num CSS só. A publicação não roda esse script: o Cloudflare publica a pasta `public/` como está no git.
 
-**O risco do outro lado.** Ficar preso numa versão antiga para sempre faz perder novidades e correções. Por isso as versões são atualizadas de propósito, não esquecidas:
+Ficar preso numa versão antiga para sempre faz perder novidades e correções. Por isso as versões são atualizadas de propósito, não esquecidas:
 
 - **De tempos em tempos** (por exemplo, uma vez por mês), conferir se há versão nova de cada biblioteca.
 - **Esperar a versão nova assentar.** Uma versão lançada há poucos dias ainda pode ter defeitos que só aparecem com o uso. Prefira uma que já tenha algumas semanas, ou a primeira correção (`7.23.1` em vez de `7.23.0`).
 - **Ler o que mudou** (o *changelog*), principalmente quando o primeiro número muda (`7.x` para `8.0`), porque aí costuma haver mudanças que quebram.
-- **Trocar o número e deixar os testes decidirem.** Os números ficam em `public/editor.js` (`caminhoBaseMonaco`, `versaoMilkdown` e o `?deps=codemirror@...`) e em `public/index.html` (Monaco, marked e DOMPurify). No push, o GitHub Actions roda todos os testes antes de publicar; se a versão nova quebrar algo, o site não é atualizado.
-- **Ao atualizar o Milkdown,** confira também o CodeMirror: a versão nova pode precisar de outro.
-- **No homelab,** a atualização chega com o `git pull`, depois de passar pelos testes no GitHub.
+- **Ao atualizar o Milkdown,** confira também o CodeMirror (`overrides` no `ferramentas/package.json`): a versão nova pode precisar de outro.
+
+Para atualizar:
+
+```bash
+cd ferramentas
+# 1. troque o número da biblioteca no package.json
+# 2. instale; o --before faz as dependências das dependências também virem de versões que já assentaram
+npm install --before=2026-10-09     # uma data de algumas semanas atrás
+# 3. gere public/vendor/ de novo
+npm run gerar
+```
+
+Depois, rode os testes (`cd tests && npm test`) e faça o commit de `public/vendor/`, `ferramentas/package.json` e `ferramentas/package-lock.json`. No push, o GitHub Actions roda todos os testes antes de publicar; se a versão nova quebrar algo, o site não é atualizado. No homelab, a atualização chega com o `git pull`, depois de passar pelos testes no GitHub.
+
+Para só regerar o que já está fixado (por exemplo, depois de mudar o `gerar.js`): `npm ci` e `npm run gerar`.
 
 ## Licença
 

@@ -21,15 +21,15 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **409 testes** em **14 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 800 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
+São **410 testes** em **14 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 800 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
-| geral | `geral.spec.js` | 6 | Carregamento sem erros, barra lateral, paleta de comandos, rodapé |
+| geral | `geral.spec.js` | 7 | Carregamento sem erros, abrir direto do disco sem internet, barra lateral, paleta de comandos, rodapé |
 | abas | `abas.spec.js` | 12 | Criar, trocar e fechar abas, indicador de não salvo, diálogo de confirmação, troca de linguagem |
 | arquivos | `arquivos.spec.js` | 19 | Abrir, salvar, salvar como, detecção de linguagem, modo "Baixar" dos navegadores sem gravação direta |
 | markdown | `markdown.spec.js` | 58 | Barra e **todos os atalhos** de formatação, envolver a seleção com aspas e parênteses, linha horizontal, preview, segurança do preview, modos de visualização |
-| visual | `visual.spec.js` | 90 | Modo Visual (Milkdown): edição formatada, texto parado ao clicar e selecionar, **todos os atalhos**, cursor pronto para digitar, listas no Markdown padrão, fechamento automático de ( [ {, documento novo em Markdown e Visual, linha horizontal visível, envolver a seleção, botão + da margem sem a alça de arrastar, sincronia com o Markdown, preservação do estilo, salvar, abas, falta de internet |
+| visual | `visual.spec.js` | 90 | Modo Visual (Milkdown): edição formatada, texto parado ao clicar e selecionar, **todos os atalhos**, cursor pronto para digitar, listas no Markdown padrão, fechamento automático de ( [ {, documento novo em Markdown e Visual, linha horizontal visível, envolver a seleção, botão + da margem sem a alça de arrastar, sincronia com o Markdown, preservação do estilo, salvar, abas, falha ao carregar o Milkdown |
 | imagens | `imagens.spec.js` | 23 | Imagens preservadas no modo Visual, diálogo "Inserir imagem" (link e arquivo), item Imagem do menu `/`, redução de tamanho, colar e soltar imagens |
 | mapa | `mapa.spec.js` | 13 | Minimapa do Monaco (Editor e Dividido) e o desenhado no modo Visual: botão Mapa, escolha lembrada, clicar e arrastar para rolar, atualização ao digitar |
 | pastas | `pastas.spec.js` | 85 | Painel de pastas, com a pasta do navegador (Edge) e com a do servidor homelab (Edge e Firefox): abrir pasta, árvore, abrir e salvar arquivos, criar, renomear, mover e excluir, teclado, menu, permissão, restaurar ao recarregar, largura, aviso no Firefox; no homelab, também senha, documento novo, conflito e lixeira |
@@ -81,7 +81,7 @@ npm install
 
 Esse comando instala o Playwright e baixa o Firefox de testes.
 
-Os testes precisam de internet, porque o Monaco Editor, o `marked` e o `DOMPurify` são carregados do CDN, e o Milkdown (modo Visual) do esm.sh.
+Depois da instalação, os testes não precisam de internet: o editor e as bibliotecas dele (em `public/vendor/`) são servidos pelo próprio servidor de testes.
 
 ## Comandos
 
@@ -180,6 +180,8 @@ Se a linha alterada estiver **fora de uma função** (por exemplo, no bloco de i
 
 **`servidor/` e `tests/homelab.js`:** rodam as áreas **homelab** e **pastas**.
 
+**`public/vendor/` e `ferramentas/`** (as bibliotecas): rodam **todos** os testes. Os arquivos de `public/vendor/` ficam fora do diff linha a linha, porque são enormes e minificados.
+
 **`tests/`:**
 - Um arquivo `*.spec.js` alterado roda a própria área.
 - `utilidades.js`, `servidor.js`, `playwright.config.js`, `package.json` ou `package-lock.json` rodam **todos** os testes, porque afetam todas as áreas.
@@ -221,9 +223,10 @@ Para desligar: `git config --unset core.hooksPath`. Com ele ligado, `git push --
 
 ## Lista de testes por área
 
-### geral (6)
+### geral (7)
 
 - carrega sem erros e mostra a interface principal
+- abre direto do disco (`file://`), com o Monaco e o modo Visual, sem pedir nada à internet
 - barra lateral alterna entre documentos, JSON e atalhos
 - Ctrl+Alt+J abre o formatador JSON
 - botão de busca abre a paleta de comandos
@@ -314,7 +317,7 @@ Sem gravação direta (Firefox, Zen, Safari, celular):
 - clicar no + abre o menu de blocos
 - arrastar pelo + não move o parágrafo
 - começar a seleção pela margem esquerda não move o parágrafo
-- sem internet para o editor visual, volta ao modo Dividido e avisa
+- se o editor visual não carregar, volta ao modo Dividido e avisa
 
 Cursor pronto para digitar, sem clicar no texto, depois de:
 
@@ -698,7 +701,6 @@ As pastas `tests/relatorio/` e `tests/resultados/` são geradas a cada execuçã
 
 Um teste que falha é **repetido uma vez** automaticamente (`retries: 1` no `playwright.config.js`). Se passar na segunda tentativa, o resultado mostra, por exemplo, `1 flaky`, e o push segue. Isso acontece por motivos que não são defeitos do editor:
 
-- o Milkdown (modo Visual) vem da internet (esm.sh) e às vezes demora ou falha;
 - com vários testes em paralelo, o computador fica ocupado e o navegador perde o tempo de um duplo clique ou de uma digitação.
 
 Um defeito de verdade falha nas duas tentativas e continua bloqueando o push. Se o mesmo teste aparecer como instável com frequência, vale investigar: rode `npx playwright test <área> --repeat-each=5` para tentar reproduzir.
@@ -707,7 +709,7 @@ Um defeito de verdade falha nas duas tentativas e continua bloqueando o push. Se
 
 | Problema | Causa provável | Solução |
 | --- | --- | --- |
-| Todos os testes falham esperando `window.editor` | Sem internet, ou o CDN fora do ar | Confira a conexão; o Monaco vem do jsDelivr |
+| Todos os testes falham esperando `window.editor` | `public/vendor/` incompleto | Confira se `public/vendor/` veio inteiro do git; para refazer, `cd ferramentas && npm ci && npm run gerar` |
 | `browserType.launch: Chromium distribution 'msedge' is not found` | Edge não instalado | Instale o Edge ou rode com `NAVEGADOR=chrome` |
 | `As dependências dos testes não estão instaladas` | Falta `npm install` | `cd tests && npm install` |
 | O site não atualizou depois do push | Algum teste falhou no GitHub, ou a publicação ainda está na fila | Veja a aba **Actions** do repositório |

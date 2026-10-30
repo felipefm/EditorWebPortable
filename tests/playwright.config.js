@@ -12,7 +12,7 @@ module.exports = defineConfig({
     expect: { timeout: 7000 },
     fullyParallel: true,
     // Um teste que falha é repetido uma vez. Se passar na segunda, aparece como "flaky" (instável)
-    // no resultado: costuma ser o Milkdown demorando a vir do CDN ou o computador ocupado. Um defeito
+    // no resultado: costuma ser o computador ocupado. Um defeito
     // de verdade falha nas duas vezes e continua bloqueando o push.
     retries: 1,
     reporter: [['list'], ['html', { open: 'never', outputFolder: 'relatorio' }]],

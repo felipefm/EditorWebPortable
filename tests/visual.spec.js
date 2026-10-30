@@ -1,4 +1,4 @@
-// Área: modo Visual de Markdown (Milkdown, carregado do CDN esm.sh).
+// Área: modo Visual de Markdown (Milkdown, carregado de public/vendor/ só quando o modo Visual é usado).
 const { test, expect } = require('@playwright/test');
 const { abrirEditor, recarregar, definirConteudo, obterConteudo, novaAba, arquivosGravados } = require('./utilidades');
 
@@ -131,8 +131,8 @@ test.describe('Modo Visual', () => {
         await expect(editorVisual(page).locator('h1')).toHaveText('Título');
     });
 
-    test('sem internet para o editor visual, volta ao modo Dividido e avisa', async ({ page }) => {
-        await page.route('https://esm.sh/**', (rota) => rota.abort());
+    test('se o editor visual não carregar, volta ao modo Dividido e avisa', async ({ page }) => {
+        await page.route('**/vendor/milkdown/**', (rota) => rota.abort());
         await abrirEditor(page);
         await page.locator('#linguagem').selectOption('markdown');
         await definirConteudo(page, '# Oi');

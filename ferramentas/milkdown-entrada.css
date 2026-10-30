@@ -1,0 +1,3 @@
+/* Estilos do Milkdown (tema escuro "frame"), num arquivo só (veja gerar.js). */
+@import '@milkdown/crepe/theme/common/style.css';
+@import '@milkdown/crepe/theme/frame-dark.css';

@@ -1,5 +1,6 @@
 (function () {
-            const caminhoBaseMonaco = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs';
+            // As bibliotecas ficam em public/vendor/ (veja ferramentas/gerar.js), não num CDN.
+            const caminhoBaseMonaco = new URL('vendor/monaco/vs', document.baseURI).href;
             const chaveConteudo = 'meu-editor-web-conteudo';
             const chaveNomeArquivo = 'meu-editor-web-nome-arquivo';
             const chaveSessaoLocal = 'meu-editor-web-sessao-v2';
@@ -27,7 +28,6 @@
             const chaveMapa = 'meu-editor-web-minimapa';
             // No celular o minimapa ocupa espaço demais; fica sempre desligado.
             const telaEstreita = window.matchMedia('(max-width: 640px)');
-            const versaoMilkdown = '7.22.2';
             const botaoInserirImagem = document.getElementById('inserir-imagem');
             const dialogoImagem = document.getElementById('dialogo-imagem');
             const formularioImagem = document.getElementById('formulario-imagem');
@@ -726,49 +726,29 @@
                 atualizarPreviewMarkdown();
             }
 
-            // Editor visual (Milkdown): carregado do CDN só quando o modo Visual é usado.
+            // Editor visual (Milkdown): carregado só quando o modo Visual é usado.
             // O texto do Monaco continua sendo a fonte; o visual escreve nele a cada edição.
             function carregarMilkdown() {
                 if (!carregamentoMilkdown) {
-                    // O tema do Crepe importa estes arquivos por nome de pacote (@import 'prosemirror-virtual-cursor/...'),
-                    // o que o navegador não resolve; sem eles o cursor do Milkdown ficava no meio do texto e o
-                    // empurrava para cima e para baixo a cada clique e seleção. Por isso vêm antes, direto do CDN.
-                    [
-                        `@milkdown/prose@${versaoMilkdown}/lib/style/prosemirror.css`,
-                        `@milkdown/prose@${versaoMilkdown}/lib/style/gapcursor.css`,
-                        `@milkdown/prose@${versaoMilkdown}/lib/style/tables.css`,
-                        'prosemirror-virtual-cursor@0.4.2/style/virtual-cursor.css',
-                        `@milkdown/crepe@${versaoMilkdown}/lib/theme/common/style.css`,
-                        `@milkdown/crepe@${versaoMilkdown}/lib/theme/frame-dark.css`
-                    ].forEach(function (arquivo) {
-                        const link = document.createElement('link');
-                        link.rel = 'stylesheet';
-                        link.href = `https://cdn.jsdelivr.net/npm/${arquivo}`;
-                        document.head.appendChild(link);
-                    });
-                    const base = `https://esm.sh/@milkdown/kit@${versaoMilkdown}`;
-                    carregamentoMilkdown = Promise.all([
-                        // CodeMirror fixo: em 26/10/2026 o esm.sh passou a entregar um "codemirror 6.65.7" que não
-                        // existe, sem a função basicSetup, e o modo Visual parou de carregar.
-                        import(`https://esm.sh/@milkdown/crepe@${versaoMilkdown}?deps=codemirror@6.0.2`),
-                        import(`${base}/core`),
-                        import(`${base}/preset/gfm`),
-                        import(`${base}/preset/commonmark`),
-                        import(`${base}/utils`),
-                        import(`${base}/component/link-tooltip`),
-                        import(`${base}/prose/transform`),
-                        import(`${base}/prose/state`)
-                    ]).then(function ([moduloCrepe, moduloCore, moduloGfm, moduloCommonmark, moduloUtils, moduloLink, moduloTransform, moduloEstado]) {
-                        return {
-                            Crepe: moduloCrepe.Crepe,
-                            core: moduloCore,
-                            gfm: moduloGfm,
-                            commonmark: moduloCommonmark,
-                            callCommand: moduloUtils.callCommand,
-                            linkTooltipAPI: moduloLink.linkTooltipAPI,
-                            transform: moduloTransform,
-                            estado: moduloEstado
+                    // O Milkdown vem de public/vendor/, num script só gerado por ferramentas/gerar.js, que define
+                    // window.Milkdown com Crepe, core, gfm, commonmark, callCommand, linkTooltipAPI, transform e
+                    // estado. É um script comum, e não um módulo, para funcionar também com o editor aberto direto do
+                    // disco (file://), onde o navegador bloqueia import().
+                    // Antes vinha do esm.sh, que monta os pacotes na hora: já entregou um CodeMirror que não existia (26/10/2026)
+                    // e ficou fora do ar (30/10/2026), e nas duas vezes o modo Visual parou de abrir.
+                    const link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = 'vendor/milkdown/milkdown.css';
+                    document.head.appendChild(link);
+                    carregamentoMilkdown = new Promise(function (resolver, rejeitar) {
+                        const script = document.createElement('script');
+                        script.src = 'vendor/milkdown/milkdown.js';
+                        script.onload = function () { resolver(window.Milkdown); };
+                        script.onerror = function () {
+                            script.remove();
+                            rejeitar(new Error('Não foi possível carregar o Milkdown.'));
                         };
+                        document.head.appendChild(script);
                     }).catch(function (erro) {
                         carregamentoMilkdown = undefined;
                         throw erro;

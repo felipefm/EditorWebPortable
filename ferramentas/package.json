@@ -1,0 +1,21 @@
+{
+  "name": "editor-portable-bibliotecas",
+  "private": true,
+  "description": "Gera public/vendor/ com as bibliotecas do editor, nas versões exatas abaixo. Veja o README, seção Bibliotecas.",
+  "scripts": {
+    "gerar": "node gerar.js"
+  },
+  "dependencies": {
+    "@milkdown/crepe": "7.22.2",
+    "@milkdown/kit": "7.22.2",
+    "dompurify": "3.2.6",
+    "marked": "15.0.7",
+    "monaco-editor": "0.52.2"
+  },
+  "overrides": {
+    "codemirror": "6.0.2"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

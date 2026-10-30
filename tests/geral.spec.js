@@ -1,5 +1,7 @@
 // Área: carregamento, topo, barra lateral, paleta de comandos e rodapé.
 const { test, expect } = require('@playwright/test');
+const path = require('path');
+const { pathToFileURL } = require('url');
 const { abrirEditor, definirConteudo, focarEditor } = require('./utilidades');
 
 test.describe('Geral', () => {
@@ -64,5 +66,22 @@ test.describe('Geral', () => {
         await page.locator('#trilho-json').click();
         await expect(page.locator('#linguagem')).toBeHidden();
         await expect(page.locator('#status-cursor')).toBeHidden();
+    });
+
+    // As bibliotecas vêm de public/vendor/, sem CDN; nenhuma pode exigir servidor (import() de módulo, por exemplo).
+    test('abre direto do disco (file://), com o Monaco e o modo Visual, sem pedir nada à internet', async ({ page }) => {
+        const externos = [];
+        page.on('request', (pedido) => {
+            if (/^https?:/.test(pedido.url())) {
+                externos.push(pedido.url());
+            }
+        });
+        await page.goto(pathToFileURL(path.resolve(__dirname, '..', 'public', 'index.html')).href);
+        await page.waitForFunction(() => window.editor && window.monaco, null, { timeout: 30000 });
+        await page.locator('#linguagem').selectOption('markdown');
+        await definirConteudo(page, '# Do disco');
+        await page.locator('[data-modo="visual"]').click();
+        await expect(page.locator('#editor-visual .ProseMirror h1')).toHaveText('Do disco', { timeout: 30000 });
+        expect(externos).toEqual([]);
     });
 });

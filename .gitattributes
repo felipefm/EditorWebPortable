@@ -1,1 +1,4 @@
 .githooks/* text eol=lf
+
+# Bibliotecas geradas por ferramentas/gerar.js: ficam como foram geradas, sem conversão de fim de linha.
+public/vendor/** -text
