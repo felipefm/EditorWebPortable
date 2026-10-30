@@ -70,6 +70,26 @@ test.describe('Celular', () => {
         expect(painel.x).toBeGreaterThanOrEqual(0);
         expect(painel.x + painel.width).toBeLessThanOrEqual(390);
     });
+
+    test('textos rápidos cobrem a tela sem passar da largura e fecham ao inserir', async ({ page }) => {
+        await abrirEditor(page);
+        await page.locator('#linguagem').selectOption('plaintext');
+        await definirConteudo(page, '');
+        await page.locator('#trilho-textos').click();
+        await page.locator('#textos-novo').click();
+        await page.locator('#textos-nome').fill('Saudação');
+        await page.locator('#textos-texto').fill('Olá!');
+        await page.locator('#textos-formulario button[type="submit"]').click();
+        const painel = await page.locator('#painel-textos').boundingBox();
+        expect(painel.x).toBe(0);
+        expect(painel.width).toBeGreaterThan(380);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+        const inserir = await page.locator('.texto-cartao [data-acao="inserir"]').boundingBox();
+        expect(inserir.height).toBeGreaterThanOrEqual(36);
+        await page.locator('.texto-cartao [data-acao="inserir"]').click();
+        await expect(page.locator('#painel-textos')).toBeHidden();
+        expect(await page.evaluate(() => window.editor.getValue())).toBe('Olá!');
+    });
 });
 
 // Na versão homelab o celular também usa a pasta do servidor.

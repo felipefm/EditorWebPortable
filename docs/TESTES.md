@@ -21,7 +21,7 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **375 testes** em **13 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 670 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
+São **409 testes** em **14 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 800 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
@@ -33,11 +33,12 @@ São **375 testes** em **13 áreas**, um arquivo por área. Eles rodam em dois n
 | imagens | `imagens.spec.js` | 23 | Imagens preservadas no modo Visual, diálogo "Inserir imagem" (link e arquivo), item Imagem do menu `/`, redução de tamanho, colar e soltar imagens |
 | mapa | `mapa.spec.js` | 13 | Minimapa do Monaco (Editor e Dividido) e o desenhado no modo Visual: botão Mapa, escolha lembrada, clicar e arrastar para rolar, atualização ao digitar |
 | pastas | `pastas.spec.js` | 85 | Painel de pastas, com a pasta do navegador (Edge) e com a do servidor homelab (Edge e Firefox): abrir pasta, árvore, abrir e salvar arquivos, criar, renomear, mover e excluir, teclado, menu, permissão, restaurar ao recarregar, largura, aviso no Firefox; no homelab, também senha, documento novo, conflito e lixeira |
+| textos | `textos.spec.js` | 33 | Textos rápidos: criar, editar, apagar, validar, copiar, inserir (Editor e Visual), {data}, {hora} e {cursor}, abreviação + Tab, **todos os atalhos** Alt+número, busca, ordem fixa, contagem de uso, recarregar, exportar e importar |
 | homelab | `homelab.spec.js` | 11 | API do servidor homelab: caminhos fora da pasta, links, origem, endereço (DNS rebinding), senha, tamanho, conflito, lixeira e cópias |
 | atalhos | `atalhos.spec.js` | 26 | Atalhos gerais (salvar, salvar como, abrir, nova aba, formatador JSON) em cada modo, com o foco dentro e fora do texto |
 | json | `json.spec.js` | 11 | Formatar, compactar, indentação, erros com linha e coluna, copiar, abrir em aba |
 | sessao | `sessao.spec.js` | 10 | Sessão restaurada, painel de backup, exportar e importar |
-| celular | `celular.spec.js` | 11 | Layout em tela de 390 × 844, inclusive o painel de pastas da versão homelab |
+| celular | `celular.spec.js` | 12 | Layout em tela de 390 × 844, inclusive o painel de pastas da versão homelab e o de textos rápidos |
 
 Tudo fica na pasta `tests/`, separada do site. O Cloudflare publica só a pasta `public/`, então os testes nunca vão para o ar.
 
@@ -51,6 +52,7 @@ tests/
   imagens.spec.js      │
   mapa.spec.js         │
   pastas.spec.js       │
+  textos.spec.js       │
   homelab.spec.js      │
   atalhos.spec.js      │
   json.spec.js         │
@@ -99,6 +101,7 @@ Todos são executados dentro da pasta `tests/`.
 | `npm run test:imagens` | Só imagens |
 | `npm run test:mapa` | Só o minimapa |
 | `npm run test:pastas` | Só o painel de pastas |
+| `npm run test:textos` | Só os textos rápidos |
 | `npm run test:homelab` | Só a API do servidor homelab |
 | `npm run test:atalhos` | Só os atalhos gerais em todos os modos |
 | `npm run test:firefox` | Todos os testes, só no Firefox |
@@ -143,6 +146,7 @@ O que mudou:
 
 | Se o nome tiver… | Área |
 | --- | --- |
+| `textorapido`, `textosrapidos`, `painelTextos`, `abreviacao` (no HTML e no CSS, `textos-` e `texto-`) | textos |
 | `json` | json |
 | `visual`, `milkdown`, `crepe`, `atualizarPreviewMarkdown`, `aplicarModoPreview` | visual |
 | `imagem`, `image`, `img` | imagens |
@@ -479,6 +483,25 @@ Só na versão homelab (Edge e Firefox):
 - excluir manda para a lixeira do servidor
 - com senha, o painel pede a senha uma vez (senha errada avisa; depois de recarregar, não pede de novo)
 
+### textos (33)
+
+- painel abre pelo botão do trilho, começa vazio e fecha pelo X; continua aberto depois de recarregar; a paleta de comandos mostra e esconde
+- criar um texto mostra o cartão com nome, prévia (variáveis destacadas), abreviação e atalho
+- o formulário recusa nome vazio, texto vazio, abreviação com espaço ou repetida
+- botões de variável inserem {data}, {hora} e {cursor}; Cancelar e Esc fecham sem salvar
+- editar muda o texto e mantém a posição; apagar pergunta antes (Cancelar mantém, Apagar remove)
+- Copiar copia com {data} e {hora} preenchidas e sem {cursor}, e conta o uso
+- Inserir põe o texto no cursor, troca o trecho selecionado, respeita o {cursor} (também com quebras de linha do Windows) e, vindo do formatador JSON, volta para o documento
+- os cartões não mudam de lugar ao usar; os novos entram no topo
+- busca por nome, texto e abreviação; Enter copia o primeiro; busca sem resultado avisa
+- abreviação + Tab troca pelo texto; Tab sem abreviação conhecida continua inserindo a tabulação; Ctrl+Z desfaz a troca
+- Alt+número no documento insere (Alt+1 e Alt+9); fora do documento copia; sem texto ligado não faz nada
+- escolher um atalho já usado tira o atalho do outro texto
+- textos, contagem e atalhos voltam depois de recarregar; exportar leva os textos; importar troca os atuais; importar sessão antiga mantém os atuais
+- no modo Visual: Inserir no parágrafo do cursor, parágrafos e lista viram Markdown formatado, {cursor}, {data} e {hora}, abreviação + Tab e Alt+número
+
+Os testes não leem a área de transferência de verdade (o Firefox do Playwright não deixa); o que é copiado fica guardado numa lista da página.
+
 ### homelab (11)
 
 Testam a API do servidor direto, sem abrir o editor. Cada teste liga o servidor numa pasta temporária (`tests/homelab.js`). Rodam só no projeto `desktop`.
@@ -539,7 +562,7 @@ Também:
 - configurar backup em arquivo grava a sessão e mostra "Backup ativo"
 - navegador sem backup em arquivo explica e esconde o botão
 
-### celular (10)
+### celular (12)
 
 Estes rodam numa tela de 390 × 844 (projeto `celular` no `playwright.config.js`).
 
@@ -554,6 +577,7 @@ Estes rodam numa tela de 390 × 844 (projeto `celular` no `playwright.config.js`
 - na versão homelab, o botão ⋯ aparece sem passar o mouse e o menu renomeia
 - na versão homelab, o menu do botão ⋯ recorta e cola em outra pasta; os itens não se arrastam com o dedo
 - painel de sessão cabe na tela
+- textos rápidos cobrem a tela sem passar da largura, com botões altos para o dedo, e fecham ao inserir
 
 ## Como os testes funcionam por dentro
 

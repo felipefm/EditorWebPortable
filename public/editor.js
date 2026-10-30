@@ -99,6 +99,18 @@
             const menuPastas = document.getElementById('menu-pastas');
             const conteudoPastas = document.getElementById('pastas-conteudo');
             const chavePainelPastas = 'meu-editor-web-painel-pastas';
+            const botaoTrilhoTextos = document.getElementById('trilho-textos');
+            const painelTextos = document.getElementById('painel-textos');
+            const tituloTextos = document.getElementById('textos-titulo');
+            const botaoNovoTexto = document.getElementById('textos-novo');
+            const vistaListaTextos = document.getElementById('textos-vista-lista');
+            const buscaTextos = document.getElementById('textos-busca');
+            const listaTextos = document.getElementById('textos-lista');
+            const formularioTextos = document.getElementById('textos-formulario');
+            const campoTextoRapido = document.getElementById('textos-texto');
+            const seletorTeclaTexto = document.getElementById('textos-tecla');
+            const erroTextos = document.getElementById('textos-erro');
+            const chavePainelTextos = 'meu-editor-web-painel-textos';
             // Abrir uma pasta inteira só existe no Chrome e no Edge do computador.
             const aberturaPastaDisponivel = typeof window.showDirectoryPicker === 'function';
             const pastasIgnoradas = ['.git', 'node_modules'];
@@ -139,6 +151,9 @@
                 ultimoMarkdown: undefined
             };
             let mapaLigado = lerPreferenciaMapa();
+            let textosRapidos = [];
+            let textoEmEdicao;
+            let painelTextosAberto = lerPainelTextosAberto();
             const mapa = {
                 formas: [],
                 larguraConteudo: 1,
@@ -304,6 +319,7 @@
                         expandidas: Array.from(pastas.expandidas),
                         manipulador: incluirManipuladores ? pastas.raiz : undefined
                     },
+                    textosRapidos: textosRapidos.map(function (item) { return { ...item }; }),
                     formatadorJson: {
                         entrada: editorEntradaJson ? editorEntradaJson.getValue() : '',
                         saida: editorSaidaJson ? editorSaidaJson.getValue() : '',
@@ -1832,6 +1848,22 @@
                 editorEntradaJson.focus();
             }
 
+            async function copiarParaAreaDeTransferencia(texto) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(texto);
+                    return;
+                }
+                const areaTemporaria = document.createElement('textarea');
+                areaTemporaria.value = texto;
+                document.body.appendChild(areaTemporaria);
+                areaTemporaria.select();
+                const copiou = document.execCommand('copy');
+                areaTemporaria.remove();
+                if (!copiou) {
+                    throw new Error('O navegador recusou a cópia.');
+                }
+            }
+
             async function copiarResultadoJson() {
                 const resultado = editorSaidaJson.getValue();
                 if (!resultado) {
@@ -1839,16 +1871,7 @@
                 }
 
                 try {
-                    if (navigator.clipboard && window.isSecureContext) {
-                        await navigator.clipboard.writeText(resultado);
-                    } else {
-                        const areaTemporaria = document.createElement('textarea');
-                        areaTemporaria.value = resultado;
-                        document.body.appendChild(areaTemporaria);
-                        areaTemporaria.select();
-                        document.execCommand('copy');
-                        areaTemporaria.remove();
-                    }
+                    await copiarParaAreaDeTransferencia(resultado);
                     atualizarEstado('Resultado copiado');
                 } catch (erro) {
                     atualizarEstado('Não foi possível copiar o resultado');
@@ -2135,6 +2158,12 @@
                 linguagem.value = obterLinguagemDisponivel(documentoAtual.modelo.getLanguageId());
                 editor.setModel(documentoAtual.modelo);
                 restaurarEstadoFormatador(sessao);
+                // Sessões exportadas antes dos textos rápidos não apagam os atuais.
+                if (Array.isArray(sessao.textosRapidos)) {
+                    textosRapidos = normalizarTextosRapidos(sessao.textosRapidos);
+                    fecharFormularioTexto(false);
+                    renderizarTextosRapidos();
+                }
                 aplicarModoPreview(sessao.modoPreview);
                 if (sessao.visualizacaoAtual === 'formatador-json') {
                     ativarFormatadorJson();
@@ -4544,6 +4573,530 @@
 
             configurarModoArquivos();
 
+            // Textos rápidos: textos que a pessoa cola várias vezes por dia. Ficam na sessão (e por isso também
+            // no backup e na exportação). Cada um pode ter uma abreviação, que vira o texto ao apertar Tab, e um
+            // atalho Alt+1 a Alt+9. A lista mantém sempre a mesma ordem, para os cartões não mudarem de lugar.
+            function lerPainelTextosAberto() {
+                try {
+                    return localStorage.getItem(chavePainelTextos) === 'aberto';
+                } catch (erro) {
+                    return false;
+                }
+            }
+
+            function gravarPainelTextosAberto() {
+                try {
+                    localStorage.setItem(chavePainelTextos, painelTextosAberto ? 'aberto' : 'fechado');
+                } catch (erro) {
+                    return;
+                }
+            }
+
+            function novoIdTextoRapido() {
+                return `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+            }
+
+            function normalizarTextosRapidos(lista) {
+                if (!Array.isArray(lista)) {
+                    return [];
+                }
+                return lista.filter(function (item) {
+                    return item && typeof item.nome === 'string' && typeof item.texto === 'string';
+                }).map(function (item) {
+                    return {
+                        id: typeof item.id === 'string' ? item.id : novoIdTextoRapido(),
+                        nome: item.nome,
+                        texto: item.texto,
+                        abreviacao: typeof item.abreviacao === 'string' ? item.abreviacao : '',
+                        tecla: /^[1-9]$/.test(item.tecla) ? item.tecla : '',
+                        usos: Number.isFinite(item.usos) ? item.usos : 0
+                    };
+                });
+            }
+
+            // {data} e {hora} valem o momento do uso; {cursor} some e diz onde o cursor fica.
+            function prepararTextoRapido(textoRapido) {
+                const agora = new Date();
+                const texto = textoRapido.texto
+                    .split('{data}').join(agora.toLocaleDateString('pt-BR'))
+                    .split('{hora}').join(agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+                return { texto: texto.split('{cursor}').join(''), cursor: texto.indexOf('{cursor}') };
+            }
+
+            function textoRapidoDaAbreviacao(textoAntesDoCursor) {
+                const palavra = (/\S+$/.exec(textoAntesDoCursor) || [''])[0];
+                return palavra ? textosRapidos.find(function (item) { return item.abreviacao === palavra; }) : undefined;
+            }
+
+            function registrarUsoTextoRapido(textoRapido) {
+                textoRapido.usos += 1;
+                renderizarTextosRapidos();
+                agendarPersistenciaSessao();
+            }
+
+            function inserirTextoRapidoNoMonaco(preparado, apagarAntes) {
+                const modelo = editor.getModel();
+                const selecao = editor.getSelection();
+                const inicio = modelo.getOffsetAt(selecao.getStartPosition()) - apagarAntes;
+                editor.pushUndoStop();
+                editor.executeEdits('texto-rapido', [{
+                    range: monaco.Range.fromPositions(modelo.getPositionAt(inicio), selecao.getEndPosition()),
+                    text: preparado.texto,
+                    forceMoveMarkers: true
+                }]);
+                if (preparado.cursor >= 0) {
+                    // Com quebras de linha \r\n, cada quebra antes do cursor ocupa dois caracteres no modelo.
+                    const antes = preparado.texto.slice(0, preparado.cursor).replace(/\r?\n/g, modelo.getEOL());
+                    const posicao = modelo.getPositionAt(inicio + antes.length);
+                    editor.setSelection(monaco.Selection.fromPositions(posicao, posicao));
+                }
+                editor.pushUndoStop();
+                editor.revealPositionInCenterIfOutsideViewport(editor.getPosition());
+                editor.focus();
+            }
+
+            // No Visual o texto é lido como Markdown, como ao colar: a primeira e a última linha entram no
+            // parágrafo do cursor, a não ser que o texto comece ou termine com uma quebra de linha.
+            function inserirMarkdownNoVisual(ctx, visao, m, markdown) {
+                const documentoNovo = markdown.trim() ? ctx.get(m.core.parserCtx)(markdown) : undefined;
+                if (!documentoNovo || !documentoNovo.content.size) {
+                    if (markdown && !/\n/.test(markdown)) {
+                        visao.dispatch(visao.state.tr.insertText(markdown));
+                    }
+                    return;
+                }
+                const conteudo = documentoNovo.content;
+                function profundidade(no, lado) {
+                    let total = 0;
+                    for (let atual = no; atual && !atual.isLeaf && !atual.type.spec.isolating; atual = atual[lado]) {
+                        total += 1;
+                    }
+                    return total;
+                }
+                const abertoInicio = /^\s*\n/.test(markdown) ? 0 : profundidade(conteudo.firstChild, 'firstChild');
+                const abertoFim = /\n\s*$/.test(markdown) ? 0 : profundidade(conteudo.lastChild, 'lastChild');
+                // O Markdown descarta os espaços das pontas; dentro de uma linha eles fazem diferença.
+                const espacoAntes = abertoInicio ? /^[ \t]*/.exec(markdown)[0] : '';
+                const espacoDepois = abertoFim ? /[ \t]*$/.exec(markdown)[0] : '';
+                if (espacoAntes) {
+                    visao.dispatch(visao.state.tr.insertText(espacoAntes));
+                }
+                // A classe Slice vem do próprio documento, sem carregar mais um módulo do CDN.
+                const Slice = visao.state.doc.slice(0, 0).constructor;
+                visao.dispatch(visao.state.tr.replaceSelection(new Slice(conteudo, abertoInicio, abertoFim)));
+                if (espacoDepois) {
+                    visao.dispatch(visao.state.tr.insertText(espacoDepois));
+                }
+            }
+
+            function inserirTextoRapidoNoVisual(preparado, apagarAntes) {
+                noVisual(function (ctx, visao, m) {
+                    if (apagarAntes) {
+                        const posicao = visao.state.selection.from;
+                        visao.dispatch(visao.state.tr.delete(posicao - apagarAntes, posicao));
+                    }
+                    if (preparado.cursor < 0) {
+                        inserirMarkdownNoVisual(ctx, visao, m, preparado.texto);
+                    } else {
+                        inserirMarkdownNoVisual(ctx, visao, m, preparado.texto.slice(0, preparado.cursor));
+                        const posicaoCursor = visao.state.selection.from;
+                        inserirMarkdownNoVisual(ctx, visao, m, preparado.texto.slice(preparado.cursor));
+                        visao.dispatch(visao.state.tr.setSelection(m.estado.TextSelection.near(visao.state.doc.resolve(posicaoCursor))));
+                    }
+                    visao.dispatch(visao.state.tr.scrollIntoView());
+                    visao.focus();
+                });
+                sincronizarEditorVisual();
+            }
+
+            // apagarAntes: quantos caracteres antes do cursor saem (a abreviação digitada).
+            function inserirTextoRapido(textoRapido, apagarAntes) {
+                if (visualizacaoAtual !== 'editor') {
+                    mostrarEditor();
+                }
+                if (estaEmMarkdown() && modoPreview === 'preview') {
+                    aplicarModoPreview('dividido');
+                    agendarPersistenciaSessao();
+                }
+                const preparado = prepararTextoRapido(textoRapido);
+                if (editorPaineis.classList.contains('modo-visual') && visual.crepe && visual.documento === documentoAtual) {
+                    inserirTextoRapidoNoVisual(preparado, apagarAntes || 0);
+                } else {
+                    inserirTextoRapidoNoMonaco(preparado, apagarAntes || 0);
+                }
+                registrarUsoTextoRapido(textoRapido);
+                atualizarEstado(`Texto rápido "${textoRapido.nome}" inserido`);
+                if (telaEstreita.matches && painelTextosAberto) {
+                    painelTextosAberto = false;
+                    gravarPainelTextosAberto();
+                    aplicarPainelTextos();
+                }
+            }
+
+            async function copiarTextoRapido(textoRapido) {
+                try {
+                    await copiarParaAreaDeTransferencia(prepararTextoRapido(textoRapido).texto);
+                } catch (erro) {
+                    atualizarEstado('O navegador não deixou copiar. Use "Inserir" para pôr o texto no documento.');
+                    return;
+                }
+                registrarUsoTextoRapido(textoRapido);
+                atualizarEstado(`Texto rápido "${textoRapido.nome}" copiado. Cole com Ctrl+V.`);
+                const cartao = listaTextos.querySelector(`[data-id="${textoRapido.id}"]`);
+                if (cartao) {
+                    cartao.classList.add('copiado');
+                    window.setTimeout(function () { cartao.classList.remove('copiado'); }, 900);
+                }
+            }
+
+            function criarCartaoTextoRapido(textoRapido) {
+                const cartao = document.createElement('article');
+                cartao.className = 'texto-cartao';
+                cartao.dataset.id = textoRapido.id;
+
+                const topo = document.createElement('div');
+                topo.className = 'texto-cartao-topo';
+                const nome = document.createElement('span');
+                nome.className = 'texto-cartao-nome';
+                nome.textContent = textoRapido.nome;
+                nome.title = textoRapido.nome;
+                const usos = document.createElement('span');
+                usos.className = 'texto-cartao-usos';
+                usos.textContent = textoRapido.usos ? `usado ${textoRapido.usos}×` : '';
+                topo.append(nome, usos);
+                [
+                    ['editar', 'Editar', '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>'],
+                    ['apagar', 'Apagar', '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>']
+                ].forEach(function ([acao, rotulo, desenho]) {
+                    const botao = document.createElement('button');
+                    botao.type = 'button';
+                    botao.className = 'pastas-acao';
+                    botao.dataset.acao = acao;
+                    botao.title = rotulo;
+                    botao.setAttribute('aria-label', `${rotulo} ${textoRapido.nome}`);
+                    botao.innerHTML = `<svg class="icone" viewBox="0 0 24 24" aria-hidden="true">${desenho}</svg>`;
+                    topo.appendChild(botao);
+                });
+
+                const previa = document.createElement('div');
+                previa.className = 'texto-cartao-previa';
+                textoRapido.texto.split(/(\{(?:data|hora|cursor)\})/).forEach(function (parte, indice) {
+                    if (indice % 2) {
+                        const variavel = document.createElement('span');
+                        variavel.className = 'texto-variavel';
+                        variavel.textContent = parte;
+                        previa.appendChild(variavel);
+                    } else if (parte) {
+                        previa.appendChild(document.createTextNode(parte));
+                    }
+                });
+
+                const rodape = document.createElement('div');
+                rodape.className = 'texto-cartao-rodape';
+                const chips = document.createElement('div');
+                chips.className = 'texto-cartao-chips';
+                if (textoRapido.abreviacao) {
+                    const chip = document.createElement('span');
+                    chip.className = 'texto-chip';
+                    chip.title = 'Abreviação: digite no documento e aperte Tab';
+                    chip.textContent = `${textoRapido.abreviacao} + Tab`;
+                    chips.appendChild(chip);
+                }
+                if (textoRapido.tecla) {
+                    const chip = document.createElement('span');
+                    chip.className = 'texto-chip';
+                    chip.title = 'Atalho de teclado';
+                    chip.textContent = `Alt+${textoRapido.tecla}`;
+                    chips.appendChild(chip);
+                }
+                const botaoInserir = document.createElement('button');
+                botaoInserir.type = 'button';
+                botaoInserir.dataset.acao = 'inserir';
+                botaoInserir.title = 'Inserir no documento, na posição do cursor';
+                botaoInserir.textContent = 'Inserir';
+                const botaoCopiar = document.createElement('button');
+                botaoCopiar.type = 'button';
+                botaoCopiar.className = 'destaque';
+                botaoCopiar.dataset.acao = 'copiar';
+                botaoCopiar.title = 'Copiar para colar em qualquer programa';
+                botaoCopiar.innerHTML = '<svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Copiar';
+                rodape.append(chips, botaoInserir, botaoCopiar);
+
+                cartao.append(topo, previa, rodape);
+                return cartao;
+            }
+
+            function renderizarTextosRapidos() {
+                const termo = buscaTextos.value.trim().toLocaleLowerCase('pt-BR');
+                const visiveis = textosRapidos.filter(function (item) {
+                    return !termo || [item.nome, item.texto, item.abreviacao].join('\n').toLocaleLowerCase('pt-BR').includes(termo);
+                });
+                listaTextos.textContent = '';
+                if (!visiveis.length) {
+                    const vazio = document.createElement('p');
+                    vazio.className = 'textos-vazio';
+                    if (textosRapidos.length) {
+                        vazio.textContent = `Nada encontrado para "${buscaTextos.value.trim()}".`;
+                    } else {
+                        vazio.innerHTML = 'Nenhum texto salvo ainda.<br>Clique em <strong>+</strong> e guarde o primeiro texto que você cola sempre.';
+                    }
+                    listaTextos.appendChild(vazio);
+                    return;
+                }
+                visiveis.forEach(function (item) {
+                    listaTextos.appendChild(criarCartaoTextoRapido(item));
+                });
+            }
+
+            function aplicarPainelTextos() {
+                painelTextos.hidden = !painelTextosAberto;
+                botaoTrilhoTextos.setAttribute('aria-pressed', painelTextosAberto ? 'true' : 'false');
+            }
+
+            function alternarPainelTextos(abrir) {
+                painelTextosAberto = typeof abrir === 'boolean' ? abrir : !painelTextosAberto;
+                gravarPainelTextosAberto();
+                if (!painelTextosAberto) {
+                    fecharFormularioTexto(false);
+                }
+                aplicarPainelTextos();
+                if (painelTextosAberto) {
+                    buscaTextos.focus();
+                } else if (visualizacaoAtual === 'editor') {
+                    focarTexto();
+                } else {
+                    botaoTrilhoTextos.focus();
+                }
+            }
+
+            function preencherSeletorTecla(atual) {
+                seletorTeclaTexto.textContent = '';
+                seletorTeclaTexto.appendChild(new Option('Nenhum', ''));
+                for (let numero = 1; numero <= 9; numero += 1) {
+                    const dono = textosRapidos.find(function (item) {
+                        return item.tecla === String(numero) && item !== textoEmEdicao;
+                    });
+                    seletorTeclaTexto.appendChild(new Option(dono ? `Alt+${numero} (hoje em "${dono.nome}")` : `Alt+${numero}`, String(numero)));
+                }
+                seletorTeclaTexto.value = atual || '';
+            }
+
+            function abrirFormularioTexto(textoRapido) {
+                textoEmEdicao = textoRapido;
+                document.getElementById('textos-nome').value = textoRapido ? textoRapido.nome : '';
+                campoTextoRapido.value = textoRapido ? textoRapido.texto : '';
+                document.getElementById('textos-abreviacao').value = textoRapido ? textoRapido.abreviacao : '';
+                preencherSeletorTecla(textoRapido ? textoRapido.tecla : '');
+                erroTextos.hidden = true;
+                tituloTextos.textContent = textoRapido ? 'Editar texto' : 'Novo texto';
+                vistaListaTextos.hidden = true;
+                botaoNovoTexto.hidden = true;
+                formularioTextos.hidden = false;
+                (textoRapido ? campoTextoRapido : document.getElementById('textos-nome')).focus();
+            }
+
+            function fecharFormularioTexto(focarLista) {
+                if (formularioTextos.hidden) {
+                    return;
+                }
+                const editado = textoEmEdicao;
+                textoEmEdicao = undefined;
+                formularioTextos.hidden = true;
+                vistaListaTextos.hidden = false;
+                botaoNovoTexto.hidden = false;
+                tituloTextos.textContent = 'Textos rápidos';
+                renderizarTextosRapidos();
+                if (focarLista) {
+                    const botaoEditar = editado && listaTextos.querySelector(`[data-id="${editado.id}"] [data-acao="editar"]`);
+                    (botaoEditar || buscaTextos).focus();
+                }
+            }
+
+            function salvarFormularioTexto(evento) {
+                evento.preventDefault();
+                const nome = document.getElementById('textos-nome').value.trim();
+                const texto = campoTextoRapido.value;
+                const abreviacao = document.getElementById('textos-abreviacao').value.trim();
+                const tecla = seletorTeclaTexto.value;
+                function mostrarErro(mensagem) {
+                    erroTextos.textContent = mensagem;
+                    erroTextos.hidden = false;
+                }
+                if (!nome) {
+                    mostrarErro('Dê um nome ao texto para achar depois.');
+                    return;
+                }
+                if (!texto.trim()) {
+                    mostrarErro('O texto está vazio.');
+                    return;
+                }
+                if (/\s/.test(abreviacao)) {
+                    mostrarErro('A abreviação não pode ter espaços. Exemplo: ;ola');
+                    return;
+                }
+                const repetida = abreviacao && textosRapidos.find(function (item) {
+                    return item !== textoEmEdicao && item.abreviacao === abreviacao;
+                });
+                if (repetida) {
+                    mostrarErro(`A abreviação ${abreviacao} já é usada em "${repetida.nome}".`);
+                    return;
+                }
+                // Cada atalho vale para um texto só: quem tinha a tecla escolhida fica sem atalho.
+                if (tecla) {
+                    textosRapidos.forEach(function (item) {
+                        if (item !== textoEmEdicao && item.tecla === tecla) {
+                            item.tecla = '';
+                        }
+                    });
+                }
+                if (textoEmEdicao) {
+                    Object.assign(textoEmEdicao, { nome: nome, texto: texto, abreviacao: abreviacao, tecla: tecla });
+                    atualizarEstado(`Texto rápido "${nome}" alterado`);
+                } else {
+                    textosRapidos.unshift({ id: novoIdTextoRapido(), nome: nome, texto: texto, abreviacao: abreviacao, tecla: tecla, usos: 0 });
+                    atualizarEstado(`Texto rápido "${nome}" salvo`);
+                }
+                agendarPersistenciaSessao();
+                fecharFormularioTexto(true);
+            }
+
+            async function apagarTextoRapido(textoRapido) {
+                if (!await confirmar(`Apagar o texto rápido "${textoRapido.nome}"?`, 'Apagar')) {
+                    return;
+                }
+                textosRapidos = textosRapidos.filter(function (item) { return item !== textoRapido; });
+                renderizarTextosRapidos();
+                agendarPersistenciaSessao();
+                atualizarEstado(`Texto rápido "${textoRapido.nome}" apagado`);
+            }
+
+            // Alt+1 a Alt+9: com o cursor no documento insere; fora dele copia. Ctrl+Alt fica de fora porque,
+            // no teclado ABNT2, é o AltGr (Ctrl+Alt+1 escreve ¹).
+            function tratarAtalhosTextosRapidos(evento) {
+                if (!evento.altKey || evento.ctrlKey || evento.metaKey || evento.shiftKey || !/^Digit[1-9]$/.test(evento.code)) {
+                    return;
+                }
+                const textoRapido = textosRapidos.find(function (item) { return item.tecla === evento.code.slice(5); });
+                if (!textoRapido) {
+                    return;
+                }
+                evento.preventDefault();
+                evento.stopPropagation();
+                if (dialogoImagem.open || dialogoConfirmacao.open) {
+                    return;
+                }
+                const noDocumento = visualizacaoAtual === 'editor' && (editor.hasTextFocus() || editorVisual.contains(document.activeElement));
+                if (noDocumento) {
+                    inserirTextoRapido(textoRapido);
+                } else {
+                    copiarTextoRapido(textoRapido);
+                }
+            }
+
+            function expandirAbreviacaoNoEditor(evento) {
+                if (evento.keyCode !== monaco.KeyCode.Tab || evento.shiftKey || evento.ctrlKey || evento.altKey || evento.metaKey) {
+                    return;
+                }
+                const selecoes = editor.getSelections() || [];
+                if (selecoes.length !== 1 || !selecoes[0].isEmpty()) {
+                    return;
+                }
+                const linha = editor.getModel().getLineContent(selecoes[0].startLineNumber).slice(0, selecoes[0].startColumn - 1);
+                const textoRapido = textoRapidoDaAbreviacao(linha);
+                if (!textoRapido) {
+                    return;
+                }
+                evento.preventDefault();
+                evento.stopPropagation();
+                inserirTextoRapido(textoRapido, textoRapido.abreviacao.length);
+            }
+
+            function expandirAbreviacaoNoVisual(evento) {
+                if (evento.key !== 'Tab' || evento.shiftKey || evento.ctrlKey || evento.altKey || evento.metaKey
+                    || !(evento.target instanceof Element) || evento.target.closest('.cm-editor')) {
+                    return;
+                }
+                const textoRapido = noVisual(function (ctx, visao) {
+                    const selecao = visao.state.selection;
+                    if (!selecao.empty) {
+                        return undefined;
+                    }
+                    return textoRapidoDaAbreviacao(selecao.$from.parent.textBetween(0, selecao.$from.parentOffset, undefined, '￼'));
+                });
+                if (!textoRapido) {
+                    return;
+                }
+                evento.preventDefault();
+                evento.stopPropagation();
+                inserirTextoRapido(textoRapido, textoRapido.abreviacao.length);
+            }
+
+            function registrarPainelTextos() {
+                botaoTrilhoTextos.addEventListener('click', function () {
+                    alternarPainelTextos();
+                });
+                document.getElementById('textos-fechar').addEventListener('click', function () {
+                    alternarPainelTextos(false);
+                });
+                botaoNovoTexto.addEventListener('click', function () {
+                    abrirFormularioTexto();
+                });
+                document.getElementById('textos-cancelar').addEventListener('click', function () {
+                    fecharFormularioTexto(true);
+                });
+                formularioTextos.addEventListener('submit', salvarFormularioTexto);
+                formularioTextos.addEventListener('keydown', function (evento) {
+                    if (evento.key === 'Escape') {
+                        evento.preventDefault();
+                        fecharFormularioTexto(true);
+                    }
+                });
+                document.getElementById('textos-variaveis').addEventListener('click', function (evento) {
+                    const botao = evento.target.closest('[data-variavel]');
+                    if (!botao) {
+                        return;
+                    }
+                    campoTextoRapido.focus();
+                    campoTextoRapido.setRangeText(botao.dataset.variavel, campoTextoRapido.selectionStart, campoTextoRapido.selectionEnd, 'end');
+                });
+                buscaTextos.addEventListener('input', renderizarTextosRapidos);
+                buscaTextos.addEventListener('keydown', function (evento) {
+                    if (evento.key !== 'Enter') {
+                        return;
+                    }
+                    evento.preventDefault();
+                    const primeiro = listaTextos.querySelector('.texto-cartao');
+                    if (primeiro) {
+                        copiarTextoRapido(textosRapidos.find(function (item) { return item.id === primeiro.dataset.id; }));
+                    }
+                });
+                // O clique em "Inserir" não tira o foco do documento, para o texto entrar onde está o cursor.
+                listaTextos.addEventListener('mousedown', function (evento) {
+                    if (evento.target.closest('[data-acao="inserir"]')) {
+                        evento.preventDefault();
+                    }
+                });
+                listaTextos.addEventListener('click', function (evento) {
+                    const botao = evento.target.closest('[data-acao]');
+                    if (!botao) {
+                        return;
+                    }
+                    const textoRapido = textosRapidos.find(function (item) { return item.id === botao.closest('.texto-cartao').dataset.id; });
+                    const acoes = {
+                        inserir: function () { inserirTextoRapido(textoRapido); },
+                        copiar: function () { copiarTextoRapido(textoRapido); },
+                        editar: function () { abrirFormularioTexto(textoRapido); },
+                        apagar: function () { apagarTextoRapido(textoRapido); }
+                    };
+                    acoes[botao.dataset.acao]();
+                });
+                window.addEventListener('keydown', tratarAtalhosTextosRapidos, true);
+                editorVisual.addEventListener('keydown', expandirAbreviacaoNoVisual, true);
+                editor.onKeyDown(expandirAbreviacaoNoEditor);
+                renderizarTextosRapidos();
+                aplicarPainelTextos();
+            }
+
             // O Monaco cancela por dentro tarefas da aba anterior (realce, links) quando se troca de aba
             // rápido, e o cancelamento aparece como erro não tratado. É esperado e não afeta nada.
             window.addEventListener('unhandledrejection', function (evento) {
@@ -4655,6 +5208,13 @@
                     run: abrirArquivo
                 });
                 editor.addAction({
+                    id: 'mostrar-painel-textos',
+                    label: 'Textos rápidos: mostrar ou esconder o painel',
+                    run: function () {
+                        alternarPainelTextos();
+                    }
+                });
+                editor.addAction({
                     id: 'mostrar-painel-pastas',
                     label: 'Pastas: mostrar ou esconder o painel',
                     run: function () {
@@ -4748,6 +5308,8 @@
                 }, true);
                 registrarPainelPastas();
                 restaurarPastaDaSessao(sessao);
+                textosRapidos = normalizarTextosRapidos(sessao && sessao.textosRapidos);
+                registrarPainelTextos();
                 aplicarMapa();
                 botaoMapa.addEventListener('click', alternarMapa);
                 telaEstreita.addEventListener('change', aplicarMapa);

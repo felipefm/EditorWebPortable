@@ -11,6 +11,7 @@ Editor de texto e código que roda direto no navegador, sem instalação e sem b
 - **Minimapa** ao lado da barra de rolagem, como no Sublime Text e no VS Code: uma miniatura do documento onde clicar ou arrastar rola o texto. Funciona nos modos Editor, Dividido e Visual, e o botão **Mapa** no rodapé liga e desliga. Veja [Minimapa](#minimapa).
 - **Painel de pastas** (Edge e Chrome): abra uma pasta do computador e veja os arquivos numa árvore à esquerda, como no VS Code e no Sublime Text. Pela árvore dá para abrir, criar, renomear e excluir arquivos e pastas. Veja [Painel de pastas](#painel-de-pastas).
 - **Versão homelab** (Docker): o mesmo editor num servidor da sua casa, com a pasta de arquivos do servidor no painel de pastas, em qualquer navegador, inclusive o Zen. Veja [Versão homelab](#versão-homelab).
+- **Textos rápidos**: guarde os textos que você cola várias vezes por dia e use com um clique, uma abreviação ou um atalho de teclado. Veja [Textos rápidos](#textos-rápidos).
 - **Paleta de comandos** (`F1`): busque e execute qualquer ação do editor pelo teclado.
 - **Abrir e salvar arquivos locais**: com a [File System Access API](https://developer.mozilla.org/docs/Web/API/File_System_API) (Chrome, Edge), o editor grava direto no arquivo original. Nos navegadores que não têm essa API (Firefox e derivados, como Zen e LibreWolf, Safari e navegadores de celular), o botão vira **Baixar** e um aviso explica o motivo. Veja [Compatibilidade](#compatibilidade).
 - **Detecção de linguagem** pela extensão do arquivo (`.js`, `.mjs`, `.cjs`, `.ts`, `.html`, `.htm`, `.css`, `.json`, `.md`, `.markdown`, `.txt`).
@@ -109,6 +110,21 @@ A versão online não muda. A versão homelab é o mesmo editor rodando num cont
 
 Como a versão online, o homelab precisa de internet para carregar o Monaco e o Milkdown (CDN).
 
+### Textos rápidos
+
+Para os textos que você copia e cola várias vezes por dia (uma saudação, um pedido de print, uma assinatura). Abra pelo ícone de **Textos rápidos** na barra lateral, clique em **+** e dê um nome e o texto. Cada texto aparece num cartão:
+
+- **Copiar** põe o texto na área de transferência, para colar com `Ctrl` + `V` em qualquer programa (e-mail, chat, sistema de chamados).
+- **Inserir** põe o texto no documento aberto, onde está o cursor. Funciona nos modos Editor, Dividido e Visual.
+- **Abreviação** (opcional, por exemplo `;ola`): digite no documento e aperte `Tab` para trocar pelo texto.
+- **Atalho de teclado** (opcional, `Alt` + `1` a `9`): com o cursor no documento, insere o texto; fora dele, copia. Cada número vale para um texto só. O atalho não usa `Ctrl` + `Alt` porque, no teclado ABNT2, essa combinação é o AltGr.
+- **Variáveis**: `{data}` e `{hora}` viram a data e a hora do momento em que o texto é usado. `{cursor}` marca onde o cursor fica depois de inserir.
+- A **busca** filtra por nome, texto ou abreviação; `Enter` copia o primeiro texto encontrado.
+
+Os cartões ficam sempre na mesma ordem (os novos entram no topo), para não mudarem de lugar enquanto você usa. Cada cartão mostra quantas vezes o texto foi usado. Os textos ficam na sessão, então entram no backup em arquivo e no **Exportar cópia**. Importar uma sessão que não tem textos rápidos (exportada antes deles) mantém os atuais.
+
+No modo Visual, o texto é lido como Markdown, como ao colar: uma lista numerada vira lista, e um texto de uma linha só entra no parágrafo onde está o cursor.
+
 ### Imagens
 
 Nos documentos Markdown, o botão **Imagem** da barra (nos modos Editor e Visual) ou o item **Imagem** do menu `/` (no modo Visual) insere uma imagem de duas formas:
@@ -136,6 +152,14 @@ Use `Ctrl` no Windows/Linux e `Cmd` no macOS.
 | `Ctrl` + `Alt` + `N` | Nova aba |
 | `F1` | Paleta de comandos |
 | `Ctrl` + `Alt` + `J` | Abrir o formatador JSON |
+
+### Textos rápidos
+
+| Atalho | Ação |
+| --- | --- |
+| `Alt` + `1` a `9` | Com o cursor no documento, insere o texto rápido ligado a esse número; fora dele, copia |
+| Abreviação + `Tab` | Troca a abreviação digitada (por exemplo `;ola`) pelo texto rápido |
+| `Enter` na busca do painel | Copia o primeiro texto encontrado |
 
 ### Markdown (quando a aba atual é Markdown)
 
@@ -191,7 +215,7 @@ O navegador pode acrescentar um número ao nome (`notas (1).md`) quando o arquiv
 
 ## Testes automatizados
 
-O projeto tem **375 testes automatizados**, divididos em 13 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, homelab, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 670 execuções.
+O projeto tem **409 testes automatizados**, divididos em 14 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, textos rápidos, homelab, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 800 execuções.
 
 📖 **Documentação completa: [docs/TESTES.md](docs/TESTES.md).** Explica como funcionam, a lista de todos os testes, como o projeto escolhe o que testar, como escrever testes novos e o que fazer quando algo falha.
 
@@ -204,7 +228,7 @@ npm run test:alterado    # roda só os testes das áreas que você alterou
 npm test                 # roda todos, no Edge e no Firefox (cerca de 8 minutos)
 ```
 
-Também dá para rodar uma área específica: `npm run test:geral`, `test:atalhos`, `test:abas`, `test:arquivos`, `test:markdown`, `test:visual`, `test:imagens`, `test:mapa`, `test:json`, `test:sessao` ou `test:celular`, ou só o Firefox: `npm run test:firefox`.
+Também dá para rodar uma área específica: `npm run test:geral`, `test:atalhos`, `test:abas`, `test:arquivos`, `test:markdown`, `test:visual`, `test:imagens`, `test:mapa`, `test:textos`, `test:json`, `test:sessao` ou `test:celular`, ou só o Firefox: `npm run test:firefox`.
 
 ### Testa só o que mudou
 
@@ -218,9 +242,9 @@ Os testes rodam nos servidores do GitHub (GitHub Actions), não no seu computado
 
 ```
 public/
-  index.html   Estrutura da página: barra de ações, abas, editor, preview, formatador JSON e atalhos
+  index.html   Estrutura da página: barra de ações, abas, editor, preview, textos rápidos, formatador JSON e atalhos
   editor.css   Estilos (tema escuro inspirado no VS Code)
-  editor.js    Toda a lógica: Monaco, abas, arquivos, sessão, backup, Markdown e JSON
+  editor.js    Toda a lógica: Monaco, abas, arquivos, sessão, backup, Markdown, textos rápidos e JSON
 servidor/     Servidor da versão homelab (só Node, sem dependências)
 homelab/      docker-compose.yml da versão homelab
 tests/        Testes automatizados (Playwright), um arquivo por área

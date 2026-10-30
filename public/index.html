@@ -92,6 +92,9 @@
             <button id="trilho-pastas" class="trilho-botao" type="button" title="Pastas: mostrar ou esconder a árvore de arquivos de uma pasta" aria-label="Pastas" aria-pressed="false" aria-controls="painel-pastas">
                 <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M7 11h6M7 15h9"/></svg>
             </button>
+            <button id="trilho-textos" class="trilho-botao" type="button" title="Textos rápidos: textos que você copia e cola sempre" aria-label="Textos rápidos" aria-pressed="false" aria-controls="painel-textos">
+                <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="3" width="12" height="14" rx="2"/><path d="M16 21H6a2 2 0 0 1-2-2V7"/><path d="M11 8h6M11 12h4"/></svg>
+            </button>
             <button id="trilho-json" class="trilho-botao" type="button" title="Formatador JSON (Ctrl+Alt+J)" aria-label="Formatador JSON">
                 <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H7a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2 2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h1"/><path d="M16 3h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2 2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-1"/></svg>
             </button>
@@ -153,6 +156,56 @@
             <button type="button" role="menuitem" data-acao="colar">Colar aqui <kbd>Ctrl+V</kbd></button>
             <button type="button" role="menuitem" data-acao="excluir" class="perigo-texto">Excluir <kbd>Del</kbd></button>
         </div>
+
+        <aside id="painel-textos" aria-labelledby="textos-titulo" hidden>
+            <div id="textos-cabecalho">
+                <span id="textos-titulo">Textos rápidos</span>
+                <button id="textos-novo" class="pastas-acao" type="button" title="Novo texto" aria-label="Novo texto">
+                    <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+                <button id="textos-fechar" class="pastas-acao" type="button" title="Fechar o painel" aria-label="Fechar o painel de textos rápidos">
+                    <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                </button>
+            </div>
+            <div id="textos-vista-lista">
+                <label id="textos-busca-caixa">
+                    <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                    <input id="textos-busca" type="search" placeholder="Buscar por nome, texto ou abreviação" aria-label="Buscar textos rápidos" autocomplete="off">
+                </label>
+                <div id="textos-lista"></div>
+            </div>
+            <form id="textos-formulario" novalidate hidden>
+                <div class="textos-campo">
+                    <label for="textos-nome">Nome</label>
+                    <input id="textos-nome" type="text" placeholder="Ex.: Saudação inicial" maxlength="60" autocomplete="off">
+                </div>
+                <div class="textos-campo">
+                    <label for="textos-texto">Texto</label>
+                    <textarea id="textos-texto" placeholder="O texto que você cola várias vezes por dia"></textarea>
+                    <div id="textos-variaveis" aria-label="Inserir variável no texto">
+                        <button type="button" data-variavel="{data}">{data}</button>
+                        <button type="button" data-variavel="{hora}">{hora}</button>
+                        <button type="button" data-variavel="{cursor}">{cursor}</button>
+                    </div>
+                    <small>{data} e {hora} viram a data e a hora do momento em que o texto é usado. {cursor} marca onde o cursor fica depois de inserir no documento.</small>
+                </div>
+                <div class="textos-campo">
+                    <label for="textos-abreviacao">Abreviação</label>
+                    <input id="textos-abreviacao" type="text" placeholder=";ola" maxlength="20" autocomplete="off" spellcheck="false">
+                    <small>Digite no documento e aperte Tab para trocar pelo texto.</small>
+                </div>
+                <div class="textos-campo">
+                    <label for="textos-tecla">Atalho de teclado</label>
+                    <select id="textos-tecla"></select>
+                    <small>No documento, insere o texto; fora dele, copia.</small>
+                </div>
+                <p id="textos-erro" role="alert" hidden></p>
+                <div id="textos-formulario-acoes">
+                    <button id="textos-cancelar" type="button">Cancelar</button>
+                    <button class="destaque" type="submit">Salvar texto</button>
+                </div>
+            </form>
+        </aside>
 
         <main id="principal">
             <div id="area-documentos">
@@ -310,6 +363,17 @@
                                 <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>N</kbd></td><td>Criar uma nova aba.</td></tr>
                                 <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>J</kbd></td><td>Abrir o formatador JSON.</td></tr>
                                 <tr><td><kbd>F1</kbd></td><td>Abrir a paleta de comandos.</td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+                    <section class="atalhos-grupo" aria-labelledby="atalhos-textos-titulo">
+                        <h2 id="atalhos-textos-titulo">Textos rápidos</h2>
+                        <table>
+                            <thead><tr><th scope="col">Atalho</th><th scope="col">Ação</th></tr></thead>
+                            <tbody>
+                                <tr><td><kbd>Alt</kbd> + <kbd>1</kbd> a <kbd>9</kbd></td><td>Usar o texto rápido ligado a esse número. Com o cursor no documento, insere o texto; fora dele, copia.</td></tr>
+                                <tr><td>Abreviação + <kbd>Tab</kbd></td><td>Trocar a abreviação digitada (por exemplo <code>;ola</code>) pelo texto rápido.</td></tr>
+                                <tr><td><kbd>Enter</kbd> na busca</td><td>Copiar o primeiro texto encontrado.</td></tr>
                             </tbody>
                         </table>
                     </section>
