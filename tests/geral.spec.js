@@ -1,5 +1,6 @@
 // Área: carregamento, topo, barra lateral, paleta de comandos e rodapé.
 const { test, expect } = require('@playwright/test');
+const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { abrirEditor, definirConteudo, focarEditor } = require('./utilidades');
@@ -66,6 +67,15 @@ test.describe('Geral', () => {
         await page.locator('#trilho-json').click();
         await expect(page.locator('#linguagem')).toBeHidden();
         await expect(page.locator('#status-cursor')).toBeHidden();
+        await expect(page.locator('#versao-editor')).toBeVisible();
+    });
+
+    // O número no rodapé tem de ser o da versão mais recente do CHANGELOG.md.
+    test('rodapé mostra a versão mais recente do CHANGELOG', async ({ page }) => {
+        const changelog = fs.readFileSync(path.resolve(__dirname, '..', 'CHANGELOG.md'), 'utf8');
+        const versao = changelog.match(/^## (\d+\.\d+\.\d+) /m)[1];
+        await abrirEditor(page);
+        await expect(page.locator('#versao-editor')).toHaveText(`v${versao}`);
     });
 
     // As bibliotecas vêm de public/vendor/, sem CDN; nenhuma pode exigir servidor (import() de módulo, por exemplo).

@@ -381,7 +381,7 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px soli
     #json-paineis { grid-template-columns: 1fr; grid-template-rows: minmax(180px, 1fr) minmax(180px, 1fr); gap: 16px; }
     #json-alca { display: none; }
     #lista-atalhos-markdown { grid-template-columns: 1fr; }
-    .rodape-extra { display: none; }
+    .rodape-extra, #versao-editor { display: none; }
 }
 
 @media (max-width: 640px) {

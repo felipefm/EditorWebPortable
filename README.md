@@ -215,7 +215,7 @@ O navegador pode acrescentar um número ao nome (`notas (1).md`) quando o arquiv
 
 ## Testes automatizados
 
-O projeto tem **412 testes automatizados**, divididos em 14 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, textos rápidos, homelab, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 800 execuções.
+O projeto tem **413 testes automatizados**, divididos em 14 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, textos rápidos, homelab, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 800 execuções.
 
 📖 **Documentação completa: [docs/TESTES.md](docs/TESTES.md).** Explica como funcionam, a lista de todos os testes, como o projeto escolhe o que testar, como escrever testes novos e o que fazer quando algo falha.
 
@@ -254,6 +254,7 @@ docs/         Documentação dos testes (TESTES.md)
 .github/      Testes e publicação no GitHub Actions
 .githooks/    Verificação opcional antes do push, no próprio computador
 wrangler.jsonc Configuração de deploy no Cloudflare
+CHANGELOG.md  Histórico de versões
 ```
 
 ## Bibliotecas
@@ -302,6 +303,17 @@ npm run gerar
 Depois, rode os testes (`cd tests && npm test`) e faça o commit de `public/vendor/`, `ferramentas/package.json` e `ferramentas/package-lock.json`. No push, o GitHub Actions roda todos os testes antes de publicar; se a versão nova quebrar algo, o site não é atualizado. No homelab, a atualização chega com o `git pull`, depois de passar pelos testes no GitHub.
 
 Para só regerar o que já está fixado (por exemplo, depois de mudar o `gerar.js`): `npm ci` e `npm run gerar`.
+
+## Versões
+
+A versão aberta aparece no canto direito do rodapé (por exemplo, `v1.7.0`). O que mudou em cada versão está no [CHANGELOG.md](CHANGELOG.md), e cada uma tem uma tag no git. Assim dá para conferir se o Cloudflare e o homelab estão iguais.
+
+Para lançar uma versão nova:
+
+1. Acrescente a versão no topo do `CHANGELOG.md`, com a data e o que mudou.
+2. Troque o número em `#versao-editor`, no `public/index.html`. Um teste confere se os dois números são iguais.
+3. Faça o commit e crie a tag: `git tag -a v1.8.0 -m "Versão 1.8.0"`.
+4. Envie tudo: `git push && git push --tags`.
 
 ## Licença
 

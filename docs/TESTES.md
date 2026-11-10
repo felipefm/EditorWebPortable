@@ -21,11 +21,11 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **412 testes** em **14 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 800 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
+São **413 testes** em **14 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 800 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
-| geral | `geral.spec.js` | 7 | Carregamento sem erros, abrir direto do disco sem internet, barra lateral, paleta de comandos, rodapé |
+| geral | `geral.spec.js` | 8 | Carregamento sem erros, abrir direto do disco sem internet, barra lateral, paleta de comandos, rodapé, versão |
 | abas | `abas.spec.js` | 12 | Criar, trocar e fechar abas, indicador de não salvo, diálogo de confirmação, troca de linguagem |
 | arquivos | `arquivos.spec.js` | 19 | Abrir, salvar, salvar como, detecção de linguagem, modo "Baixar" dos navegadores sem gravação direta |
 | markdown | `markdown.spec.js` | 58 | Barra e **todos os atalhos** de formatação, envolver a seleção com aspas e parênteses, linha horizontal, preview, segurança do preview, modos de visualização |
@@ -223,7 +223,7 @@ Para desligar: `git config --unset core.hooksPath`. Com ele ligado, `git push --
 
 ## Lista de testes por área
 
-### geral (7)
+### geral (8)
 
 - carrega sem erros e mostra a interface principal
 - abre direto do disco (`file://`), com o Monaco e o modo Visual, sem pedir nada à internet
@@ -231,7 +231,8 @@ Para desligar: `git config --unset core.hooksPath`. Com ele ligado, `git push --
 - Ctrl+Alt+J abre o formatador JSON
 - botão de busca abre a paleta de comandos
 - rodapé mostra caracteres, cursor, linguagem e quebra de linha
-- rodapé esconde dados do documento no formatador JSON
+- rodapé esconde dados do documento no formatador JSON (a versão continua visível)
+- rodapé mostra a versão mais recente do CHANGELOG
 
 ### abas (12)
 
