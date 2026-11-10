@@ -21,7 +21,7 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **410 testes** em **14 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 800 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
+São **412 testes** em **14 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 800 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
@@ -36,7 +36,7 @@ São **410 testes** em **14 áreas**, um arquivo por área. Eles rodam em dois n
 | textos | `textos.spec.js` | 33 | Textos rápidos: criar, editar, apagar, validar, copiar, inserir (Editor e Visual), {data}, {hora} e {cursor}, abreviação + Tab, **todos os atalhos** Alt+número, busca, ordem fixa, contagem de uso, recarregar, exportar e importar |
 | homelab | `homelab.spec.js` | 11 | API do servidor homelab: caminhos fora da pasta, links, origem, endereço (DNS rebinding), senha, tamanho, conflito, lixeira e cópias |
 | atalhos | `atalhos.spec.js` | 26 | Atalhos gerais (salvar, salvar como, abrir, nova aba, formatador JSON) em cada modo, com o foco dentro e fora do texto |
-| json | `json.spec.js` | 11 | Formatar, compactar, indentação, erros com linha e coluna, copiar, abrir em aba |
+| json | `json.spec.js` | 13 | Formatar, compactar, indentação, erros com linha e coluna, copiar, abrir em aba, largura dos painéis |
 | sessao | `sessao.spec.js` | 10 | Sessão restaurada, painel de backup, exportar e importar |
 | celular | `celular.spec.js` | 12 | Layout em tela de 390 × 844, inclusive o painel de pastas da versão homelab e o de textos rápidos |
 
@@ -538,7 +538,7 @@ Também:
 - navegador sem gravação direta (Zen/Firefox): `Ctrl+S` no modo Visual com foco num botão salva no navegador
 - atalho com um diálogo aberto não executa a ação
 
-### json (11)
+### json (13)
 
 - entrada vazia mostra o estado vazio e desativa as ações
 - formata automaticamente um JSON válido
@@ -551,6 +551,8 @@ Também:
 - documento JSON aberto preenche a entrada ao abrir o formatador
 - copiar coloca o resultado na área de transferência
 - "Abrir em nova aba" cria um documento JSON não salvo
+- arrastar a alça muda a largura da entrada e ela continua depois de recarregar
+- a alça respeita os limites (20% a 80%), anda com as setas e volta ao meio com duplo clique
 
 ### sessao (10)
 

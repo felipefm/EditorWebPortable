@@ -111,6 +111,9 @@
             const seletorTeclaTexto = document.getElementById('textos-tecla');
             const erroTextos = document.getElementById('textos-erro');
             const chavePainelTextos = 'meu-editor-web-painel-textos';
+            const paineisJson = document.getElementById('json-paineis');
+            const alcaJson = document.getElementById('json-alca');
+            const chaveDivisaoJson = 'meu-editor-web-divisao-json';
             // Abrir uma pasta inteira só existe no Chrome e no Edge do computador.
             const aberturaPastaDisponivel = typeof window.showDirectoryPicker === 'function';
             const pastasIgnoradas = ['.git', 'node_modules'];
@@ -4433,6 +4436,84 @@
                 gravarPreferenciasPastas();
             }
 
+            // Divisão entre a entrada e o resultado do formatador JSON: porcentagem da entrada,
+            // entre 20 e 80, guardada no navegador.
+            let divisaoJson = 50;
+            let arrastoJson;
+
+            function limitarDivisaoJson(porcentagem) {
+                return Math.round(Math.min(Math.max(porcentagem, 20), 80));
+            }
+
+            function aplicarDivisaoJson() {
+                paineisJson.style.setProperty('--json-esquerda', `${divisaoJson}fr`);
+                paineisJson.style.setProperty('--json-direita', `${100 - divisaoJson}fr`);
+                alcaJson.setAttribute('aria-valuenow', String(divisaoJson));
+            }
+
+            function gravarDivisaoJson() {
+                try {
+                    localStorage.setItem(chaveDivisaoJson, String(divisaoJson));
+                } catch (erro) {
+                    return;
+                }
+            }
+
+            function registrarDivisaoJson() {
+                try {
+                    const salva = Number(localStorage.getItem(chaveDivisaoJson));
+                    if (salva) {
+                        divisaoJson = limitarDivisaoJson(salva);
+                    }
+                } catch (erro) {
+                    divisaoJson = 50;
+                }
+                alcaJson.addEventListener('pointerdown', function (evento) {
+                    if (evento.button !== 0) {
+                        return;
+                    }
+                    evento.preventDefault();
+                    alcaJson.setPointerCapture(evento.pointerId);
+                    alcaJson.classList.add('arrastando');
+                    const retangulo = paineisJson.getBoundingClientRect();
+                    arrastoJson = { esquerda: retangulo.left, largura: retangulo.width - alcaJson.offsetWidth };
+                });
+                alcaJson.addEventListener('pointermove', function (evento) {
+                    if (!arrastoJson || arrastoJson.largura <= 0) {
+                        return;
+                    }
+                    const posicao = evento.clientX - arrastoJson.esquerda - alcaJson.offsetWidth / 2;
+                    divisaoJson = limitarDivisaoJson(posicao / arrastoJson.largura * 100);
+                    aplicarDivisaoJson();
+                });
+                const terminar = function () {
+                    if (!arrastoJson) {
+                        return;
+                    }
+                    arrastoJson = undefined;
+                    alcaJson.classList.remove('arrastando');
+                    gravarDivisaoJson();
+                };
+                alcaJson.addEventListener('pointerup', terminar);
+                alcaJson.addEventListener('pointercancel', terminar);
+                alcaJson.addEventListener('dblclick', function () {
+                    divisaoJson = 50;
+                    aplicarDivisaoJson();
+                    gravarDivisaoJson();
+                });
+                alcaJson.addEventListener('keydown', function (evento) {
+                    const passo = { ArrowLeft: -5, ArrowRight: 5 }[evento.key];
+                    if (!passo) {
+                        return;
+                    }
+                    evento.preventDefault();
+                    divisaoJson = limitarDivisaoJson(divisaoJson + passo);
+                    aplicarDivisaoJson();
+                    gravarDivisaoJson();
+                });
+                aplicarDivisaoJson();
+            }
+
             function registrarPainelPastas() {
                 botaoTrilhoPastas.addEventListener('click', function () {
                     alternarPainelPastas();
@@ -5287,6 +5368,7 @@
                     }
                 }, true);
                 registrarPainelPastas();
+                registrarDivisaoJson();
                 restaurarPastaDaSessao(sessao);
                 textosRapidos = normalizarTextosRapidos(sessao && sessao.textosRapidos);
                 registrarPainelTextos();

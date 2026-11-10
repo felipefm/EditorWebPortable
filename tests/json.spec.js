@@ -1,6 +1,6 @@
 // Área: formatador JSON.
 const { test, expect } = require('@playwright/test');
-const { abrirEditor, definirConteudo, editorJson, nomesDasAbas } = require('./utilidades');
+const { abrirEditor, recarregar, definirConteudo, editorJson, nomesDasAbas } = require('./utilidades');
 
 async function abrirFormatador(page) {
     await abrirEditor(page);
@@ -114,5 +114,55 @@ test.describe('Formatador JSON', () => {
         await expect(page.locator('.aba.ativa .aba-linguagem')).toHaveText('{ }');
         await expect(page.locator('.aba.ativa')).toHaveClass(/modificada/);
         expect(await page.evaluate(() => window.editor.getValue())).toBe('{\n  "a": 1\n}');
+    });
+
+    test('arrastar a alça muda a largura da entrada e ela continua depois de recarregar', async ({ page }) => {
+        await abrirFormatador(page);
+        const entrada = page.locator('.json-painel').first();
+        const alca = page.locator('#json-alca');
+        const larguraInicial = (await entrada.boundingBox()).width;
+        const caixa = await alca.boundingBox();
+        const meio = caixa.y + caixa.height / 2;
+        await page.mouse.move(caixa.x + caixa.width / 2, meio);
+        await page.mouse.down();
+        await page.mouse.move(caixa.x - 150, meio, { steps: 5 });
+        await page.mouse.up();
+        const larguraNova = (await entrada.boundingBox()).width;
+        expect(larguraNova).toBeLessThan(larguraInicial - 100);
+        const valor = await alca.getAttribute('aria-valuenow');
+        expect(Number(valor)).toBeLessThan(50);
+        // O Monaco acompanha o novo tamanho do painel.
+        await expect.poll(async () => page.evaluate(() => document.querySelector('#json-entrada .monaco-editor').getBoundingClientRect().width))
+            .toBeLessThan(larguraInicial - 100);
+
+        await recarregar(page);
+        await page.locator('#trilho-json').click();
+        await expect(alca).toHaveAttribute('aria-valuenow', valor);
+        expect(Math.abs((await entrada.boundingBox()).width - larguraNova)).toBeLessThan(3);
+    });
+
+    test('a alça respeita os limites, anda com as setas e volta ao meio com duplo clique', async ({ page }) => {
+        await abrirFormatador(page);
+        const alca = page.locator('#json-alca');
+        const caixa = await alca.boundingBox();
+        const meio = caixa.y + caixa.height / 2;
+        await page.mouse.move(caixa.x + caixa.width / 2, meio);
+        await page.mouse.down();
+        await page.mouse.move(0, meio, { steps: 5 });
+        await page.mouse.up();
+        await expect(alca).toHaveAttribute('aria-valuenow', '20');
+
+        await alca.focus();
+        await page.keyboard.press('ArrowRight');
+        await expect(alca).toHaveAttribute('aria-valuenow', '25');
+        await page.keyboard.press('ArrowLeft');
+        await page.keyboard.press('ArrowLeft');
+        await expect(alca).toHaveAttribute('aria-valuenow', '20');
+
+        await alca.dblclick();
+        await expect(alca).toHaveAttribute('aria-valuenow', '50');
+        await recarregar(page);
+        await page.locator('#trilho-json').click();
+        await expect(alca).toHaveAttribute('aria-valuenow', '50');
     });
 });

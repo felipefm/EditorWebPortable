@@ -18,7 +18,7 @@ Editor de texto e código que roda direto no navegador, sem instalação e sem b
 - **Preview de Markdown ao vivo**, com três modos: só editor, dividido ou só preview. O HTML gerado é sanitizado com DOMPurify.
 - **Modo Visual de Markdown**: edite vendo o texto já formatado, como no Typora ou no Notion (usa o [Milkdown](https://milkdown.dev)). Digite `/` para inserir títulos, listas, tabelas, citações e blocos de código. Veja [Modo Visual](#modo-visual).
 - **Barra e atalhos de Markdown** para negrito, itálico, tachado, código, links, títulos, listas, citações e linha horizontal. Funcionam com múltiplas seleções.
-- **Formatador JSON**: formata automaticamente enquanto você digita (2 espaços, 4 espaços ou tabulação), compacta, aponta a linha e a coluna do erro, copia o resultado ou abre em uma nova aba.
+- **Formatador JSON**: formata automaticamente enquanto você digita (2 espaços, 4 espaços ou tabulação), compacta, aponta a linha e a coluna do erro, copia o resultado ou abre em uma nova aba. A divisão entre entrada e resultado pode ser arrastada (duplo clique volta ao meio) e fica salva no navegador.
 - **Sessão persistente**: abas, conteúdo e estado da interface são salvos automaticamente no navegador (localStorage + IndexedDB) e restaurados ao reabrir a página.
 - **Backup automático em arquivo**: opcionalmente, a sessão é gravada a cada 30 segundos em um arquivo `.json` escolhido por você.
 - **Exportar e importar sessão** em JSON, para levar seu trabalho para outro navegador ou computador.
@@ -215,7 +215,7 @@ O navegador pode acrescentar um número ao nome (`notas (1).md`) quando o arquiv
 
 ## Testes automatizados
 
-O projeto tem **410 testes automatizados**, divididos em 14 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, textos rápidos, homelab, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 800 execuções.
+O projeto tem **412 testes automatizados**, divididos em 14 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, textos rápidos, homelab, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 800 execuções.
 
 📖 **Documentação completa: [docs/TESTES.md](docs/TESTES.md).** Explica como funcionam, a lista de todos os testes, como o projeto escolhe o que testar, como escrever testes novos e o que fazer quando algo falha.
 
