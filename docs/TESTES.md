@@ -21,18 +21,18 @@ Este documento explica como os testes do Editor Portable funcionam, como rodá-l
 
 Os testes usam o [Playwright](https://playwright.dev). Cada teste abre o editor num navegador de verdade (o Microsoft Edge instalado no Windows), clica, digita e confere o resultado na tela, do mesmo jeito que uma pessoa faria.
 
-São **413 testes** em **14 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 800 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
+São **417 testes** em **14 áreas**, um arquivo por área. Eles rodam em dois navegadores: o **Microsoft Edge** (projeto `desktop`) e o **Firefox** (projeto `firefox`, o mesmo motor do Zen Browser e do LibreWolf). Os testes de celular rodam só no Edge; os da API do servidor homelab também, porque não dependem do navegador. Ao todo são cerca de 800 execuções, e a suíte completa leva uns 8 minutos num computador de mesa.
 
 | Área | Arquivo | Testes | O que cobre |
 | --- | --- | --- | --- |
 | geral | `geral.spec.js` | 8 | Carregamento sem erros, abrir direto do disco sem internet, barra lateral, paleta de comandos, rodapé, versão |
-| abas | `abas.spec.js` | 12 | Criar, trocar e fechar abas, indicador de não salvo, diálogo de confirmação, troca de linguagem |
+| abas | `abas.spec.js` | 15 | Criar, trocar e fechar abas, indicador de não salvo, diálogo de confirmação, troca de linguagem, rolar a barra com a roda do mouse, menu do botão direito |
 | arquivos | `arquivos.spec.js` | 19 | Abrir, salvar, salvar como, detecção de linguagem, modo "Baixar" dos navegadores sem gravação direta |
 | markdown | `markdown.spec.js` | 58 | Barra e **todos os atalhos** de formatação, envolver a seleção com aspas e parênteses, linha horizontal, preview, segurança do preview, modos de visualização |
 | visual | `visual.spec.js` | 90 | Modo Visual (Milkdown): edição formatada, texto parado ao clicar e selecionar, **todos os atalhos**, cursor pronto para digitar, listas no Markdown padrão, fechamento automático de ( [ {, documento novo em Markdown e Visual, linha horizontal visível, envolver a seleção, botão + da margem sem a alça de arrastar, sincronia com o Markdown, preservação do estilo, salvar, abas, falha ao carregar o Milkdown |
 | imagens | `imagens.spec.js` | 23 | Imagens preservadas no modo Visual, diálogo "Inserir imagem" (link e arquivo), item Imagem do menu `/`, redução de tamanho, colar e soltar imagens |
 | mapa | `mapa.spec.js` | 13 | Minimapa do Monaco (Editor e Dividido) e o desenhado no modo Visual: botão Mapa, escolha lembrada, clicar e arrastar para rolar, atualização ao digitar |
-| pastas | `pastas.spec.js` | 85 | Painel de pastas, com a pasta do navegador (Edge) e com a do servidor homelab (Edge e Firefox): abrir pasta, árvore, abrir e salvar arquivos, criar, renomear, mover e excluir, teclado, menu, permissão, restaurar ao recarregar, largura, aviso no Firefox; no homelab, também senha, documento novo, conflito e lixeira |
+| pastas | `pastas.spec.js` | 86 | Painel de pastas, com a pasta do navegador (Edge) e com a do servidor homelab (Edge e Firefox): abrir pasta, árvore, abrir e salvar arquivos, criar, renomear, mover e excluir, teclado, menu, caminho do arquivo na aba e copiar caminho, permissão, restaurar ao recarregar, largura, aviso no Firefox; no homelab, também senha, documento novo, conflito e lixeira |
 | textos | `textos.spec.js` | 33 | Textos rápidos: criar, editar, apagar, validar, copiar, inserir (Editor e Visual), {data}, {hora} e {cursor}, abreviação + Tab, **todos os atalhos** Alt+número, busca, ordem fixa, contagem de uso, recarregar, exportar e importar |
 | homelab | `homelab.spec.js` | 11 | API do servidor homelab: caminhos fora da pasta, links, origem, endereço (DNS rebinding), senha, tamanho, conflito, lixeira e cópias |
 | atalhos | `atalhos.spec.js` | 26 | Atalhos gerais (salvar, salvar como, abrir, nova aba, formatador JSON) em cada modo, com o foco dentro e fora do texto |

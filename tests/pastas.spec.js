@@ -388,6 +388,57 @@ for (const nomeFonte of ['navegador', 'servidor']) {
             await expect(item(page, 'raiz-nova')).toBeVisible();
         });
 
+        test('a aba mostra o caminho do arquivo; com o local da pasta informado, o caminho completo, que dá para copiar', async ({ page }) => {
+            await page.addInitScript(() => {
+                window.__copiado = [];
+                Object.defineProperty(navigator, 'clipboard', {
+                    configurable: true,
+                    value: { writeText: async function (texto) { window.__copiado.push(texto); } }
+                });
+            });
+            const erros = await abrirComPasta(page);
+            const raiz = (await page.locator('#pastas-titulo').textContent()).trim();
+            await linha(page, 'docs').click();
+            await linha(page, 'docs/guia.md').click();
+            const nomeAba = page.locator('.aba.ativa .aba-nome');
+            await expect(nomeAba).toHaveText('guia.md');
+            await nomeAba.hover();
+            await expect(nomeAba).toHaveAttribute('title', `guia.md\n${raiz}/docs/guia.md\n(para ver o caminho completo, clique com o botão direito e informe onde fica a pasta)`);
+
+            // Informar onde fica a pasta, pelo botão direito na aba. As aspas do "Copiar como caminho" do Windows saem.
+            // O prompt é respondido direto, porque o ajudante dos testes recusa os diálogos.
+            await page.evaluate(() => { window.prompt = () => '"K:\\Notas\\"'; });
+            await page.locator('.aba.ativa').click({ button: 'right' });
+            await page.locator('#menu-aba [data-acao="local-pasta"]').click();
+            await nomeAba.hover();
+            await expect(nomeAba).toHaveAttribute('title', 'guia.md\nK:\\Notas\\docs\\guia.md');
+
+            await page.locator('.aba.ativa').click({ button: 'right' });
+            await page.locator('#menu-aba [data-acao="copiar-caminho"]').click();
+            await page.locator('.aba.ativa').click({ button: 'right' });
+            await page.locator('#menu-aba [data-acao="copiar-pasta"]').click();
+            // Pelo menu da árvore também.
+            await linha(page, 'docs').click({ button: 'right' });
+            await page.locator('#menu-pastas [data-acao="copiar-caminho"]').click();
+            await expect.poll(() => page.evaluate(() => window.__copiado)).toEqual(['K:\\Notas\\docs\\guia.md', 'K:\\Notas\\docs', 'K:\\Notas\\docs']);
+            await expect(page.locator('#estado')).toContainText('K:\\Notas\\docs');
+
+            // O local fica guardado ao recarregar; em branco, ele é apagado.
+            await recarregar(page);
+            await expect(page.locator('#arvore-pastas [role="treeitem"]').first()).toBeVisible();
+            const abaGuia = page.locator('.aba-nome', { hasText: 'guia.md' });
+            await expect.poll(async () => {
+                await abaGuia.hover();
+                return abaGuia.getAttribute('title');
+            }).toBe('guia.md\nK:\\Notas\\docs\\guia.md');
+            await page.evaluate(() => { window.prompt = () => ''; });
+            await linha(page, 'notas.md').click({ button: 'right' });
+            await page.locator('#menu-pastas [data-acao="local-pasta"]').click();
+            await abaGuia.hover();
+            await expect(abaGuia).toHaveAttribute('title', new RegExp(`\\n${raiz}/docs/guia\\.md\\n`));
+            expect(erros).toEqual([]);
+        });
+
         test('o menu do botão ⋯ fecha com Esc e devolve o foco ao item', async ({ page }) => {
             await abrirComPasta(page);
             await linha(page, 'notas.md').hover();

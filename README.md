@@ -7,7 +7,7 @@ Editor de texto e código que roda direto no navegador, sem instalação e sem b
 ## Funcionalidades
 
 - **Editor Monaco** com tema escuro, quebra de linha automática e realce de sintaxe para JavaScript, TypeScript, HTML, CSS, JSON, Markdown e texto puro.
-- **Várias abas**: abra e edite vários arquivos ao mesmo tempo. Cada aba mostra a linguagem, e as que têm alterações não salvas ganham um ponto amarelo.
+- **Várias abas**: abra e edite vários arquivos ao mesmo tempo. Cada aba mostra a linguagem, e as que têm alterações não salvas ganham um ponto amarelo. Com muitas abas, a roda do mouse sobre a barra rola para os lados. Passar o mouse numa aba mostra onde o arquivo fica, e o botão direito copia o caminho. Veja [Caminho do arquivo](#caminho-do-arquivo).
 - **Minimapa** ao lado da barra de rolagem, como no Sublime Text e no VS Code: uma miniatura do documento onde clicar ou arrastar rola o texto. Funciona nos modos Editor, Dividido e Visual, e o botão **Mapa** no rodapé liga e desliga. Veja [Minimapa](#minimapa).
 - **Painel de pastas** (Edge e Chrome): abra uma pasta do computador e veja os arquivos numa árvore à esquerda, como no VS Code e no Sublime Text. Pela árvore dá para abrir, criar, renomear e excluir arquivos e pastas. Veja [Painel de pastas](#painel-de-pastas).
 - **Versão homelab** (Docker): o mesmo editor num servidor da sua casa, com a pasta de arquivos do servidor no painel de pastas, em qualquer navegador, inclusive o Zen. Veja [Versão homelab](#versão-homelab).
@@ -75,7 +75,19 @@ O botão de pasta na barra lateral mostra ou esconde o painel. Em **Abrir pasta*
 - **Outros botões do topo:** **Atualizar** mostra o que mudou na pasta por fora do editor, **Recolher** fecha todas as pastas e **Fechar a pasta** tira a pasta do painel, sem mexer nos arquivos nem nas abas.
 - **Ao reabrir o editor,** a pasta e as pastas expandidas voltam. Às vezes o navegador pede para confirmar a permissão de novo; nesse caso, basta clicar em **Permitir acesso**.
 - Arraste a borda direita do painel para mudar a largura. A escolha fica guardada.
+- **Copiar caminho:** no menu do item (botão direito ou ⋯). Veja [Caminho do arquivo](#caminho-do-arquivo).
 - No **Zen, no Firefox** e no celular, o navegador não deixa abrir pastas. No Zen e no Firefox, o painel explica isso; nesses navegadores, a árvore funciona na [versão homelab](#versão-homelab). No celular, o botão só aparece na versão homelab: o painel abre por cima do editor, o botão ⋯ fica sempre visível (mover é pelo **Recortar** e **Colar aqui** dele) e, ao tocar num arquivo, o painel fecha e o texto aparece.
+
+### Caminho do arquivo
+
+Para achar no Explorer um arquivo aberto no editor, como no Notepad++:
+
+- **Passe o mouse na aba:** a dica mostra o nome e onde o arquivo fica.
+- **Clique com o botão direito na aba:** **Copiar caminho completo** (o arquivo) ou **Copiar caminho da pasta**. Cole na barra de endereço do Explorer.
+- **O navegador não informa o caminho no Windows.** Por segurança, o Chrome e o Edge só dizem ao editor o caminho *dentro* da pasta aberta no painel. Por isso, no começo, a dica mostra `Notas/docs/guia.md`.
+- **Para ver o caminho completo,** use **Onde fica a pasta no computador…** (no botão direito da aba ou no menu do painel de pastas) e informe o local uma vez, por exemplo `K:\Notas`. Para pegar o local, abra a pasta no Explorer e copie a barra de endereço, ou use **Copiar como caminho** (as aspas são retiradas). A partir daí, a dica e as cópias saem como `K:\Notas\docs\guia.md`. O local fica guardado neste navegador, pelo nome da pasta. Deixar em branco apaga.
+- **Na versão homelab,** informe o caminho por onde você chega à pasta do servidor, por exemplo `\\homelab\Notas` (compartilhamento de rede).
+- Arquivos abertos pelo botão **Abrir**, fora do painel de pastas, só mostram o nome: nesse caso, o navegador não informa nem a pasta.
 
 ### Versão homelab
 
@@ -215,7 +227,7 @@ O navegador pode acrescentar um número ao nome (`notas (1).md`) quando o arquiv
 
 ## Testes automatizados
 
-O projeto tem **413 testes automatizados**, divididos em 14 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, textos rápidos, homelab, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 800 execuções.
+O projeto tem **417 testes automatizados**, divididos em 14 áreas: geral, atalhos, abas, arquivos, Markdown, modo Visual, imagens, minimapa, pastas, textos rápidos, homelab, JSON, sessão e celular. Eles usam o [Playwright](https://playwright.dev) e abrem o editor num navegador de verdade, clicando, digitando e conferindo o resultado. Rodam no **Microsoft Edge** e no **Firefox** (o motor do Zen Browser): ao todo, cerca de 800 execuções.
 
 📖 **Documentação completa: [docs/TESTES.md](docs/TESTES.md).** Explica como funcionam, a lista de todos os testes, como o projeto escolhe o que testar, como escrever testes novos e o que fazer quando algo falha.
 
@@ -306,13 +318,13 @@ Para só regerar o que já está fixado (por exemplo, depois de mudar o `gerar.j
 
 ## Versões
 
-A versão aberta aparece no canto direito do rodapé (por exemplo, `v1.7.0`). O que mudou em cada versão está no [CHANGELOG.md](CHANGELOG.md), e cada uma tem uma tag no git. Assim dá para conferir se o Cloudflare e o homelab estão iguais.
+A versão aberta aparece no canto direito do rodapé (por exemplo, `v1.8.0`). O que mudou em cada versão está no [CHANGELOG.md](CHANGELOG.md), e cada uma tem uma tag no git. Assim dá para conferir se o Cloudflare e o homelab estão iguais.
 
 Para lançar uma versão nova:
 
 1. Acrescente a versão no topo do `CHANGELOG.md`, com a data e o que mudou.
 2. Troque o número em `#versao-editor`, no `public/index.html`. Um teste confere se os dois números são iguais.
-3. Faça o commit e crie a tag: `git tag -a v1.8.0 -m "Versão 1.8.0"`.
+3. Faça o commit e crie a tag: `git tag -a v1.9.0 -m "Versão 1.9.0"`.
 4. Envie tudo: `git push && git push --tags`.
 
 ## Licença

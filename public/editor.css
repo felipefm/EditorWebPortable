@@ -136,10 +136,11 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px soli
 #pastas-erro { flex-shrink: 0; margin: 0; padding: 8px 12px; border-top: 1px solid var(--erro-borda); background: var(--erro-fundo); color: #f6c1ba; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
 #painel-pastas-alca { width: 6px; flex-shrink: 0; margin: 0 -3px; position: relative; z-index: 5; cursor: col-resize; touch-action: none; }
 #painel-pastas-alca:hover, #painel-pastas-alca:focus-visible, #painel-pastas-alca.arrastando { background: var(--destaque); outline: none; }
-#menu-pastas { position: fixed; z-index: 40; min-width: 190px; padding: 4px; display: flex; flex-direction: column; border: 1px solid #353b45; border-radius: 8px; background: #1f2329; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); }
-#menu-pastas button { height: 30px; justify-content: space-between; border: 0; background: transparent; font-size: 12px; }
-#menu-pastas button:hover, #menu-pastas button:focus-visible { background: var(--hover); outline: none; }
+#menu-pastas, #menu-aba { position: fixed; z-index: 40; min-width: 190px; padding: 4px; display: flex; flex-direction: column; border: 1px solid #353b45; border-radius: 8px; background: #1f2329; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); }
+#menu-pastas button, #menu-aba button { height: 30px; justify-content: space-between; border: 0; background: transparent; font-size: 12px; }
+#menu-pastas button:hover, #menu-pastas button:focus-visible, #menu-aba button:hover, #menu-aba button:focus-visible { background: var(--hover); outline: none; }
 #menu-pastas .perigo-texto { color: var(--erro); }
+#menu-aba .menu-aviso { max-width: 240px; margin: 4px 8px; color: var(--texto-apagado); font-size: 12px; line-height: 1.4; }
 #menu-pastas kbd { min-width: 0; border: 0; background: transparent; color: var(--texto-apagado); }
 #area-documentos { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
@@ -401,7 +402,7 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px soli
     .arvore-mais { width: 36px; height: 36px; visibility: visible; }
     .pastas-acao { width: 36px; height: 36px; }
     .arvore-entrada { height: 32px; font-size: 16px; }
-    #menu-pastas button { height: 44px; font-size: 14px; }
+    #menu-pastas button, #menu-aba button { height: 44px; font-size: 14px; }
     .segmentado button { padding: 0 9px; }
     #acoes-arquivo { flex: 1; }
     #acoes-arquivo button, #botao-sessao { min-width: 44px; height: 44px; padding: 0 10px; }

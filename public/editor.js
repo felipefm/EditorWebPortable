@@ -97,8 +97,11 @@
             const arvorePastas = document.getElementById('arvore-pastas');
             const erroPastas = document.getElementById('pastas-erro');
             const menuPastas = document.getElementById('menu-pastas');
+            const menuAba = document.getElementById('menu-aba');
             const conteudoPastas = document.getElementById('pastas-conteudo');
             const chavePainelPastas = 'meu-editor-web-painel-pastas';
+            // Onde cada pasta aberta fica no computador ("K:\Notas"), informado pela pessoa: o navegador não diz.
+            const chaveLocaisPastas = 'meu-editor-web-locais-pastas';
             const botaoTrilhoTextos = document.getElementById('trilho-textos');
             const painelTextos = document.getElementById('painel-textos');
             const tituloTextos = document.getElementById('textos-titulo');
@@ -602,7 +605,7 @@
                     botaoNome.textContent = documento.nome;
                     botaoNome.setAttribute('role', 'tab');
                     botaoNome.setAttribute('aria-selected', ehAtual ? 'true' : 'false');
-                    botaoNome.title = documento.modificacoesPendentes ? `${documento.nome} - alterações não salvas` : documento.nome;
+                    botaoNome.title = dicaAba(documento);
                     botaoFechar.className = 'fechar-aba';
                     botaoFechar.type = 'button';
                     botaoFechar.innerHTML = '<svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
@@ -619,6 +622,17 @@
                     });
                     botaoNome.addEventListener('click', function () {
                         ativarDocumento(documento);
+                    });
+                    // O caminho pode ter sido descoberto depois de desenhar a aba: a dica é refeita ao passar o mouse.
+                    botaoNome.addEventListener('pointerenter', function () {
+                        botaoNome.title = dicaAba(documento);
+                    });
+                    aba.addEventListener('contextmenu', function (evento) {
+                        evento.preventDefault();
+                        // Pela tecla Menu ou Shift+F10, o evento não tem posição: o menu abre embaixo da aba.
+                        const retangulo = aba.getBoundingClientRect();
+                        const peloTeclado = evento.clientX === 0 && evento.clientY === 0;
+                        abrirMenuAba(documento, peloTeclado ? retangulo.left : evento.clientX, peloTeclado ? retangulo.bottom : evento.clientY);
                     });
                     botaoFechar.addEventListener('click', function (evento) {
                         evento.stopPropagation();
@@ -640,6 +654,163 @@
                         abas.scrollLeft = direita - abas.clientWidth;
                     }
                 }
+            }
+
+            function lerLocaisPastas() {
+                try {
+                    const locais = JSON.parse(localStorage.getItem(chaveLocaisPastas) || '{}');
+                    return locais && typeof locais === 'object' ? locais : {};
+                } catch (erro) {
+                    return {};
+                }
+            }
+
+            function localDaPasta() {
+                return pastas.raiz ? lerLocaisPastas()[pastas.raiz.name] || '' : '';
+            }
+
+            // Caminho de um item da pasta aberta ('' é a própria pasta). Com o local informado, sai o caminho
+            // completo ("K:\Notas\docs\guia.md"); sem ele, a partir do nome da pasta ("Notas/docs/guia.md").
+            function caminhoCompletoPasta(caminho) {
+                const partes = caminho ? caminho.split('/') : [];
+                const local = localDaPasta();
+                if (!local) {
+                    return [pastas.raiz.name, ...partes].join('/');
+                }
+                const separador = local.includes('\\') || /^[a-z]:/i.test(local) ? '\\' : '/';
+                return [local.replace(/[\\/]+$/, ''), ...partes].join(separador);
+            }
+
+            function documentoNaPasta(documento) {
+                return Boolean(documento && documento.caminhoPasta && pastas.raiz);
+            }
+
+            function dicaAba(documento) {
+                const linhas = [documento.nome];
+                if (documentoNaPasta(documento)) {
+                    linhas.push(caminhoCompletoPasta(documento.caminhoPasta));
+                    if (!localDaPasta()) {
+                        linhas.push('(para ver o caminho completo, clique com o botão direito e informe onde fica a pasta)');
+                    }
+                } else if (documento.manipulador) {
+                    linhas.push('(aberto fora do painel de pastas: o navegador não informa o caminho)');
+                }
+                if (documento.modificacoesPendentes) {
+                    linhas.push('Alterações não salvas');
+                }
+                return linhas.join('\n');
+            }
+
+            let documentoMenuAba;
+
+            function abrirMenuAba(documento, x, y) {
+                const naPasta = documentoNaPasta(documento);
+                documentoMenuAba = documento;
+                menuAba.querySelectorAll('[data-acao="copiar-caminho"], [data-acao="copiar-pasta"], [data-acao="local-pasta"]').forEach(function (botao) {
+                    botao.hidden = !naPasta;
+                });
+                menuAba.querySelector('.menu-aviso').hidden = naPasta;
+                menuAba.hidden = false;
+                menuAba.style.left = `${Math.max(4, Math.min(x, window.innerWidth - menuAba.offsetWidth - 4))}px`;
+                menuAba.style.top = `${Math.max(4, Math.min(y, window.innerHeight - menuAba.offsetHeight - 4))}px`;
+                menuAba.querySelector('button:not([hidden])').focus();
+            }
+
+            function fecharMenuAba(devolverFoco) {
+                if (menuAba.hidden) {
+                    return;
+                }
+                const documento = documentoMenuAba;
+                menuAba.hidden = true;
+                documentoMenuAba = undefined;
+                if (devolverFoco && documento) {
+                    const botao = abas.querySelectorAll('.aba-nome')[documentos.indexOf(documento)];
+                    if (botao) {
+                        botao.focus();
+                    }
+                }
+            }
+
+            function tratarTecladoMenuAba(evento) {
+                const botoes = Array.from(menuAba.querySelectorAll('button:not([hidden])'));
+                const indice = botoes.indexOf(document.activeElement);
+                if (evento.key === 'Escape' || evento.key === 'Tab') {
+                    fecharMenuAba(true);
+                } else if (evento.key === 'ArrowDown') {
+                    botoes[(indice + 1) % botoes.length].focus();
+                } else if (evento.key === 'ArrowUp') {
+                    botoes[(indice - 1 + botoes.length) % botoes.length].focus();
+                } else {
+                    return;
+                }
+                evento.preventDefault();
+                evento.stopPropagation();
+            }
+
+            function executarAcaoMenuAba(acao) {
+                const documento = documentoMenuAba;
+                fecharMenuAba(false);
+                if (!documento) {
+                    return;
+                }
+                if (acao === 'copiar-nome') {
+                    copiarCaminho(documento.nome, 'Nome copiado');
+                } else if (acao === 'copiar-caminho' && documentoNaPasta(documento)) {
+                    copiarCaminho(caminhoCompletoPasta(documento.caminhoPasta), 'Caminho copiado');
+                } else if (acao === 'copiar-pasta' && documentoNaPasta(documento)) {
+                    copiarCaminho(caminhoCompletoPasta(paiDoCaminhoPasta(documento.caminhoPasta)), 'Caminho da pasta copiado');
+                } else if (acao === 'local-pasta') {
+                    informarLocalPasta();
+                }
+            }
+
+            async function copiarCaminho(texto, mensagem) {
+                try {
+                    await copiarParaAreaDeTransferencia(texto);
+                    atualizarEstado(`${mensagem}: ${texto}`);
+                } catch (erro) {
+                    atualizarEstado('O navegador não deixou copiar');
+                }
+            }
+
+            // Pergunta onde a pasta aberta fica no computador. Fica guardado neste navegador, pelo nome da pasta.
+            function informarLocalPasta() {
+                if (!pastas.raiz) {
+                    return;
+                }
+                const nome = pastas.raiz.name;
+                const resposta = window.prompt(
+                    `Onde fica a pasta "${nome}" no computador? Por exemplo: K:\\Documentos\\${nome}\n\nO navegador não informa isso, então basta dizer uma vez. No Explorer, clique na barra de endereço da pasta e copie. Deixe em branco para apagar.`,
+                    localDaPasta()
+                );
+                if (resposta === null) {
+                    return;
+                }
+                const local = resposta.trim().replace(/^"(.*)"$/, '$1').trim();
+                const locais = lerLocaisPastas();
+                if (local) {
+                    locais[nome] = local;
+                } else {
+                    delete locais[nome];
+                }
+                try {
+                    localStorage.setItem(chaveLocaisPastas, JSON.stringify(locais));
+                } catch (erro) {
+                    atualizarEstado('Não foi possível guardar o local da pasta neste navegador');
+                    return;
+                }
+                atualizarAbas();
+                atualizarEstado(local ? `Local da pasta guardado: ${local}` : 'Local da pasta apagado');
+            }
+
+            // A roda do mouse sobre as abas rola para os lados. Touchpad e Shift+roda já rolam assim e ficam como estão.
+            function rolarAbasComRoda(evento) {
+                if (evento.ctrlKey || abas.scrollWidth <= abas.clientWidth || Math.abs(evento.deltaX) >= Math.abs(evento.deltaY)) {
+                    return;
+                }
+                const fator = evento.deltaMode === 1 ? 40 : evento.deltaMode === 2 ? abas.clientWidth : 1;
+                abas.scrollLeft += evento.deltaY * fator;
+                evento.preventDefault();
             }
 
             function atualizarInterfaceDocumento(mensagem) {
@@ -4405,6 +4576,10 @@
                     focarItemArvorePastas(caminho);
                 } else if (acao === 'colar') {
                     colarItemPasta(caminho);
+                } else if (acao === 'copiar-caminho') {
+                    copiarCaminho(caminhoCompletoPasta(caminho || ''), 'Caminho copiado');
+                } else if (acao === 'local-pasta') {
+                    informarLocalPasta();
                 }
             }
 
@@ -5486,6 +5661,22 @@
                 botaoAbrir.addEventListener('click', abrirArquivo);
                 botaoNovo.addEventListener('click', criarNovoConteudo);
                 botaoNovaAba.addEventListener('click', criarNovoConteudo);
+                abas.addEventListener('wheel', rolarAbasComRoda, { passive: false });
+                menuAba.addEventListener('click', function (evento) {
+                    const botao = evento.target.closest('button[data-acao]');
+                    if (botao) {
+                        executarAcaoMenuAba(botao.dataset.acao);
+                    }
+                });
+                menuAba.addEventListener('keydown', tratarTecladoMenuAba);
+                document.addEventListener('pointerdown', function (evento) {
+                    if (!menuAba.hidden && !menuAba.contains(evento.target)) {
+                        fecharMenuAba(false);
+                    }
+                }, true);
+                abas.addEventListener('scroll', function () {
+                    fecharMenuAba(false);
+                });
                 botaoSalvar.addEventListener('click', salvarArquivo);
                 botaoSalvarComo.addEventListener('click', salvarComoArquivo);
                 botaoExportarSessao.addEventListener('click', exportarSessao);

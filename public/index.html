@@ -154,7 +154,16 @@
             <button type="button" role="menuitem" data-acao="renomear">Renomear <kbd>F2</kbd></button>
             <button type="button" role="menuitem" data-acao="recortar">Recortar para mover <kbd>Ctrl+X</kbd></button>
             <button type="button" role="menuitem" data-acao="colar">Colar aqui <kbd>Ctrl+V</kbd></button>
+            <button type="button" role="menuitem" data-acao="copiar-caminho">Copiar caminho</button>
+            <button type="button" role="menuitem" data-acao="local-pasta">Onde fica esta pasta no computador…</button>
             <button type="button" role="menuitem" data-acao="excluir" class="perigo-texto">Excluir <kbd>Del</kbd></button>
+        </div>
+        <div id="menu-aba" role="menu" aria-label="Ações da aba" hidden>
+            <button type="button" role="menuitem" data-acao="copiar-caminho">Copiar caminho completo</button>
+            <button type="button" role="menuitem" data-acao="copiar-pasta">Copiar caminho da pasta</button>
+            <button type="button" role="menuitem" data-acao="local-pasta">Onde fica a pasta no computador…</button>
+            <button type="button" role="menuitem" data-acao="copiar-nome">Copiar nome do arquivo</button>
+            <p class="menu-aviso" hidden>O navegador só informa o caminho dos arquivos abertos pelo painel de pastas.</p>
         </div>
 
         <aside id="painel-textos" aria-labelledby="textos-titulo" hidden>
@@ -407,7 +416,7 @@
                     </select>
                     <span class="rodape-extra">UTF-8</span>
                     <span id="status-eol" class="rodape-extra"></span>
-                    <span id="versao-editor" title="Versão do editor (veja o CHANGELOG.md)">v1.7.0</span>
+                    <span id="versao-editor" title="Versão do editor (veja o CHANGELOG.md)">v1.8.0</span>
                 </div>
             </footer>
         </main>

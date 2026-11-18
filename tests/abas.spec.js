@@ -105,4 +105,56 @@ test.describe('Abas', () => {
         await page.locator('#linguagem').selectOption('javascript');
         await expect.poll(() => page.evaluate(() => window.monaco.editor.getModelMarkers({ resource: window.editor.getModel().uri }).length)).toBeGreaterThan(0);
     });
+
+    test('a roda do mouse sobre as abas rola a barra para os lados', async ({ page }) => {
+        await abrirEditor(page);
+        for (let i = 0; i < 14; i += 1) {
+            await page.locator('#nova-aba').click();
+        }
+        const barra = page.locator('#abas');
+        await barra.evaluate((elemento) => { elemento.scrollLeft = 0; });
+        const caixa = await barra.boundingBox();
+        await page.mouse.move(caixa.x + 60, caixa.y + caixa.height / 2);
+        await page.mouse.wheel(0, 300);
+        await expect.poll(() => barra.evaluate((elemento) => elemento.scrollLeft)).toBeGreaterThan(100);
+        const depois = await barra.evaluate((elemento) => elemento.scrollLeft);
+        await page.mouse.wheel(0, -300);
+        await expect.poll(() => barra.evaluate((elemento) => elemento.scrollLeft)).toBeLessThan(depois);
+    });
+
+    test('com poucas abas, a roda do mouse não faz nada na barra', async ({ page }) => {
+        await abrirEditor(page);
+        const barra = page.locator('#abas');
+        const caixa = await barra.boundingBox();
+        await page.mouse.move(caixa.x + 30, caixa.y + caixa.height / 2);
+        await page.mouse.wheel(0, 300);
+        expect(await barra.evaluate((elemento) => elemento.scrollLeft)).toBe(0);
+    });
+
+    test('aba de documento sem pasta: o botão direito só copia o nome e explica o motivo', async ({ page }) => {
+        await page.addInitScript(() => {
+            window.__copiado = [];
+            Object.defineProperty(navigator, 'clipboard', {
+                configurable: true,
+                value: { writeText: async function (texto) { window.__copiado.push(texto); } }
+            });
+        });
+        await abrirEditor(page);
+        await page.locator('.aba-nome').hover();
+        await expect(page.locator('.aba-nome')).toHaveAttribute('title', 'Sem título 1');
+        await page.locator('.aba').click({ button: 'right' });
+        const menu = page.locator('#menu-aba');
+        await expect(menu).toBeVisible();
+        await expect(menu.locator('[data-acao="copiar-caminho"]')).toBeHidden();
+        await expect(menu.locator('[data-acao="local-pasta"]')).toBeHidden();
+        await expect(menu.locator('.menu-aviso')).toBeVisible();
+        await expect(menu.locator('[data-acao="copiar-nome"]')).toBeFocused();
+        await page.keyboard.press('Escape');
+        await expect(menu).toBeHidden();
+        await expect(page.locator('.aba-nome')).toBeFocused();
+        await page.locator('.aba').click({ button: 'right' });
+        await menu.locator('[data-acao="copiar-nome"]').click();
+        await expect(menu).toBeHidden();
+        expect(await page.evaluate(() => window.__copiado)).toEqual(['Sem título 1']);
+    });
 });

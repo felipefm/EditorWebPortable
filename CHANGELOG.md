@@ -10,6 +10,12 @@ Numeração: `MAIOR.MENOR.CORREÇÃO`.
 
 As versões de 1.0.0 a 1.6.1 foram reconstruídas em 2026-11-10 a partir do histórico do git.
 
+## 1.8.0 — 2026-11-18
+
+- Com muitas abas abertas, a roda do mouse sobre a barra de abas rola a barra para os lados.
+- Passar o mouse numa aba mostra onde o arquivo fica, como no Notepad++. O navegador não informa o caminho completo no Windows, então ele aparece a partir da pasta aberta (`Notas/docs/guia.md`). Se você informar uma vez onde a pasta fica no computador, aparece o caminho completo (`K:\Notas\docs\guia.md`).
+- Botão direito na aba: **Copiar caminho completo**, **Copiar caminho da pasta** (para colar no Explorer), **Onde fica a pasta no computador…** e **Copiar nome do arquivo**. O menu do painel de pastas também ganhou **Copiar caminho**.
+
 ## 1.7.0 — 2026-11-10
 
 - Formatador JSON: a divisão entre entrada e resultado pode ser arrastada (ou ajustada com as setas). O duplo clique volta ao meio, e a largura fica salva no navegador.
